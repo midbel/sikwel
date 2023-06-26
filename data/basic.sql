@@ -21,3 +21,7 @@ join movies m on m.id=ma.movie
 group by a.name
 order by actor desc
 limit 10, 20;
+
+select * from movies
+union all
+select * from movies;

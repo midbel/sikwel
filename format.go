@@ -65,6 +65,12 @@ func (w *Writer) formatStatement(stmt Statement) error {
 	switch stmt := stmt.(type) {
 	case SelectStatement:
 		err = w.formatSelect(stmt)
+	case UnionStatement:
+		err = w.formatUnion(stmt)
+	case IntersectStatement:
+		err = w.formatIntersect(stmt)
+	case ExceptStatement:
+		err = w.formatExcept(stmt)
 	case InsertStatement:
 	case DeleteStatement:
 	case UpdateStatement:
@@ -74,6 +80,60 @@ func (w *Writer) formatStatement(stmt Statement) error {
 		err = fmt.Errorf("unsupported statement type %T", stmt)
 	}
 	return err
+}
+
+func (w *Writer) formatUnion(stmt UnionStatement) error {
+	if err := w.formatStatement(stmt.Left); err != nil {
+		return err
+	}
+	w.writeNL()
+	w.writeString("UNION")
+	if stmt.All {
+		w.writeBlank()
+		w.writeString("ALL")
+	}
+	if stmt.Distinct {
+		w.writeBlank()
+		w.writeString("DISTINCT")
+	}
+	w.writeNL()
+	return w.formatStatement(stmt.Right)
+}
+
+func (w *Writer) formatExcept(stmt ExceptStatement) error {
+	if err := w.formatStatement(stmt.Left); err != nil {
+		return err
+	}
+	w.writeNL()
+	w.writeString("EXCEPT")
+	if stmt.All {
+		w.writeBlank()
+		w.writeString("ALL")
+	}
+	if stmt.Distinct {
+		w.writeBlank()
+		w.writeString("DISTINCT")
+	}
+	w.writeNL()
+	return w.formatStatement(stmt.Right)	
+}
+
+func (w *Writer) formatIntersect(stmt IntersectStatement) error {
+	if err := w.formatStatement(stmt.Left); err != nil {
+		return err
+	}
+	w.writeNL()
+	w.writeString("INTERSECT")
+	if stmt.All {
+		w.writeBlank()
+		w.writeString("ALL")
+	}
+	if stmt.Distinct {
+		w.writeBlank()
+		w.writeString("DISTINCT")
+	}
+	w.writeNL()
+	return w.formatStatement(stmt.Right)
 }
 
 func (w *Writer) formatSelect(stmt SelectStatement) error {
