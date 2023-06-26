@@ -18,7 +18,7 @@ type Writer struct {
 func NewWriter(w io.Writer) *Writer {
 	return &Writer{
 		inner:  bufio.NewWriter(w),
-		indent: " ",
+		indent: "  ",
 		prefix: -1,
 	}
 }
@@ -129,7 +129,7 @@ func (w *Writer) formatSelectColumns(stmt SelectStatement) error {
 		case Alias:
 			err = w.formatAlias(s)
 		case Call, Binary, Unary:
-			err = w.formatExpr(s)
+			err = w.formatExpr(s, false)
 		case CaseStatement:
 		default:
 			err = fmt.Errorf("select: unsupported expression type in columns (%T)", s)
@@ -197,13 +197,16 @@ func (w *Writer) formatSelectGroupBy(stmt SelectStatement) error {
 }
 
 func (w *Writer) formatSelectHaving(stmt SelectStatement) error {
+	w.enter()
+	defer w.leave()
+
 	if stmt.Having == nil {
 		return nil
 	}
 	w.writeNL()
 	w.writeString("HAVING")
 	w.writeBlank()
-	return w.formatExpr(stmt.Having)
+	return w.formatExpr(stmt.Having, true)
 }
 
 func (w *Writer) formatSelectOrderBy(stmt SelectStatement) error {
@@ -257,20 +260,25 @@ func (w *Writer) formatSelectLimit(stmt SelectStatement) error {
 	w.writeBlank()
 	w.writeString(stmt.Limit)
 	if stmt.Offset != "" {
-		w.writeString(", ")
+		w.writeBlank()
+		w.writeString("OFFSET")
+		w.writeBlank()
 		w.writeString(stmt.Offset)
 	}
 	return nil
 }
 
 func (w *Writer) formatSelectWhere(stmt SelectStatement) error {
+	w.enter()
+	defer w.leave()
+
 	if stmt.Where == nil {
 		return nil
 	}
 	w.writeNL()
 	w.writeString("WHERE")
 	w.writeBlank()
-	return w.formatExpr(stmt.Where)
+	return w.formatExpr(stmt.Where, true)
 }
 
 func (w *Writer) formatFromJoin(join Join) error {
@@ -295,7 +303,7 @@ func (w *Writer) formatFromJoin(join Join) error {
 		w.writeBlank()
 		w.writeString("ON")
 		w.writeBlank()
-		err = w.formatBinary(s)
+		err = w.formatBinary(s, false)
 	case List:
 		w.writeBlank()
 		w.writeString("USING")
@@ -307,7 +315,7 @@ func (w *Writer) formatFromJoin(join Join) error {
 	return err
 }
 
-func (w *Writer) formatExpr(stmt Statement) error {
+func (w *Writer) formatExpr(stmt Statement, nl bool) error {
 	var err error
 	switch stmt := stmt.(type) {
 	case Name:
@@ -317,8 +325,9 @@ func (w *Writer) formatExpr(stmt Statement) error {
 	case Call:
 		err = w.formatCall(stmt)
 	case Binary:
-		err = w.formatBinary(stmt)
+		err = w.formatBinary(stmt, nl)
 	case Unary:
+		err = w.formatUnary(stmt, nl)
 	default:
 		err = fmt.Errorf("unexpected expression type (%T)", stmt)
 	}
@@ -337,7 +346,7 @@ func (w *Writer) formatCall(call Call) error {
 			w.writeString(",")
 			w.writeBlank()
 		}
-		if err := w.formatExpr(s); err != nil {
+		if err := w.formatExpr(s, false); err != nil {
 			return err
 		}
 	}
@@ -345,19 +354,24 @@ func (w *Writer) formatCall(call Call) error {
 	return nil
 }
 
-func (w *Writer) formatUnary(stmt Unary) error {
+func (w *Writer) formatUnary(stmt Unary, nl bool) error {
 	w.writeString(stmt.Op)
-	return w.formatExpr(stmt.Right)
+	return w.formatExpr(stmt.Right, nl)
 }
 
-func (w *Writer) formatBinary(stmt Binary) error {
-	if err := w.formatExpr(stmt.Left); err != nil {
+func (w *Writer) formatBinary(stmt Binary, nl bool) error {
+	if err := w.formatExpr(stmt.Left, nl); err != nil {
 		return err
 	}
-	w.writeBlank()
+	if nl && (stmt.Op == "AND" || stmt.Op == "OR") {
+		w.writeNL()
+		w.writeString(strings.Repeat(w.indent, w.prefix))
+	} else {
+		w.writeBlank()
+	}
 	w.writeString(stmt.Op)
 	w.writeBlank()
-	if err := w.formatExpr(stmt.Right); err != nil {
+	if err := w.formatExpr(stmt.Right, nl); err != nil {
 		return err
 	}
 	return nil
