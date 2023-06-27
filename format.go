@@ -140,6 +140,7 @@ func (w *Writer) formatSelect(stmt SelectStatement) error {
 	w.enter()
 	defer w.leave()
 
+	w.writeString(strings.Repeat(w.indent, w.prefix))
 	w.writeString("SELECT")
 	if err := w.formatSelectColumns(stmt); err != nil {
 		return err
@@ -202,11 +203,12 @@ func (w *Writer) formatSelectColumns(stmt SelectStatement) error {
 }
 
 func (w *Writer) formatSelectFrom(stmt SelectStatement) error {
-	w.enter()
-	defer w.leave()
-
+	w.writeString(strings.Repeat(w.indent, w.prefix))
 	w.writeString("FROM")
 	w.writeBlank()
+
+	w.enter()
+	defer w.leave()
 
 	var (
 		err    error
@@ -329,15 +331,18 @@ func (w *Writer) formatSelectLimit(stmt SelectStatement) error {
 }
 
 func (w *Writer) formatSelectWhere(stmt SelectStatement) error {
-	w.enter()
-	defer w.leave()
-
 	if stmt.Where == nil {
 		return nil
 	}
+
 	w.writeNL()
+	w.writeString(strings.Repeat(w.indent, w.prefix))
 	w.writeString("WHERE")
 	w.writeBlank()
+
+	w.enter()
+	defer w.leave()
+
 	return w.formatExpr(stmt.Where, true)
 }
 
@@ -352,6 +357,9 @@ func (w *Writer) formatFromJoin(join Join) error {
 	case Alias:
 		err = w.formatAlias(s)
 	case SelectStatement:
+		w.writeString("(")
+		err = w.formatSelect(s)
+		w.writeString(")")
 	default:
 		err = fmt.Errorf("from: unsupported statement (%T)", s)
 	}
@@ -476,6 +484,13 @@ func (w *Writer) formatAlias(alias Alias) error {
 		w.formatName(s)
 	case Call:
 		w.formatCall(s)
+	case SelectStatement:
+		w.writeString("(")
+		w.writeNL()
+		w.formatSelect(s)
+		w.writeNL()
+		w.writeString(strings.Repeat(w.indent, w.prefix))
+		w.writeString(")")
 	default:
 		return fmt.Errorf("alias: unsupported expression type used with alias (%T)", s)
 	}

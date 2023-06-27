@@ -22,6 +22,6 @@ group by a.name
 order by actor desc
 limit 10, 20;
 
-select * from movies
-union all
-select * from movies;
+select 
+x.id, z.id, z.date
+from (select y.id, y.date from y where y.date > '2023-06-27') z join x on x.id=z.id;

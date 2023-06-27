@@ -469,6 +469,10 @@ func (p *Parser) parseFrom() ([]Statement, error) {
 				break
 			}
 			p.next()
+			j.Table, err = p.parseAlias(j.Table)
+			if err != nil {
+				return nil, err
+			}
 		default:
 			return nil, p.unexpected("join")
 		}
@@ -602,8 +606,6 @@ func (p *Parser) parseOrderBy() ([]Statement, error) {
 	do := func(stmt Statement) (Statement, error) {
 		order := Order{
 			Statement: stmt,
-			Orient:    "ASC",
-			Nulls:     "FIRST",
 		}
 		if p.isKeyword("ASC") || p.isKeyword("DESC") {
 			order.Orient = p.curr.Literal
@@ -883,17 +885,29 @@ func (p *Parser) parseStatementList(ctx string, fn func(Statement) (Statement, e
 			name Name
 			stmt Statement
 		)
-		if !p.is(Ident) {
-			return nil, p.unexpected(ctx)
-		}
-		if p.is(Ident) && p.peekIs(Dot) {
-			name.Prefix = p.curr.Literal
+		switch {
+		case p.is(Lparen):
 			p.next()
+			stmt, err = p.parseSelect()
+			if err != nil {
+				return nil, err
+			}
+			if !p.is(Rparen) {
+				return nil, p.unexpected("list")
+			}
 			p.next()
+		case p.is(Ident):
+			if p.is(Ident) && p.peekIs(Dot) {
+				name.Prefix = p.curr.Literal
+				p.next()
+				p.next()
+			}
+			name.Ident = p.curr.Literal
+			stmt = name
+			p.next()
+		default:
+			return nil, p.unexpected("list")
 		}
-		name.Ident = p.curr.Literal
-		stmt = name
-		p.next()
 		if fn != nil {
 			if stmt, err = fn(stmt); err != nil {
 				return nil, err
