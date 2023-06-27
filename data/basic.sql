@@ -1,27 +1,16 @@
-select * from movies;
+select * from employees;
 
-select m.title, d.name, m.kind, m.year 
-from movies m 
-join distributors d on m.distrib_id=d.id;
+select d.name, count(e.id) members 
+from departments d
+left outer join employees e on d.id=e.dept
+group by d.name
+having members > 10
+order by members desc;
 
-select m.title, d.name, m.kind, m.year 
-from movies m 
-join distributors d using (distrib);
-
-select m.title, m.kind, m.year, a.name
-from actors a 
-join movies_actors ma on a.id=ma.actor
-join movies m on m.id=ma.movie
-where a.name like 'w%' and age >= 18 and m.duration >= 90;
-
-select upper(a.name) actor, ifnull(count(m.*), 0) total
-from actors a 
-join movies_actors ma on a.id=ma.actor
-join movies m on m.id=ma.movie
-group by a.name
-order by actor desc
-limit 10, 20;
-
-select 
-x.id, z.id, z.date
-from (select y.id, y.date from y where y.date > '2023-06-27') z join x on x.id=z.id;
+select
+e.*,
+m.manager,
+d.name
+from employees e
+join departments d on e.dept=d.id
+join (select id, concat_ws('firstname', 'lastname') manager from employees) m on e.manager=m.id;

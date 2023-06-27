@@ -1,11 +1,24 @@
+define(
+	managers,
+	select(
+		alias(call(concat_ws, firstname, lastname), manager),
+		from(employees)
+	)
+)
 select(
-	all(m),
+	e.*,
+	m.manager,
+	d.name,
 	from(
-		movies,
-		join(alias(distributors, d), eq(distrib, id))
+		alias(employees, e),
+		join(alias(departments, d), eq(e.dept, d.id)),
+		join(
+			alias($managers, m),
+			eq(m.id, e.manager)
+		)
 	),
 	where(
-		gt(year, '2023-06-27')
-	),
-	limit(10, 20)
+		gt(d.id, '2023-06-27')
+		between(e.hired_date, '2023-01-01', '2023-12-01')
+	)
 )
