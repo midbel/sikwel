@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/midbel/sikwel"
+	"github.com/midbel/sweet"
 )
 
 func main() {
@@ -19,19 +19,19 @@ func main() {
 	}
 	defer r.Close()
 
-	scan, err := sikwel.Scan(r, sikwel.KeywordsForDialect(*dialect))
+	scan, err := sweet.Scan(r, sweet.KeywordsForDialect(*dialect))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	for {
 		tok := scan.Scan()
-		if tok.Type == sikwel.Invalid {
+		if tok.Type == sweet.Invalid {
 			fmt.Fprintf(os.Stderr, "invalid token found at %s", tok.Position)
 			fmt.Fprintln(os.Stderr)
 			os.Exit(1)
 		}
-		if tok.Type == sikwel.EOF {
+		if tok.Type == sweet.EOF {
 			break
 		}
 		fmt.Println(tok.Position, tok)

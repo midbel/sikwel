@@ -8,7 +8,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/midbel/sikwel"
+	"github.com/midbel/sweet"
 )
 
 func main() {
@@ -25,7 +25,7 @@ func main() {
 	}
 	defer r.Close()
 
-	p, err := sikwel.NewParser(r, sikwel.KeywordsForDialect(*dialect))
+	p, err := sweet.NewParser(r, sweet.KeywordsForDialect(*dialect))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)

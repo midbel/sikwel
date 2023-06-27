@@ -1,4 +1,4 @@
-package sikwel
+package sweet
 
 type Statement interface{}
 

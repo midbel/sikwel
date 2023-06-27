@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/midbel/sikwel"
-	"github.com/midbel/sikwel/rest"
+	"github.com/midbel/sweet"
+	"github.com/midbel/sweet/rest"
 )
 
 func main() {
@@ -42,6 +42,6 @@ func format(file, dialect string) error {
 	}
 	defer r.Close()
 
-	w := sikwel.NewWriter(os.Stdout)
-	return w.Format(r, sikwel.KeywordsForDialect(dialect))
+	w := sweet.NewWriter(os.Stdout)
+	return w.Format(r, sweet.KeywordsForDialect(dialect))
 }

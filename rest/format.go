@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/midbel/sikwel"
+	"github.com/midbel/sweet"
 )
 
 const MaxBodySize = (1 << 16) - 1
@@ -26,7 +26,7 @@ func Format(w http.ResponseWriter, r *http.Request) {
 		ws bytes.Buffer
 		rs = io.LimitReader(r.Body, MaxBodySize)
 	)
-	if err := sikwel.WriteAnsi(rs, &ws); err != nil {
+	if err := sweet.WriteAnsi(rs, &ws); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		io.WriteString(w, err.Error())
 		return

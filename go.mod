@@ -1,3 +1,3 @@
-module github.com/midbel/sikwel
+module github.com/midbel/sweet
 
 go 1.20
