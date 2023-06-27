@@ -8,26 +8,32 @@ import (
 )
 
 type Parser struct {
-	cwd  string
-	scan *Scanner
-	curr Token
-	peek Token
+	*frame
+	stack []*frame
 
 	keywords map[string]func() (Statement, error)
 	infix    map[symbol]infixFunc
 	prefix   map[symbol]prefixFunc
+
+	set KeywordSet
 }
 
 func NewParser(r io.Reader, keywords KeywordSet) (*Parser, error) {
-	scan, err := Scan(r, keywords)
+	// scan, err := Scan(r, keywords)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	var p Parser
+	// if n, ok := r.(interface{ Name() string }); ok {
+	// 	p.cwd = filepath.Dir(n.Name())
+	// }
+	// p.scan = scan
+	frame, err := createFrame(r, keywords)
 	if err != nil {
 		return nil, err
 	}
-	var p Parser
-	if n, ok := r.(interface{ Name() string }); ok {
-		p.cwd = filepath.Dir(n.Name())
-	}
-	p.scan = scan
+	p.frame = frame
+	p.set = keywords
 	p.keywords = map[string]func() (Statement, error){
 		"SELECT":      p.parseSelect,
 		"DELETE FROM": p.parseDelete,
@@ -75,9 +81,6 @@ func NewParser(r io.Reader, keywords KeywordSet) (*Parser, error) {
 	p.registerPrefix("CASE", Keyword, p.parseCase)
 	p.registerPrefix("SELECT", Keyword, p.parseSelect)
 
-	p.next()
-	p.next()
-
 	return &p, nil
 }
 
@@ -105,6 +108,7 @@ func (p *Parser) parseMacro() error {
 	var err error
 	switch p.curr.Literal {
 	case "INCLUDE":
+		fmt.Println(p.curr, p.peek)
 		err = p.parseIncludeMacro()
 	case "DEFINE":
 		err = p.parseDefineMacro()
@@ -114,20 +118,31 @@ func (p *Parser) parseMacro() error {
 	if err != nil {
 		return err
 	}
-	if !p.is(EOL) {
-		return fmt.Errorf("want \";\" after statement but got %s", p.curr)
-	}
 	return nil
 }
 
 func (p *Parser) parseIncludeMacro() error {
 	p.next()
-	defer p.next()
-	r, err := os.Open(filepath.Join(p.cwd, p.curr.Literal))
+
+	file := filepath.Join(p.base, p.curr.Literal)
+	p.next()
+
+	if !p.is(EOL) {
+		return fmt.Errorf("include: want \";\" after statement but got %s", p.curr)
+	}
+
+	r, err := os.Open(file)
 	if err != nil {
 		return err
 	}
 	defer r.Close()
+
+	frame, err := createFrame(r, p.set)
+	if err != nil {
+		return err
+	}
+	p.stack = append(p.stack, p.frame)
+	p.frame = frame
 
 	return nil
 }
@@ -1008,13 +1023,13 @@ func (p *Parser) parseAlias(stmt Statement) (Statement, error) {
 	return stmt, nil
 }
 
-func (p *Parser) is(r rune) bool {
-	return p.curr.Type == r
-}
+// func (p *Parser) is(r rune) bool {
+// 	return p.curr.Type == r
+// }
 
-func (p *Parser) peekIs(r rune) bool {
-	return p.peek.Type == r
-}
+// func (p *Parser) peekIs(r rune) bool {
+// 	return p.peek.Type == r
+// }
 
 func (p *Parser) isKeyword(kw string) bool {
 	return p.curr.Type == Keyword && p.curr.Literal == kw
@@ -1047,13 +1062,19 @@ func (p *Parser) ensureEnd(ctx string, sep, end rune) error {
 }
 
 func (p *Parser) done() bool {
-	return p.curr.Type == EOF
+	if p.frame.done() {
+		if n := len(p.stack); n > 0 {
+			p.frame = p.stack[n-1]
+			p.stack = p.stack[:n-1]
+		}
+	}
+	return p.frame.done()
 }
 
-func (p *Parser) next() {
-	p.curr = p.peek
-	p.peek = p.scan.Scan()
-}
+// func (p *Parser) next() {
+// 	p.curr = p.peek
+// 	p.peek = p.scan.Scan()
+// }
 
 type prefixFunc func() (Statement, error)
 
@@ -1093,4 +1114,44 @@ var bindings = map[symbol]int{
 	symbolFor(Slash, ""):          powMul,
 	symbolFor(Lparen, ""):         powCall,
 	symbolFor(Concat, ""):         powConcat,
+}
+
+type frame struct {
+	*Scanner
+	base string
+	curr Token
+	peek Token
+}
+
+func createFrame(r io.Reader, keywords KeywordSet) (*frame, error) {
+	scan, err := Scan(r, keywords)
+	if err != nil {
+		return nil, err
+	}
+	f := frame{
+		Scanner: scan,
+	}
+	if n, ok := r.(interface{ Name() string }); ok {
+		f.base = filepath.Dir(n.Name())
+	}
+	f.next()
+	f.next()
+	return &f, nil
+}
+
+func (f *frame) next() {
+	f.curr = f.peek
+	f.peek = f.Scan()
+}
+
+func (f *frame) done() bool {
+	return f.is(EOF)
+}
+
+func (f *frame) is(kind rune) bool {
+	return f.curr.Type == kind
+}
+
+func (f *frame) peekIs(kind rune) bool {
+	return f.peek.Type == kind
 }

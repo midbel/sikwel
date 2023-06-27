@@ -24,11 +24,4 @@ else 'junior'
 end 'seniority'
 from employees e;
 
-select
-*,
-case e.experiment
-when 1 then 'senior'
-when 2 then 'medior'
-else 'junior'
-end 'seniority'
-from employees e;
+@include 'include.sql';
