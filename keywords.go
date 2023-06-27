@@ -67,6 +67,8 @@ var keywords = KeywordSet{
 	{"end"},
 	{"using"},
 	{"begin"},
+	{"commit"},
+	{"rollback"},
 	{"while"},
 	{"end", "while"},
 	{"do"},

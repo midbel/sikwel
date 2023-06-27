@@ -2,6 +2,11 @@ package sweet
 
 type Statement interface{}
 
+type Commit struct {}
+
+
+type Rollback struct{}
+
 type Call struct {
 	Ident Statement
 	Args  []Statement

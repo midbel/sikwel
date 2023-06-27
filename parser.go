@@ -3,6 +3,7 @@ package sweet
 import (
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 )
 
@@ -36,6 +37,8 @@ func NewParser(r io.Reader, keywords KeywordSet) (*Parser, error) {
 		"IF":          p.parseIf,
 		"CASE":        p.parseCase,
 		"WHILE":       p.parseWhile,
+		"COMMIT": p.parseCommit,
+		"ROLLBACK": p.parseRollback,
 	}
 
 	p.infix = make(map[symbol]infixFunc)
@@ -84,7 +87,7 @@ func (p *Parser) Parse() (Statement, error) {
 	}
 	if p.is(Macro) {
 		if err := p.parseMacro(); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	stmt, err := p.parseStatement()
@@ -145,6 +148,16 @@ func (p *Parser) parseStatement() (Statement, error) {
 		return nil, fmt.Errorf("unsupported/unrecognized keyword: %s", p.curr.Literal)
 	}
 	return fn()
+}
+
+func (p *Parser) parseCommit() (Statement, error) {
+	p.next()
+	return Commit{}, nil
+}
+
+func (p *Parser) parseRollback() (Statement, error) {
+	p.next()
+	return Rollback{}, nil
 }
 
 func (p *Parser) parseWith() (Statement, error) {

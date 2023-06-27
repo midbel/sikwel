@@ -1,0 +1,11 @@
+select(
+	all(m),
+	from(
+		movies,
+		join(alias(distributors, d), eq(distrib, id))
+	),
+	where(
+		gt(year, '2023-06-27')
+	),
+	limit(10, 20)
+)
