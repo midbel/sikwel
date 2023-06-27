@@ -14,7 +14,7 @@ join movies_actors ma on a.id=ma.actor
 join movies m on m.id=ma.movie
 where a.name like 'w%' and age >= 18 and m.duration >= 90;
 
-select upper(a.name) as actor, ifnull(count(m.*), 0)
+select upper(a.name) actor, ifnull(count(m.*), 0) total
 from actors a 
 join movies_actors ma on a.id=ma.actor
 join movies m on m.id=ma.movie

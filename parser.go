@@ -73,18 +73,6 @@ func NewParser(r io.Reader, keywords KeywordSet) (*Parser, error) {
 	return &p, nil
 }
 
-func (p *Parser) registerPrefix(literal string, kind rune, fn prefixFunc) {
-	p.prefix[symbolFor(kind, literal)] = fn
-}
-
-func (p *Parser) registerInfix(literal string, kind rune, fn infixFunc) {
-	p.infix[symbolFor(kind, literal)] = fn
-}
-
-func (p *Parser) unregisterInfix(literal string, kind rune) {
-	delete(p.infix, symbolFor(kind, literal))
-}
-
 func (p *Parser) Parse() (Statement, error) {
 	for p.curr.Type == Comment {
 		p.next()
@@ -382,13 +370,12 @@ func (p *Parser) parseSelect() (Statement, error) {
 		return nil, err
 	}
 	allDistinct := func() (bool, bool) {
-		var all, distinct bool
-
 		p.next()
-		if all = p.isKeyword("ALL"); all {
-			p.next()
-		}
-		if distinct = p.isKeyword("DISTINCT"); distinct {
+		var (
+			all      = p.isKeyword("ALL")
+			distinct = p.isKeyword("DISTINCT")
+		)
+		if all || distinct {
 			p.next()
 		}
 		return all, distinct
@@ -673,6 +660,18 @@ func (p *Parser) parseReturning() (Statement, error) {
 	})
 }
 
+func (p *Parser) registerPrefix(literal string, kind rune, fn prefixFunc) {
+	p.prefix[symbolFor(kind, literal)] = fn
+}
+
+func (p *Parser) registerInfix(literal string, kind rune, fn infixFunc) {
+	p.infix[symbolFor(kind, literal)] = fn
+}
+
+func (p *Parser) unregisterInfix(literal string, kind rune) {
+	delete(p.infix, symbolFor(kind, literal))
+}
+
 func (p *Parser) getPrefixExpr() (Statement, error) {
 	fn, ok := p.prefix[p.curr.asSymbol()]
 	if !ok {
@@ -785,7 +784,7 @@ func (p *Parser) parseCallExpr(left Statement, _ func() bool) (Statement, error)
 		return nil, p.unexpected("call")
 	}
 	p.next()
-	return stmt, nil
+	return p.parseAlias(stmt)
 }
 
 func (p *Parser) parseUnary() (Statement, error) {
@@ -918,10 +917,6 @@ func (p *Parser) parseStatementList(ctx string, fn func(Statement) (Statement, e
 }
 
 func (p *Parser) parseAlias(stmt Statement) (Statement, error) {
-	sym := symbolFor(Keyword, "AS")
-	if _, ok := p.infix[sym]; !ok {
-		return stmt, nil
-	}
 	mandatory := p.isKeyword("AS")
 	if mandatory {
 		p.next()

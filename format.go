@@ -115,7 +115,7 @@ func (w *Writer) formatExcept(stmt ExceptStatement) error {
 		w.writeString("DISTINCT")
 	}
 	w.writeNL()
-	return w.formatStatement(stmt.Right)	
+	return w.formatStatement(stmt.Right)
 }
 
 func (w *Writer) formatIntersect(stmt IntersectStatement) error {
@@ -474,8 +474,10 @@ func (w *Writer) formatAlias(alias Alias) error {
 	switch s := alias.Statement.(type) {
 	case Name:
 		w.formatName(s)
+	case Call:
+		w.formatCall(s)
 	default:
-		return fmt.Errorf("alias: unsupported expression type used with alias (%T", s)
+		return fmt.Errorf("alias: unsupported expression type used with alias (%T)", s)
 	}
 	w.writeBlank()
 	w.writeString("AS")
