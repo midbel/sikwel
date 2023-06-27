@@ -5,20 +5,38 @@ define(
 		from(employees)
 	)
 )
+
+include(commons.swt)
+
 select(
-	e.*,
-	m.manager,
-	d.name,
+	e.*
+	m.manager
+	d.name
 	from(
 		alias(employees, e),
-		join(alias(departments, d), eq(e.dept, d.id)),
 		join(
-			alias($managers, m),
+			alias(departments, d)
+			eq(e.dept, d.id)
+		)
+		join(
+			alias(@managers, m)
 			eq(m.id, e.manager)
 		)
-	),
+	)
 	where(
 		gt(d.id, '2023-06-27')
 		between(e.hired_date, '2023-01-01', '2023-12-01')
 	)
+)
+
+select(
+	d.name
+	alias(call(count, e.id), members)
+	from(
+		alias(departments, d)
+		leftjoin(alias(employees, e), eq(e.dept, d.id))
+	)
+	groupby(d.name)
+	having(gt(members, 10))
+	orderby(desc(members))
 )

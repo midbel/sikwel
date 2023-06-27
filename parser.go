@@ -37,8 +37,8 @@ func NewParser(r io.Reader, keywords KeywordSet) (*Parser, error) {
 		"IF":          p.parseIf,
 		"CASE":        p.parseCase,
 		"WHILE":       p.parseWhile,
-		"COMMIT": p.parseCommit,
-		"ROLLBACK": p.parseRollback,
+		"COMMIT":      p.parseCommit,
+		"ROLLBACK":    p.parseRollback,
 	}
 
 	p.infix = make(map[symbol]infixFunc)
@@ -72,7 +72,7 @@ func NewParser(r io.Reader, keywords KeywordSet) (*Parser, error) {
 	p.registerPrefix("NOT", Keyword, p.parseUnary)
 	p.registerPrefix("NULL", Keyword, p.parseUnary)
 	p.registerPrefix("DEFAULT", Keyword, p.parseUnary)
-	p.registerPrefix("CASE", Keyword, p.parseUnary)
+	p.registerPrefix("CASE", Keyword, p.parseCase)
 	p.registerPrefix("SELECT", Keyword, p.parseSelect)
 
 	p.next()
@@ -382,7 +382,7 @@ func (p *Parser) parseCase() (Statement, error) {
 		return nil, p.unexpected("case")
 	}
 	p.next()
-	return stmt, nil
+	return p.parseAlias(stmt)
 }
 
 func (p *Parser) parseWhile() (Statement, error) {
@@ -473,7 +473,7 @@ func (p *Parser) parseColumns() ([]Statement, error) {
 		}
 	)
 	for !p.done() && !p.isKeyword("FROM") {
-		stmt, err := p.parseExpression("list", powLowest, done)
+		stmt, err := p.parseExpression("fields", powLowest, done)
 		if err != nil {
 			return nil, err
 		}
@@ -481,16 +481,16 @@ func (p *Parser) parseColumns() ([]Statement, error) {
 		case p.is(Comma):
 			p.next()
 			if p.isKeyword("FROM") {
-				return nil, p.unexpected("list")
+				return nil, p.unexpected("fields")
 			}
 		case p.isKeyword("FROM"):
 		default:
-			return nil, p.unexpected("list")
+			return nil, p.unexpected("fields")
 		}
 		list = append(list, stmt)
 	}
 	if !p.isKeyword("FROM") {
-		return nil, p.unexpected("list")
+		return nil, p.unexpected("fields")
 	}
 	return list, nil
 }

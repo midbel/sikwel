@@ -84,6 +84,8 @@ func (s *Scanner) scanMacro(tok *Token) {
 		s.write()
 		s.read()
 	}
+	tok.Type = Macro
+	tok.Literal = s.literal()
 }
 
 func (s *Scanner) scanComment(tok *Token) {

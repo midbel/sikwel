@@ -2,8 +2,7 @@ package sweet
 
 type Statement interface{}
 
-type Commit struct {}
-
+type Commit struct{}
 
 type Rollback struct{}
 

@@ -192,6 +192,7 @@ func (w *Writer) formatSelectColumns(stmt SelectStatement) error {
 		case Call, Binary, Unary:
 			err = w.formatExpr(s, false)
 		case CaseStatement:
+			err = w.formatCase(s)
 		default:
 			err = fmt.Errorf("select: unsupported expression type in columns (%T)", s)
 		}
@@ -383,6 +384,50 @@ func (w *Writer) formatFromJoin(join Join) error {
 	return err
 }
 
+func (w *Writer) formatCase(stmt CaseStatement) error {
+	// w.writeString(strings.Repeat(w.indent, w.prefix))
+	w.writeString("CASE")
+	if stmt.Cdt != nil {
+		w.writeBlank()
+		w.formatExpr(stmt.Cdt, false)
+	}
+	w.writeBlank()
+	w.enter()
+	for _, s := range stmt.Body {
+		w.writeNL()
+		if err := w.formatExpr(s, false); err != nil {
+			return err
+		}
+	}
+	if stmt.Else != nil {
+		w.writeNL()
+		w.writeString(strings.Repeat(w.indent, w.prefix))
+		w.writeString("ELSE")
+		w.writeBlank()
+		if err := w.formatExpr(stmt.Else, false); err != nil {
+			return err
+		}
+	}
+	w.leave()
+	w.writeNL()
+	w.writeString(strings.Repeat(w.indent, w.prefix))
+	w.writeString("END")
+	return nil
+}
+
+func (w *Writer) formatWhen(stmt WhenStatement) error {
+	w.writeString(strings.Repeat(w.indent, w.prefix))
+	w.writeString("WHEN")
+	w.writeBlank()
+	if err := w.formatExpr(stmt.Cdt, false); err != nil {
+		return err
+	}
+	w.writeBlank()
+	w.writeString("THEN")
+	w.writeBlank()
+	return w.formatExpr(stmt.Body, false)
+}
+
 func (w *Writer) formatExpr(stmt Statement, nl bool) error {
 	var err error
 	switch stmt := stmt.(type) {
@@ -396,6 +441,10 @@ func (w *Writer) formatExpr(stmt Statement, nl bool) error {
 		err = w.formatBinary(stmt, nl)
 	case Unary:
 		err = w.formatUnary(stmt, nl)
+	case CaseStatement:
+		err = w.formatCase(stmt)
+	case WhenStatement:
+		err = w.formatWhen(stmt)
 	default:
 		err = fmt.Errorf("unexpected expression type (%T)", stmt)
 	}
@@ -479,20 +528,29 @@ func (w *Writer) formatName(name Name) {
 }
 
 func (w *Writer) formatAlias(alias Alias) error {
+	var err error
 	switch s := alias.Statement.(type) {
 	case Name:
 		w.formatName(s)
 	case Call:
-		w.formatCall(s)
+		err = w.formatCall(s)
+	case CaseStatement:
+		err = w.formatCase(s)
 	case SelectStatement:
 		w.writeString("(")
 		w.writeNL()
-		w.formatSelect(s)
+		err = w.formatSelect(s)
+		if err != nil {
+			break
+		}
 		w.writeNL()
 		w.writeString(strings.Repeat(w.indent, w.prefix))
 		w.writeString(")")
 	default:
 		return fmt.Errorf("alias: unsupported expression type used with alias (%T)", s)
+	}
+	if err != nil {
+		return err
 	}
 	w.writeBlank()
 	w.writeString("AS")
