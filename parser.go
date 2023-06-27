@@ -3,9 +3,11 @@ package sweet
 import (
 	"fmt"
 	"io"
+	"path/filepath"
 )
 
 type Parser struct {
+	cwd  string
 	scan *Scanner
 	curr Token
 	peek Token
@@ -21,6 +23,9 @@ func NewParser(r io.Reader, keywords KeywordSet) (*Parser, error) {
 		return nil, err
 	}
 	var p Parser
+	if n, ok := r.(interface{ Name() string }); ok {
+		p.cwd = filepath.Dir(n.Name())
+	}
 	p.scan = scan
 	p.keywords = map[string]func() (Statement, error){
 		"SELECT":      p.parseSelect,
@@ -74,18 +79,58 @@ func NewParser(r io.Reader, keywords KeywordSet) (*Parser, error) {
 }
 
 func (p *Parser) Parse() (Statement, error) {
-	for p.curr.Type == Comment {
+	for p.is(Comment) {
 		p.next()
+	}
+	if p.is(Macro) {
+		if err := p.parseMacro(); err != nil {
+			return err
+		}
 	}
 	stmt, err := p.parseStatement()
 	if err != nil {
 		return nil, err
 	}
-	if p.curr.Type != EOL {
+	if !p.is(EOL) {
 		return nil, fmt.Errorf("want \";\" after statement but got %s", p.curr)
 	}
 	p.next()
 	return stmt, nil
+}
+
+func (p *Parser) parseMacro() error {
+	var err error
+	switch p.curr.Literal {
+	case "INCLUDE":
+		err = p.parseIncludeMacro()
+	case "DEFINE":
+		err = p.parseDefineMacro()
+	default:
+		err = fmt.Errorf("unknown macro %s", p.curr.Literal)
+	}
+	if err != nil {
+		return err
+	}
+	if !p.is(EOL) {
+		return fmt.Errorf("want \";\" after statement but got %s", p.curr)
+	}
+	return nil
+}
+
+func (p *Parser) parseIncludeMacro() error {
+	p.next()
+	defer p.next()
+	r, err := os.Open(filepath.Join(p.cwd, p.curr.Literal))
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	return nil
+}
+
+func (p *Parser) parseDefineMacro() error {
+	return nil
 }
 
 func (p *Parser) parseStatement() (Statement, error) {

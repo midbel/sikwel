@@ -70,10 +70,20 @@ func (s *Scanner) Scan() Token {
 		s.scanPunct(&tok)
 	case isOperator(s.char):
 		s.scanOperator(&tok)
+	case isMacro(s.char):
+		s.scanMacro(&tok)
 	default:
 		tok.Type = Invalid
 	}
 	return tok
+}
+
+func (s *Scanner) scanMacro(tok *Token) {
+	s.read()
+	for !s.done() && !isDelim(s.char) {
+		s.write()
+		s.read()
+	}
 }
 
 func (s *Scanner) scanComment(tok *Token) {
@@ -314,7 +324,12 @@ const (
 	pipe       = '|'
 	slash      = '/'
 	plus       = '+'
+	arobase    = '@'
 )
+
+func isMacro(r rune) bool {
+	return r == arobase
+}
 
 func isDelim(r rune) bool {
 	return isBlank(r) || isPunct(r) || isOperator(r)

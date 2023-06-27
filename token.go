@@ -13,6 +13,7 @@ const (
 	Ident
 	Literal
 	Keyword
+	Macro
 	Number
 	Comma
 	Lparen
@@ -103,6 +104,8 @@ func (t Token) String() string {
 		return "<greater-than>"
 	case Ge:
 		return "<greater-eq>"
+	case Macro:
+		prefix = "macro"
 	case Ident:
 		prefix = "identifier"
 	case Literal:
