@@ -1,9 +1,9 @@
 package sql
 
 import (
-	"io"
-	"fmt"
 	"bytes"
+	"fmt"
+	"io"
 	"unicode/utf8"
 )
 
@@ -105,7 +105,6 @@ func (s *Scanner) Scan() Token {
 		tok.Type = EOF
 		return tok
 	}
-	curr := s.char
 	switch {
 	case isNL(s.char):
 		s.scanNL(&tok)
@@ -122,7 +121,6 @@ func (s *Scanner) Scan() Token {
 	default:
 		tok.Type = Invalid
 	}
-	fmt.Printf("%[1]c (%02[1]x: %[2]s\n", curr, tok)
 	return tok
 }
 
@@ -202,6 +200,9 @@ func (s *Scanner) scanPunct(tok *Token) {
 		tok.Type = Invalid
 	}
 	s.read()
+	if tok.Type == Star || tok.Type == Dot {
+		return
+	}
 	s.save()
 	s.skip(isBlank)
 	if tok.Type == Rparen && s.char != rparen {

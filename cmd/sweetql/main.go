@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -10,6 +11,7 @@ import (
 )
 
 func main() {
+	scan := flag.Bool("s", false, "scanning mode")
 	flag.Parse()
 
 	r, err := os.Open(flag.Arg(0))
@@ -19,7 +21,13 @@ func main() {
 	}
 	defer r.Close()
 
-	if err = scanReader(r); err != nil {
+	if *scan {
+		err = scanReader(r)
+	} else {
+		err = parseReader(r)
+	}
+
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -44,3 +52,23 @@ func scanReader(r io.Reader) error {
 	}
 	return nil
 }
+
+func parseReader(r io.Reader) error {
+	p, err := sql.NewParser(r)
+	if err != nil {
+		return err
+	}
+	for {
+		stmt, err := p.Parse()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return err
+		}
+		fmt.Printf("%#v", stmt)
+		fmt.Println()
+	}
+	return nil
+}
+

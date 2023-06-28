@@ -51,6 +51,11 @@ type Alias struct {
 	Alias string
 }
 
+type Limit struct {
+	Count  int
+	Offset int
+}
+
 type Order struct {
 	Statement
 	Orient string
@@ -75,14 +80,16 @@ type WithStatement struct {
 }
 
 type SelectStatement struct {
-	Columns []Statement
-	Tables  []Statement
-	Where   Statement
-	Groups  []Statement
-	Having  Statement
-	Orders  []Statement
-	Limit   string
-	Offset  string
+	All      bool
+	Distinct bool
+	Columns  []Statement
+	Tables   []Statement
+	Where    Statement
+	Groups   []Statement
+	Having   Statement
+	Orders   []Statement
+	Limit    string
+	Offset   string
 }
 
 type UnionStatement struct {
