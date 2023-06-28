@@ -19,7 +19,7 @@ select(
 			eq(e.dept, d.id)
 		)
 		join(
-			alias(@managers, m)
+			alias(managers, m)
 			eq(m.id, e.manager)
 		)
 	)
