@@ -130,6 +130,7 @@ func (p *Parser) parseIncludeMacro() error {
 	if !p.is(EOL) {
 		return fmt.Errorf("include: want \";\" after statement but got %s", p.curr)
 	}
+	p.next()
 
 	r, err := os.Open(file)
 	if err != nil {
