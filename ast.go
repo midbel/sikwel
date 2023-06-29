@@ -22,6 +22,12 @@ type Binary struct {
 	Op    string
 }
 
+type Between struct {
+	Ident Statement
+	Lower Statement
+	Upper Statement
+}
+
 type List struct {
 	Values []Statement
 }

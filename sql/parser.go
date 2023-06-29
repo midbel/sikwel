@@ -104,6 +104,8 @@ func (p *Parser) parseSelect() (sweet.Statement, error) {
 			stmt.Tables, err = withParens(p, p.parseFrom)
 		case p.is(Ident) && p.curr.Literal == "where":
 			stmt.Where, err = withParens(p, p.parseWhere)
+		case p.is(Ident) && p.curr.Literal == "having":
+			stmt.Having, err = withParens(p, p.parseHaving)
 		case p.is(Ident) && p.curr.Literal == "limit":
 			// stmt.Limit, err = withParens(p, p.parseLimit)
 		case p.is(Ident):
@@ -238,11 +240,185 @@ func (p *Parser) parseIdentOrValue() (sweet.Statement, error) {
 }
 
 func (p *Parser) parseFrom() ([]sweet.Statement, error) {
-	return nil, nil
+	var (
+		tables []sweet.Statement
+		joins  []sweet.Statement
+		err    error
+	)
+	for !p.done() && !p.is(Rparen) {
+		var (
+			stmt sweet.Statement
+			join bool
+		)
+		switch {
+		case p.is(Ident) && p.curr.Literal == "select":
+			stmt, err = withParens(p, p.parseSelect)
+		case p.is(Ident) && p.curr.Literal == "alias":
+			stmt, err = withParens(p, p.parseAlias)
+		case p.is(Ident) && p.curr.Literal == "join":
+			stmt, err = withParens(p, p.parseJoin)
+		case p.is(Ident):
+			stmt, err = p.parseIdent()
+		default:
+			return nil, p.unexpected()
+		}
+		if err != nil {
+			return nil, err
+		}
+		if err = p.ensureEOL(); err != nil {
+			return nil, p.unexpected()
+		}
+		if join {
+			joins = append(joins, stmt)
+		} else {
+			tables = append(tables, stmt)
+		}
+	}
+	return append(tables, joins...), nil
+}
+
+func (p *Parser) parseJoin() (sweet.Statement, error) {
+	var (
+		stmt sweet.Join
+		err  error
+	)
+	switch {
+	case p.is(Ident) && p.curr.Literal == "select":
+		stmt.Table, err = withParens(p, p.parseSelect)
+	case p.is(Ident) && p.curr.Literal == "alias":
+		stmt.Table, err = withParens(p, p.parseAlias)
+	case p.is(Ident):
+		stmt.Table, err = p.parseIdent()
+	default:
+		err = p.unexpected()
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !p.is(Comma) {
+		return nil, p.unexpected()
+	}
+	p.next()
+	stmt.Where, err = p.parseRel("and")
+	return stmt, err
+}
+
+func (p *Parser) parseRel(op string) (sweet.Statement, error) {
+	var (
+		parse func(sweet.Binary) (sweet.Statement, error)
+		err   error
+	)
+	parse = func(left sweet.Binary) (sweet.Statement, error) {
+		if !p.is(Comma) {
+			return nil, p.unexpected()
+		}
+		p.next()
+		var err error
+		if left.Right, err = p.parseExpr(); err != nil {
+			return nil, err
+		}
+		switch {
+		case p.is(Comma):
+			b := sweet.Binary{
+				Op:   op,
+				Left: left.Right,
+			}
+			left.Right, err = parse(b)
+		case p.is(Rparen):
+		default:
+			return nil, p.unexpected()
+		}
+		return left, err
+	}
+	bin := sweet.Binary{
+		Op: op,
+	}
+	bin.Left, err = p.parseExpr()
+	if err != nil {
+		return nil, err
+	}
+	return parse(bin)
+}
+
+func (p *Parser) parseExpr() (sweet.Statement, error) {
+	if !p.is(Ident) {
+		return nil, p.unexpected()
+	}
+	var (
+		op    = p.curr.Literal
+		parse exprFunc
+	)
+	switch op {
+	case "eq", "ne", "lt", "le", "gt", "ge", "like", "ilike":
+		parse = p.parseBinary
+	case "and", "or":
+		parse = p.parseRel
+	case "between":
+		parse = p.parseBetween
+	default:
+		return nil, p.unexpected()
+	}
+	return withParens(p, func() (sweet.Statement, error) {
+		return parse(op)
+	})
+}
+
+func (p *Parser) parseBinary(op string) (sweet.Statement, error) {
+	var (
+		bin = sweet.Binary{
+			Op: op,
+		}
+		err error
+	)
+	bin.Left, err = p.parseIdentOrValue()
+	if err != nil {
+		return nil, err
+	}
+	if !p.is(Comma) {
+		return nil, p.unexpected()
+	}
+	p.next()
+	bin.Right, err = p.parseIdentOrValue()
+	if err != nil {
+		return nil, err
+	}
+	return bin, nil
+}
+
+func (p *Parser) parseBetween(_ string) (sweet.Statement, error) {
+	var (
+		stmt sweet.Between
+		err  error
+	)
+	stmt.Ident, err = p.parseIdentOrValue()
+	if err != nil {
+		return nil, p.unexpected()
+	}
+	if !p.is(Comma) {
+		return nil, p.unexpected()
+	}
+	p.next()
+	stmt.Lower, err = p.parseIdentOrValue()
+	if err != nil {
+		return nil, err
+	}
+	if !p.is(Comma) {
+		return nil, p.unexpected()
+	}
+	p.next()
+	stmt.Upper, err = p.parseIdentOrValue()
+	if err != nil {
+		return nil, err
+	}
+	return stmt, nil
 }
 
 func (p *Parser) parseWhere() (sweet.Statement, error) {
-	return nil, nil
+	return p.parseRel("and")
+}
+
+func (p *Parser) parseHaving() (sweet.Statement, error) {
+	return p.parseRel("and")
 }
 
 func (p *Parser) parseLimit() (sweet.Statement, error) {
@@ -292,6 +468,8 @@ func (p *Parser) ensureEOL() error {
 	}
 	return nil
 }
+
+type exprFunc func(string) (sweet.Statement, error)
 
 type parseFunc[T sweet.Statement | []sweet.Statement] func() (T, error)
 

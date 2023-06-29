@@ -1,17 +1,22 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/midbel/sweet/sql"
 )
 
 func main() {
-	scan := flag.Bool("s", false, "scanning mode")
+	var (
+		scan    = flag.Bool("s", false, "scanning mode")
+		jsonify = flag.Bool("j", false, "jsonify")
+	)
 	flag.Parse()
 
 	r, err := os.Open(flag.Arg(0))
@@ -24,7 +29,7 @@ func main() {
 	if *scan {
 		err = scanReader(r)
 	} else {
-		err = parseReader(r)
+		err = parseReader(r, *jsonify)
 	}
 
 	if err != nil {
@@ -53,11 +58,13 @@ func scanReader(r io.Reader) error {
 	return nil
 }
 
-func parseReader(r io.Reader) error {
+func parseReader(r io.Reader, jsonify bool) error {
 	p, err := sql.NewParser(r)
 	if err != nil {
 		return err
 	}
+	e := json.NewEncoder(os.Stdout)
+	e.SetIndent("", strings.Repeat(" ", 2))
 	for {
 		stmt, err := p.Parse()
 		if err != nil {
@@ -66,9 +73,14 @@ func parseReader(r io.Reader) error {
 			}
 			return err
 		}
-		fmt.Printf("%#v", stmt)
-		fmt.Println()
+		if !jsonify {
+			fmt.Printf("%#v", stmt)
+			fmt.Println()
+			continue
+		}
+		if err = e.Encode(stmt); err != nil {
+			return err
+		}
 	}
 	return nil
 }
-

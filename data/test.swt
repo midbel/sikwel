@@ -4,4 +4,18 @@ select(
 	d.name
 	alias(call(count, *), total)
 	all(d, m)
+	from(
+		alias(db.employees, e)
+		db.departments
+		join(
+			alias(db.managers, m)
+			eq(m.id, e.manager)
+			eq(m.id, e.manager)
+			like(d.name, 'IT')
+		)
+	)
+	where(
+		gt(d.id, '2023-06-27')
+		between(e.hired_date, '2023-01-01', '2023-12-01')
+	)
 )
