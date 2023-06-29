@@ -337,6 +337,9 @@ func (p *Parser) parseRel(op string) (sweet.Statement, error) {
 	if err != nil {
 		return nil, err
 	}
+	if p.is(Rparen) {
+		return bin.Left, nil
+	}
 	return parse(bin)
 }
 

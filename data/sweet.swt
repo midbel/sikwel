@@ -1,13 +1,3 @@
-define(
-	managers,
-	select(
-		alias(call(concat_ws, firstname, lastname), manager),
-		from(employees)
-	)
-)
-
-include(commons.swt)
-
 select(
 	e.*
 	m.manager
