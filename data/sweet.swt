@@ -7,7 +7,7 @@ select(
 		join(
 			alias(departments, d)
 			eq(e.dept, d.id)
-		)
+		) 
 		join(
 			alias(managers, m)
 			eq(m.id, e.manager)
@@ -28,5 +28,5 @@ select(
 	)
 	groupby(d.name)
 	having(gt(members, 10))
-	orderby(desc(members))
+	desc(members)
 )

@@ -94,8 +94,7 @@ type SelectStatement struct {
 	Groups   []Statement
 	Having   Statement
 	Orders   []Statement
-	Limit    string
-	Offset   string
+	Limit    Statement
 }
 
 type UnionStatement struct {

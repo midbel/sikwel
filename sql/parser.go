@@ -3,6 +3,7 @@ package sql
 import (
 	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/midbel/sweet"
 )
@@ -12,7 +13,7 @@ type Parser struct {
 	curr Token
 	peek Token
 
-	functions map[string]func() (sweet.Statement, error)
+	functions map[string]func(string) (sweet.Statement, error)
 }
 
 func NewParser(r io.Reader) (*Parser, error) {
@@ -23,7 +24,7 @@ func NewParser(r io.Reader) (*Parser, error) {
 	p := Parser{
 		scan: scan,
 	}
-	p.functions = map[string]func() (sweet.Statement, error){
+	p.functions = map[string]func(string) (sweet.Statement, error){
 		"select": p.parseSelect,
 		"insert": p.parseInsert,
 		"update": p.parseUpdate,
@@ -50,10 +51,16 @@ func (p *Parser) parse() (sweet.Statement, error) {
 	if !ok {
 		return nil, p.unexpected()
 	}
+	defer func() {
+		if !p.is(Comma) {
+			return
+		}
+		p.next()
+	}()
 	return withParens[sweet.Statement](p, parse)
 }
 
-func (p *Parser) parseSelect() (sweet.Statement, error) {
+func (p *Parser) parseSelect(_ string) (sweet.Statement, error) {
 	var (
 		stmt sweet.SelectStatement
 		err  error
@@ -72,42 +79,51 @@ func (p *Parser) parseSelect() (sweet.Statement, error) {
 			}
 			stmt.Columns = append(stmt.Columns, s)
 			p.next()
-		case p.is(Ident) && p.curr.Literal == "call":
+		case p.is(Ident) && p.check("call"):
 			s, err1 := withParens(p, p.parseCall)
 			if err1 != nil {
 				err = err1
 				break
 			}
 			stmt.Columns = append(stmt.Columns, s)
-		case p.is(Ident) && p.curr.Literal == "select":
+		case p.is(Ident) && p.check("select"):
 			s, err1 := p.parse()
 			if err1 != nil {
 				err = err1
 				break
 			}
 			stmt.Columns = append(stmt.Columns, s)
-		case p.is(Ident) && p.curr.Literal == "all":
+		case p.is(Ident) && p.check("all"):
 			s, err1 := withParens(p, p.parseAll)
 			if err1 != nil {
 				err = err1
 				break
 			}
 			stmt.Columns = append(stmt.Columns, s...)
-		case p.is(Ident) && p.curr.Literal == "alias":
+		case p.is(Ident) && p.check("alias"):
 			s, err1 := withParens(p, p.parseAlias)
 			if err1 != nil {
 				err = err1
 				break
 			}
 			stmt.Columns = append(stmt.Columns, s)
-		case p.is(Ident) && p.curr.Literal == "from":
+		case p.is(Ident) && p.check("from"):
 			stmt.Tables, err = withParens(p, p.parseFrom)
-		case p.is(Ident) && p.curr.Literal == "where":
+		case p.is(Ident) && p.check("where"):
 			stmt.Where, err = withParens(p, p.parseWhere)
-		case p.is(Ident) && p.curr.Literal == "having":
+		case p.is(Ident) && p.check("having"):
 			stmt.Having, err = withParens(p, p.parseHaving)
-		case p.is(Ident) && p.curr.Literal == "limit":
-			// stmt.Limit, err = withParens(p, p.parseLimit)
+		case p.is(Ident) && p.check("limit"):
+			stmt.Limit, err = withParens(p, p.parseLimit)
+		case p.is(Ident) && p.check("asc", "desc"):
+			s, err1 := withParens(p, p.parseOrderBy)
+			if err1 != nil {
+				err = err1
+				break
+			}
+			stmt.Orders = append(stmt.Orders, s)
+		case p.is(Ident) && p.check("groupby"):
+			stmt.Groups, err = withParens(p, p.parseGroupBy)
 		case p.is(Ident):
 			s, err := p.parseIdent()
 			if err == nil {
@@ -145,7 +161,7 @@ func (p *Parser) parseIdent() (sweet.Statement, error) {
 	return n, nil
 }
 
-func (p *Parser) parseAll() ([]sweet.Statement, error) {
+func (p *Parser) parseAll(_ string) ([]sweet.Statement, error) {
 	var list []sweet.Statement
 	for !p.done() && !p.is(Rparen) {
 		if !p.is(Ident) {
@@ -164,7 +180,7 @@ func (p *Parser) parseAll() ([]sweet.Statement, error) {
 	return list, nil
 }
 
-func (p *Parser) parseCall() (sweet.Statement, error) {
+func (p *Parser) parseCall(_ string) (sweet.Statement, error) {
 	var stmt sweet.Call
 	if !p.is(Ident) {
 		return nil, p.unexpected()
@@ -190,7 +206,7 @@ func (p *Parser) parseCall() (sweet.Statement, error) {
 	return stmt, nil
 }
 
-func (p *Parser) parseAlias() (sweet.Statement, error) {
+func (p *Parser) parseAlias(_ string) (sweet.Statement, error) {
 	stmt, err := p.parseIdentOrValue()
 	if err != nil {
 		return nil, err
@@ -227,9 +243,9 @@ func (p *Parser) parseIdentOrValue() (sweet.Statement, error) {
 			Literal: "*",
 		}
 		p.next()
-	case p.is(Ident) && p.curr.Literal == "call":
+	case p.is(Ident) && p.check("call"):
 		stmt, err = withParens(p, p.parseCall)
-	case p.is(Ident) && p.curr.Literal == "select":
+	case p.is(Ident) && p.check("select"):
 		stmt, err = p.parse()
 	case p.is(Ident):
 		stmt, err = p.parseIdent()
@@ -239,7 +255,64 @@ func (p *Parser) parseIdentOrValue() (sweet.Statement, error) {
 	return stmt, err
 }
 
-func (p *Parser) parseFrom() ([]sweet.Statement, error) {
+func (p *Parser) parseLimit(_ string) (sweet.Statement, error) {
+	var (
+		lim sweet.Limit
+		err error
+	)
+	lim.Count, err = strconv.Atoi(p.curr.Literal)
+	if err != nil {
+		return nil, p.unexpected()
+	}
+	if !p.is(Comma) {
+		return lim, nil
+	}
+	p.next()
+	lim.Offset, err = strconv.Atoi(p.curr.Literal)
+	if err != nil {
+		return nil, p.unexpected()
+	}
+	return lim, err
+}
+
+func (p *Parser) parseOrderBy(orient string) (sweet.Statement, error) {
+	var (
+		ord sweet.Order
+		err error
+	)
+	ord.Orient = orient
+	ord.Statement, err = p.parseIdent()
+	if err != nil {
+		return nil, err
+	}
+	if !p.is(Comma) {
+		return ord, nil
+	}
+	p.next()
+	if !p.is(Ident) && !p.check("first", "last") {
+		return nil, p.unexpected()
+	}
+	ord.Nulls = p.curr.Literal
+	p.next()
+	return ord, err
+}
+
+func (p *Parser) parseGroupBy(_ string) ([]sweet.Statement, error) {
+	var list []sweet.Statement
+	for !p.done() && !p.is(Rparen) {
+		stmt, err := p.parseIdent()
+		if err != nil {
+			return nil, err
+		}
+		if err = p.ensureEOL(); err != nil {
+			return nil, err
+		}
+		list = append(list, stmt)
+	}
+	return list, nil
+}
+
+func (p *Parser) parseFrom(_ string) ([]sweet.Statement, error) {
 	var (
 		tables []sweet.Statement
 		joins  []sweet.Statement
@@ -251,11 +324,11 @@ func (p *Parser) parseFrom() ([]sweet.Statement, error) {
 			join bool
 		)
 		switch {
-		case p.is(Ident) && p.curr.Literal == "select":
+		case p.is(Ident) && p.check("select"):
 			stmt, err = withParens(p, p.parseSelect)
-		case p.is(Ident) && p.curr.Literal == "alias":
+		case p.is(Ident) && p.check("alias"):
 			stmt, err = withParens(p, p.parseAlias)
-		case p.is(Ident) && p.curr.Literal == "join":
+		case p.is(Ident) && p.check("join", "leftjoin", "rightjoin", "fulljoin"):
 			stmt, err = withParens(p, p.parseJoin)
 		case p.is(Ident):
 			stmt, err = p.parseIdent()
@@ -277,15 +350,16 @@ func (p *Parser) parseFrom() ([]sweet.Statement, error) {
 	return append(tables, joins...), nil
 }
 
-func (p *Parser) parseJoin() (sweet.Statement, error) {
+func (p *Parser) parseJoin(kind string) (sweet.Statement, error) {
 	var (
 		stmt sweet.Join
 		err  error
 	)
+	stmt.Type = kind
 	switch {
-	case p.is(Ident) && p.curr.Literal == "select":
+	case p.is(Ident) && p.check("select"):
 		stmt.Table, err = withParens(p, p.parseSelect)
-	case p.is(Ident) && p.curr.Literal == "alias":
+	case p.is(Ident) && p.check("alias"):
 		stmt.Table, err = withParens(p, p.parseAlias)
 	case p.is(Ident):
 		stmt.Table, err = p.parseIdent()
@@ -349,7 +423,7 @@ func (p *Parser) parseExpr() (sweet.Statement, error) {
 	}
 	var (
 		op    = p.curr.Literal
-		parse exprFunc
+		parse parseFunc[sweet.Statement]
 	)
 	switch op {
 	case "eq", "ne", "lt", "le", "gt", "ge", "like", "ilike":
@@ -361,9 +435,7 @@ func (p *Parser) parseExpr() (sweet.Statement, error) {
 	default:
 		return nil, p.unexpected()
 	}
-	return withParens(p, func() (sweet.Statement, error) {
-		return parse(op)
-	})
+	return withParens(p, parse)
 }
 
 func (p *Parser) parseBinary(op string) (sweet.Statement, error) {
@@ -416,32 +488,37 @@ func (p *Parser) parseBetween(_ string) (sweet.Statement, error) {
 	return stmt, nil
 }
 
-func (p *Parser) parseWhere() (sweet.Statement, error) {
+func (p *Parser) parseWhere(_ string) (sweet.Statement, error) {
 	return p.parseRel("and")
 }
 
-func (p *Parser) parseHaving() (sweet.Statement, error) {
+func (p *Parser) parseHaving(_ string) (sweet.Statement, error) {
 	return p.parseRel("and")
 }
 
-func (p *Parser) parseLimit() (sweet.Statement, error) {
+func (p *Parser) parseUpdate(_ string) (sweet.Statement, error) {
 	return nil, nil
 }
 
-func (p *Parser) parseUpdate() (sweet.Statement, error) {
+func (p *Parser) parseInsert(_ string) (sweet.Statement, error) {
 	return nil, nil
 }
 
-func (p *Parser) parseInsert() (sweet.Statement, error) {
-	return nil, nil
-}
-
-func (p *Parser) parseDelete() (sweet.Statement, error) {
+func (p *Parser) parseDelete(_ string) (sweet.Statement, error) {
 	return nil, nil
 }
 
 func (p *Parser) unexpected() error {
 	return fmt.Errorf("unexpected token %s at %d:%d", p.curr, p.curr.Line, p.curr.Column)
+}
+
+func (p *Parser) check(str ...string) bool {
+	for _, s := range str {
+		if p.curr.Literal == s {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *Parser) is(kind rune) bool {
@@ -472,18 +549,17 @@ func (p *Parser) ensureEOL() error {
 	return nil
 }
 
-type exprFunc func(string) (sweet.Statement, error)
-
-type parseFunc[T sweet.Statement | []sweet.Statement] func() (T, error)
+type parseFunc[T sweet.Statement | []sweet.Statement] func(string) (T, error)
 
 func withParens[T sweet.Statement | []sweet.Statement](p *Parser, parse parseFunc[T]) (ret T, err error) {
+	ident := p.curr.Literal
 	p.next()
 	if !p.is(Lparen) {
 		return ret, p.unexpected()
 	}
 	p.next()
 
-	if ret, err = parse(); err != nil {
+	if ret, err = parse(ident); err != nil {
 		return
 	}
 	if !p.is(Rparen) {

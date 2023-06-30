@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 )
 
@@ -315,18 +316,22 @@ func (w *Writer) formatOrder(order Order) error {
 }
 
 func (w *Writer) formatSelectLimit(stmt SelectStatement) error {
-	if stmt.Limit == "" {
+	if stmt.Limit == nil {
 		return nil
+	}
+	lim, ok := stmt.Limit.(Limit)
+	if !ok {
+		return fmt.Errorf("limit: unexpected statement type (%T)", stmt.Limit)
 	}
 	w.writeNL()
 	w.writeString("LIMIT")
 	w.writeBlank()
-	w.writeString(stmt.Limit)
-	if stmt.Offset != "" {
+	w.writeString(strconv.Itoa(lim.Count))
+	if lim.Offset > 0 {
 		w.writeBlank()
 		w.writeString("OFFSET")
 		w.writeBlank()
-		w.writeString(stmt.Offset)
+		w.writeString(strconv.Itoa(lim.Offset))
 	}
 	return nil
 }

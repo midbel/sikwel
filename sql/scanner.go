@@ -124,6 +124,10 @@ func (s *Scanner) Scan() Token {
 	return tok
 }
 
+func (s *Scanner) Move() {
+	s.skip(isBlank)
+}
+
 func (s *Scanner) scanNL(tok *Token) {
 	s.skip(isBlank)
 	tok.Type = Comma

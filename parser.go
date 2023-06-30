@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 type Parser struct {
@@ -440,7 +441,7 @@ func (p *Parser) parseSelect() (Statement, error) {
 	if stmt.Orders, err = p.parseOrderBy(); err != nil {
 		return nil, err
 	}
-	if stmt.Limit, stmt.Offset, err = p.parseLimit(); err != nil {
+	if stmt.Limit, err = p.parseLimit(); err != nil {
 		return nil, err
 	}
 	allDistinct := func() (bool, bool) {
@@ -698,26 +699,30 @@ func (p *Parser) parseOrderBy() ([]Statement, error) {
 	return p.parseStatementList("order by", do)
 }
 
-func (p *Parser) parseLimit() (string, string, error) {
+func (p *Parser) parseLimit() (Statement, error) {
 	if !p.isKeyword("LIMIT") {
-		return "", "", nil
+		return nil, nil
 	}
+	var (
+		lim Limit
+		err error
+	)
 	p.next()
-	if !p.is(Number) {
-		return "", "", p.unexpected("limit")
+	lim.Count, err = strconv.Atoi(p.curr.Literal)
+	if err != nil {
+		return nil, p.unexpected("limit")
 	}
-	limit := p.curr.Literal
 	p.next()
 	if !p.is(Comma) && !p.isKeyword("OFFSET") {
-		return limit, "", nil
+		return lim, nil
 	}
 	p.next()
-	if !p.is(Number) {
-		return "", "", p.unexpected("offset")
+	lim.Offset, err = strconv.Atoi(p.curr.Literal)
+	if err != nil {
+		return nil, p.unexpected("offset")
 	}
-	offset := p.curr.Literal
 	p.next()
-	return limit, offset, nil
+	return lim, nil
 }
 
 func (p *Parser) parseReturning() (Statement, error) {
