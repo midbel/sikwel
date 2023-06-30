@@ -28,11 +28,14 @@ func NewParser(r io.Reader) (*Parser, error) {
 		statements: make(map[string]sweet.Statement),
 	}
 	p.functions = map[string]func(string) (sweet.Statement, error){
-		"select": p.parseSelect,
-		"insert": p.parseInsert,
-		"update": p.parseUpdate,
-		"delete": p.parseDelete,
-		"with":   p.parseWith,
+		"select":    p.parseSelect,
+		"insert":    p.parseInsert,
+		"update":    p.parseUpdate,
+		"delete":    p.parseDelete,
+		"with":      p.parseWith,
+		"union":     p.parseUnion,
+		"intersect": p.parseIntersect,
+		"except":    p.parseExcept,
 	}
 	p.next()
 	p.next()
@@ -90,7 +93,7 @@ func (p *Parser) parseDefine() error {
 func (p *Parser) parseWith(_ string) (sweet.Statement, error) {
 	var (
 		with sweet.WithStatement
-		err error
+		err  error
 	)
 	for !p.done() && !p.is(Rparen) {
 		switch {
@@ -136,7 +139,7 @@ func (p *Parser) parseSubquery(ident string) (sweet.Statement, error) {
 			return nil, p.unexpected()
 		}
 		p.next()
-		if _, ok := p.functions[p.curr.Literal]; ok {
+		if ok := p.check("insert", "update", "delete", "select"); ok {
 			break
 		}
 	}
@@ -145,6 +148,18 @@ func (p *Parser) parseSubquery(ident string) (sweet.Statement, error) {
 		return nil, err
 	}
 	return cte, err
+}
+
+func (p *Parser) parseUnion(_ string) (sweet.Statement, error) {
+	return nil, nil
+}
+
+func (p *Parser) parseIntersect(_ string) (sweet.Statement, error) {
+	return nil, nil
+}
+
+func (p *Parser) parseExcept(_ string) (sweet.Statement, error) {
+	return nil, nil
 }
 
 func (p *Parser) parseSelect(_ string) (sweet.Statement, error) {
