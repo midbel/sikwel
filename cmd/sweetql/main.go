@@ -15,6 +15,7 @@ import (
 func main() {
 	var (
 		scan    = flag.Bool("s", false, "scanning mode")
+		convert = flag.Bool("c", false, "convert")
 		jsonify = flag.Bool("j", false, "jsonify")
 	)
 	flag.Parse()
@@ -28,6 +29,8 @@ func main() {
 
 	if *scan {
 		err = scanReader(r)
+	} else if *convert {
+		err = convertReader(r)
 	} else {
 		err = parseReader(r, *jsonify)
 	}
@@ -36,6 +39,10 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+}
+
+func convertReader(r io.Reader) error {
+	return sql.Convert(r, os.Stdout)
 }
 
 func scanReader(r io.Reader) error {

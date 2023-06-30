@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 
 	"github.com/midbel/sweet"
 )
@@ -355,7 +356,7 @@ func (p *Parser) parseJoin(kind string) (sweet.Statement, error) {
 		stmt sweet.Join
 		err  error
 	)
-	stmt.Type = kind
+	stmt.Type = joinMapping[kind]
 	switch {
 	case p.is(Ident) && p.check("select"):
 		stmt.Table, err = withParens(p, p.parseSelect)
@@ -394,7 +395,7 @@ func (p *Parser) parseRel(op string) (sweet.Statement, error) {
 		switch {
 		case p.is(Comma):
 			b := sweet.Binary{
-				Op:   op,
+				Op:   strings.ToUpper(op),
 				Left: left.Right,
 			}
 			left.Right, err = parse(b)
@@ -405,7 +406,7 @@ func (p *Parser) parseRel(op string) (sweet.Statement, error) {
 		return left, err
 	}
 	bin := sweet.Binary{
-		Op: op,
+		Op: strings.ToUpper(op),
 	}
 	bin.Left, err = p.parseExpr()
 	if err != nil {
@@ -440,11 +441,13 @@ func (p *Parser) parseExpr() (sweet.Statement, error) {
 
 func (p *Parser) parseBinary(op string) (sweet.Statement, error) {
 	var (
-		bin = sweet.Binary{
-			Op: op,
-		}
+		bin sweet.Binary
 		err error
+		ok  bool
 	)
+	if bin.Op, ok = opMapping[op]; !ok {
+		bin.Op = strings.ToUpper(op)
+	}
 	bin.Left, err = p.parseIdentOrValue()
 	if err != nil {
 		return nil, err
@@ -567,4 +570,20 @@ func withParens[T sweet.Statement | []sweet.Statement](p *Parser, parse parseFun
 	}
 	p.next()
 	return
+}
+
+var opMapping = map[string]string{
+	"eq": "=",
+	"ne": "<>",
+	"lt": "<",
+	"le": "<=",
+	"gt": ">",
+	"ge": ">=",
+}
+
+var joinMapping = map[string]string{
+	"join":      "JOIN",
+	"leftjoin":  "LEFT JOIN",
+	"rightjoin": "RIGHT JOIN",
+	"fulljoin":  "FULL JOIN",
 }

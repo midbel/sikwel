@@ -11,16 +11,15 @@ import (
 
 type Writer struct {
 	inner   *bufio.Writer
-	compact bool
+	Compact bool
+	Indent  string
 	prefix  int
-	indent  string
 }
 
 func NewWriter(w io.Writer) *Writer {
 	return &Writer{
 		inner:  bufio.NewWriter(w),
-		indent: "  ",
-		prefix: -1,
+		Indent: "  ",
 	}
 }
 
@@ -30,8 +29,6 @@ func WriteAnsi(r io.Reader, w io.Writer) error {
 }
 
 func (w *Writer) Format(r io.Reader, keywords KeywordSet) error {
-	defer w.inner.Flush()
-
 	p, err := NewParser(r, keywords)
 	if err != nil {
 		return err
@@ -51,7 +48,13 @@ func (w *Writer) Format(r io.Reader, keywords KeywordSet) error {
 	return nil
 }
 
+func (w *Writer) FormatStatement(stmt Statement) error {
+	return w.format(stmt)
+}
+
 func (w *Writer) format(stmt Statement) error {
+	defer w.inner.Flush()
+
 	w.prefix = -1
 	err := w.formatStatement(stmt)
 	if err == nil {
@@ -141,7 +144,7 @@ func (w *Writer) formatSelect(stmt SelectStatement) error {
 	w.enter()
 	defer w.leave()
 
-	w.writeString(strings.Repeat(w.indent, w.prefix))
+	w.writeString(strings.Repeat(w.Indent, w.prefix))
 	w.writeString("SELECT")
 	if err := w.formatSelectColumns(stmt); err != nil {
 		return err
@@ -173,7 +176,7 @@ func (w *Writer) formatSelectColumns(stmt SelectStatement) error {
 
 	var (
 		err    error
-		prefix = strings.Repeat(w.indent, w.prefix)
+		prefix = strings.Repeat(w.Indent, w.prefix)
 	)
 	w.writeNL()
 	defer w.writeNL()
@@ -205,7 +208,7 @@ func (w *Writer) formatSelectColumns(stmt SelectStatement) error {
 }
 
 func (w *Writer) formatSelectFrom(stmt SelectStatement) error {
-	w.writeString(strings.Repeat(w.indent, w.prefix))
+	w.writeString(strings.Repeat(w.Indent, w.prefix))
 	w.writeString("FROM")
 	w.writeBlank()
 
@@ -214,7 +217,7 @@ func (w *Writer) formatSelectFrom(stmt SelectStatement) error {
 
 	var (
 		err    error
-		prefix = strings.Repeat(w.indent, w.prefix)
+		prefix = strings.Repeat(w.Indent, w.prefix)
 	)
 	for i, s := range stmt.Tables {
 		if i > 0 {
@@ -342,7 +345,7 @@ func (w *Writer) formatSelectWhere(stmt SelectStatement) error {
 	}
 
 	w.writeNL()
-	w.writeString(strings.Repeat(w.indent, w.prefix))
+	w.writeString(strings.Repeat(w.Indent, w.prefix))
 	w.writeString("WHERE")
 	w.writeBlank()
 
@@ -390,7 +393,7 @@ func (w *Writer) formatFromJoin(join Join) error {
 }
 
 func (w *Writer) formatCase(stmt CaseStatement) error {
-	// w.writeString(strings.Repeat(w.indent, w.prefix))
+	// w.writeString(strings.Repeat(w.Indent, w.prefix))
 	w.writeString("CASE")
 	if stmt.Cdt != nil {
 		w.writeBlank()
@@ -406,7 +409,7 @@ func (w *Writer) formatCase(stmt CaseStatement) error {
 	}
 	if stmt.Else != nil {
 		w.writeNL()
-		w.writeString(strings.Repeat(w.indent, w.prefix))
+		w.writeString(strings.Repeat(w.Indent, w.prefix))
 		w.writeString("ELSE")
 		w.writeBlank()
 		if err := w.formatExpr(stmt.Else, false); err != nil {
@@ -415,13 +418,13 @@ func (w *Writer) formatCase(stmt CaseStatement) error {
 	}
 	w.leave()
 	w.writeNL()
-	w.writeString(strings.Repeat(w.indent, w.prefix))
+	w.writeString(strings.Repeat(w.Indent, w.prefix))
 	w.writeString("END")
 	return nil
 }
 
 func (w *Writer) formatWhen(stmt WhenStatement) error {
-	w.writeString(strings.Repeat(w.indent, w.prefix))
+	w.writeString(strings.Repeat(w.Indent, w.prefix))
 	w.writeString("WHEN")
 	w.writeBlank()
 	if err := w.formatExpr(stmt.Cdt, false); err != nil {
@@ -446,6 +449,8 @@ func (w *Writer) formatExpr(stmt Statement, nl bool) error {
 		err = w.formatBinary(stmt, nl)
 	case Unary:
 		err = w.formatUnary(stmt, nl)
+	case Between:
+		err = w.formatBetween(stmt, nl)
 	case CaseStatement:
 		err = w.formatCase(stmt)
 	case WhenStatement:
@@ -476,6 +481,22 @@ func (w *Writer) formatCall(call Call) error {
 	return nil
 }
 
+func (w *Writer) formatBetween(stmt Between, nl bool) error {
+	if err := w.formatExpr(stmt.Ident, nl); err != nil {
+		return err
+	}
+	w.writeBlank()
+	w.writeString("BETWEEN")
+	w.writeBlank()
+	if err := w.formatExpr(stmt.Lower, false); err != nil {
+		return err
+	}
+	w.writeBlank()
+	w.writeString("AND")
+	w.writeBlank()
+	return w.formatExpr(stmt.Upper, false)
+}
+
 func (w *Writer) formatUnary(stmt Unary, nl bool) error {
 	w.writeString(stmt.Op)
 	return w.formatExpr(stmt.Right, nl)
@@ -487,7 +508,7 @@ func (w *Writer) formatBinary(stmt Binary, nl bool) error {
 	}
 	if nl && (stmt.Op == "AND" || stmt.Op == "OR") {
 		w.writeNL()
-		w.writeString(strings.Repeat(w.indent, w.prefix))
+		w.writeString(strings.Repeat(w.Indent, w.prefix))
 	} else {
 		w.writeBlank()
 	}
@@ -549,7 +570,7 @@ func (w *Writer) formatAlias(alias Alias) error {
 			break
 		}
 		w.writeNL()
-		w.writeString(strings.Repeat(w.indent, w.prefix))
+		w.writeString(strings.Repeat(w.Indent, w.prefix))
 		w.writeString(")")
 	default:
 		return fmt.Errorf("alias: unsupported expression type used with alias (%T)", s)
@@ -565,21 +586,21 @@ func (w *Writer) formatAlias(alias Alias) error {
 }
 
 func (w *Writer) enter() {
-	if w.compact {
+	if w.Compact {
 		return
 	}
 	w.prefix++
 }
 
 func (w *Writer) leave() {
-	if w.compact {
+	if w.Compact {
 		return
 	}
 	w.prefix--
 }
 
 func (w *Writer) writeString(str string) {
-	if w.compact && str == "\n" {
+	if w.Compact && str == "\n" {
 		str = " "
 	}
 	w.inner.WriteString(str)
@@ -592,7 +613,7 @@ func (w *Writer) writeQuoted(str string) {
 }
 
 func (w *Writer) writeNL() {
-	if w.compact {
+	if w.Compact {
 		return
 	}
 	w.inner.WriteRune('\n')
