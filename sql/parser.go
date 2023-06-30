@@ -14,7 +14,8 @@ type Parser struct {
 	curr Token
 	peek Token
 
-	functions map[string]func(string) (sweet.Statement, error)
+	statements map[string]sweet.Statement
+	functions  map[string]func(string) (sweet.Statement, error)
 }
 
 func NewParser(r io.Reader) (*Parser, error) {
@@ -23,13 +24,15 @@ func NewParser(r io.Reader) (*Parser, error) {
 		return nil, err
 	}
 	p := Parser{
-		scan: scan,
+		scan:       scan,
+		statements: make(map[string]sweet.Statement),
 	}
 	p.functions = map[string]func(string) (sweet.Statement, error){
 		"select": p.parseSelect,
 		"insert": p.parseInsert,
 		"update": p.parseUpdate,
 		"delete": p.parseDelete,
+		"with":   p.parseWith,
 	}
 	p.next()
 	p.next()
@@ -48,17 +51,100 @@ func (p *Parser) parse() (sweet.Statement, error) {
 	if !p.is(Ident) {
 		return nil, p.unexpected()
 	}
-	parse, ok := p.functions[p.curr.Literal]
-	if !ok {
-		return nil, p.unexpected()
-	}
 	defer func() {
 		if !p.is(Comma) {
 			return
 		}
 		p.next()
 	}()
+	parse, ok := p.functions[p.curr.Literal]
+	if !ok {
+		err := p.parseMacro()
+		if err != nil {
+			return nil, err
+		}
+		return p.parse()
+	}
 	return withParens[sweet.Statement](p, parse)
+}
+
+func (p *Parser) parseMacro() error {
+	switch {
+	case p.check("include"):
+		return p.parseInclude()
+	case p.check("define"):
+		return p.parseDefine()
+	default:
+		return p.unexpected()
+	}
+}
+
+func (p *Parser) parseInclude() error {
+	return nil
+}
+
+func (p *Parser) parseDefine() error {
+	return nil
+}
+
+func (p *Parser) parseWith(_ string) (sweet.Statement, error) {
+	var (
+		with sweet.WithStatement
+		err error
+	)
+	for !p.done() && !p.is(Rparen) {
+		switch {
+		case p.is(Ident) && p.check("select", "insert", "update", "delete"):
+			if with.Statement != nil {
+				return nil, p.unexpected()
+			}
+			with.Statement, err = p.parse()
+		case p.is(Ident):
+			s, err1 := withParens(p, p.parseSubquery)
+			if err1 != nil {
+				err = err1
+				break
+			}
+			with.Queries = append(with.Queries, s)
+		default:
+			return nil, p.unexpected()
+		}
+		if err != nil {
+			return nil, err
+		}
+		if err = p.ensureEOL(); err != nil {
+			return nil, err
+		}
+	}
+	return with, err
+}
+
+func (p *Parser) parseSubquery(ident string) (sweet.Statement, error) {
+	var (
+		cte = sweet.CteStatement{
+			Ident: ident,
+		}
+		err error
+	)
+	for !p.done() {
+		if !p.is(Ident) {
+			return nil, p.unexpected()
+		}
+		cte.Columns = append(cte.Columns, p.curr.Literal)
+		p.next()
+		if !p.is(Comma) {
+			return nil, p.unexpected()
+		}
+		p.next()
+		if _, ok := p.functions[p.curr.Literal]; ok {
+			break
+		}
+	}
+	cte.Statement, err = p.parse()
+	if err != nil {
+		return nil, err
+	}
+	return cte, err
 }
 
 func (p *Parser) parseSelect(_ string) (sweet.Statement, error) {

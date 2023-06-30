@@ -1,3 +1,32 @@
+with(
+	managers(
+		name
+		salary
+		select(
+			call(concat_ws, firstname, lastname)
+			salary
+			from(employees)
+		)
+	)
+	projects(
+		name
+		manager
+		select(
+			name
+			manager
+			from(projects)
+		)
+	)
+	select(
+		*,
+		from(
+			employees,
+			join(projects, eq(e.id, p.manager))
+ 			join(alias(managers, m), eq(e.manager, m.id))
+		)
+	)
+)
+
 select(
 	e.*
 	m.manager
