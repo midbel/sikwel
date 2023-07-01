@@ -633,7 +633,7 @@ func (p *Parser) parseInsert(_ string) (sweet.Statement, error) {
 	switch {
 	case p.check("values"):
 	case p.check("select"):
-		ins.Values, err =  withParens(p, p.parseSelect)
+		ins.Values, err = withParens(p, p.parseSelect)
 	default:
 		return nil, p.unexpected()
 	}

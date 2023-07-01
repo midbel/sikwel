@@ -161,9 +161,27 @@ func (w *Writer) formatInsert(stmt InsertStatement) error {
 		}
 		w.writeString(")")
 	}
+	w.writeBlank()
+	w.writeString("VALUES")
+
+	w.enter()
+	defer w.leave()
+
 	var err error
 	switch stmt := stmt.Values.(type) {
 	case List:
+		w.writeBlank()
+		w.writeNL()
+		for i, v := range stmt.Values {
+			if i > 0 {
+				w.writeString(",")
+				w.writeNL()
+			}
+			w.writeString(strings.Repeat(w.Indent, w.prefix))
+			if err := w.formatExpr(v, false); err != nil {
+				return err
+			}
+		}
 	case SelectStatement:
 		w.writeNL()
 		err = w.formatSelect(stmt)
@@ -476,6 +494,8 @@ func (w *Writer) formatExpr(stmt Statement, nl bool) error {
 		w.writeQuoted(stmt.Literal)
 	case Call:
 		err = w.formatCall(stmt)
+	case List:
+		err = w.formatList(stmt)
 	case Binary:
 		err = w.formatBinary(stmt, nl)
 	case Unary:
@@ -490,6 +510,21 @@ func (w *Writer) formatExpr(stmt Statement, nl bool) error {
 		err = fmt.Errorf("unexpected expression type (%T)", stmt)
 	}
 	return err
+}
+
+func (w *Writer) formatList(stmt List) error {
+	w.writeString("(")
+	for i, v := range stmt.Values {
+		if i > 0 {
+			w.writeString(",")
+			w.writeBlank()
+		}
+		if err := w.formatExpr(v, false); err != nil {
+			return err
+		}
+	}
+	w.writeString(")")
+	return nil
 }
 
 func (w *Writer) formatCall(call Call) error {
@@ -548,31 +583,6 @@ func (w *Writer) formatBinary(stmt Binary, nl bool) error {
 	if err := w.formatExpr(stmt.Right, nl); err != nil {
 		return err
 	}
-	return nil
-}
-
-func (w *Writer) formatList(list List) error {
-	w.writeString("(")
-
-	var err error
-	for j, v := range list.Values {
-		if j > 0 {
-			w.writeString(",")
-			w.writeBlank()
-		}
-		switch v := v.(type) {
-		case Name:
-			w.formatName(v)
-		case Alias:
-			err = w.formatAlias(v)
-		default:
-			err = fmt.Errorf("list: unsupported expression type (%T)", v)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	w.writeString(")")
 	return nil
 }
 

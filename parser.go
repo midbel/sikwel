@@ -91,7 +91,7 @@ func (p *Parser) Parse() (Statement, error) {
 		return nil, err
 	}
 	if !p.is(EOL) {
-		return p.wantError("statement", ";")
+		return nil, p.wantError("statement", ";")
 	}
 	p.next()
 	return stmt, nil
@@ -150,11 +150,11 @@ func (p *Parser) parseStatement() (Statement, error) {
 		return nil, io.EOF
 	}
 	if p.curr.Type != Keyword {
-		return nil, fmt.Errorf("keyword expected, got %s", p.curr)
+		return nil, p.wantError("statement", "keyword")
 	}
 	fn, ok := p.keywords[p.curr.Literal]
 	if !ok {
-		return nil, fmt.Errorf("unsupported/unrecognized keyword: %s", p.curr.Literal)
+		return nil, p.unexpected("statement")
 	}
 	return fn()
 }
@@ -176,45 +176,10 @@ func (p *Parser) parseWith() (Statement, error) {
 		err  error
 	)
 	for !p.done() && !p.isKeyword("SELECT") {
-		var cte CteStatement
-		if !p.is(Ident) {
-			return nil, p.unexpected("with")
-		}
-		cte.Ident = p.curr.Literal
-		p.next()
-		if p.is(Lparen) {
-			p.next()
-			for !p.done() && !p.is(Rparen) {
-				if !p.curr.isValue() {
-					return nil, p.unexpected("with")
-				}
-				cte.Columns = append(cte.Columns, p.curr.Literal)
-				p.next()
-				if err := p.ensureEnd("with", Comma, Rparen); err != nil {
-					return nil, err
-				}
-			}
-			if !p.is(Rparen) {
-				return nil, p.unexpected("with")
-			}
-			p.next()
-		}
-		if !p.isKeyword("AS") {
-			return nil, p.unexpected("with")
-		}
-		p.next()
-		if !p.is(Lparen) {
-			return nil, p.unexpected("with")
-		}
-		p.next()
-		cte.Statement, err = p.parseSelect()
+		cte, err := p.parseSubquery()
 		if err != nil {
 			return nil, err
 		}
-		if !p.is(Rparen) {
-			return nil, p.unexpected("with")
-		}
-		p.next()
 		stmt.Queries = append(stmt.Queries, cte)
 	}
 	if !p.is(Keyword) {
@@ -233,6 +198,39 @@ func (p *Parser) parseWith() (Statement, error) {
 		return nil, p.unexpected("with")
 	}
 	return stmt, err
+}
+
+func (p *Parser) parseSubquery() (Statement, error) {
+	var (
+		cte CteStatement
+		err error
+	)
+	if !p.is(Ident) {
+		return nil, p.unexpected("subquery")
+	}
+	cte.Ident = p.curr.Literal
+	p.next()
+	cte.Columns, err = p.parseColumnsList()
+	if err != nil {
+		return nil, err
+	}
+	if !p.isKeyword("AS") {
+		return nil, p.unexpected("subquery")
+	}
+	p.next()
+	if !p.is(Lparen) {
+		return nil, p.unexpected("subquery")
+	}
+	p.next()
+	cte.Statement, err = p.parseSelect()
+	if err != nil {
+		return nil, err
+	}
+	if !p.is(Rparen) {
+		return nil, p.unexpected("subquery")
+	}
+	p.next()
+	return cte, nil
 }
 
 func (p *Parser) parseDelete() (Statement, error) {
@@ -268,21 +266,10 @@ func (p *Parser) parseInsert() (Statement, error) {
 	p.next()
 	switch {
 	case p.is(Lparen):
-		p.next()
-		for !p.done() && !p.is(Rparen) {
-			if !p.curr.isValue() {
-				return nil, p.unexpected("insert(columns)")
-			}
-			stmt.Columns = append(stmt.Columns, p.curr.Literal)
-			p.next()
-			if err := p.ensureEnd("insert", Comma, Rparen); err != nil {
-				return nil, err
-			}
+		stmt.Columns, err = p.parseColumnsList()
+		if err != nil {
+			return nil, err
 		}
-		if !p.is(Rparen) {
-			return nil, p.unexpected("insert")
-		}
-		p.next()
 	case p.isKeyword("VALUES"):
 	case p.isKeyword("SELECT"):
 	default:
@@ -298,26 +285,16 @@ func (p *Parser) parseInsert() (Statement, error) {
 		var all List
 		for !p.done() && !p.isKeyword("RETURNING") && !p.is(EOL) {
 			if !p.is(Lparen) {
-				return nil, p.unexpected("insert(values)")
+				return nil, p.unexpected("values")
 			}
 			p.next()
-			var list List
-			for !p.done() && !p.is(Rparen) {
-				expr, err := p.parseExpression("insert(values)", powLowest, func() bool {
-					return p.is(EOL) || p.is(Rparen)
-				})
-				if err != nil {
-					return nil, err
-				}
-				if err := p.ensureEnd("insert(values)", Comma, Rparen); err != nil {
-					return nil, err
-				}
-				list.Values = append(list.Values, expr)
+
+			list, err := p.parseValues()
+			if err != nil {
+				return nil, err
 			}
-			if !p.is(Rparen) {
-				return nil, p.unexpected("insert(values)")
-			}
-			p.next()
+			all.Values = append(all.Values, list)
+
 			switch {
 			case p.is(Comma):
 				p.next()
@@ -326,9 +303,8 @@ func (p *Parser) parseInsert() (Statement, error) {
 			default:
 				return nil, p.unexpected("insert(values)")
 			}
-			all.Values = append(all.Values, list)
 		}
-		stmt.Values = all.AsStatement()
+		stmt.Values = all
 	default:
 		return nil, p.unexpected("insert(values)")
 	}
@@ -336,6 +312,27 @@ func (p *Parser) parseInsert() (Statement, error) {
 		return nil, err
 	}
 	return stmt, nil
+}
+
+func (p *Parser) parseValues() (Statement, error) {
+	var list List
+	for !p.done() && !p.is(Rparen) {
+		expr, err := p.parseExpression("values", powLowest, func() bool {
+			return p.is(EOL) || p.is(Rparen)
+		})
+		if err != nil {
+			return nil, err
+		}
+		if err := p.ensureEnd("values", Comma, Rparen); err != nil {
+			return nil, err
+		}
+		list.Values = append(list.Values, expr)
+	}
+	if !p.is(Rparen) {
+		return nil, p.unexpected("values")
+	}
+	p.next()
+	return list, nil
 }
 
 func (p *Parser) parseUpdate() (Statement, error) {
@@ -944,6 +941,35 @@ func (p *Parser) parseGroup() (Statement, error) {
 	}
 	p.next()
 	return stmt, nil
+}
+
+func (p *Parser) parseColumnsList() ([]string, error) {
+	if !p.is(Lparen) {
+		return nil, nil
+	}
+	p.next()
+
+	var (
+		list []string
+		err  error
+	)
+
+	for !p.done() && !p.is(Rparen) {
+		if !p.curr.isValue() {
+			return nil, p.unexpected("columns")
+		}
+		list = append(list, p.curr.Literal)
+		p.next()
+		if err := p.ensureEnd("columns", Comma, Rparen); err != nil {
+			return nil, err
+		}
+	}
+	if !p.is(Rparen) {
+		return nil, p.unexpected("columns")
+	}
+	p.next()
+
+	return list, err
 }
 
 func (p *Parser) parseStatementList(ctx string, fn func(Statement) (Statement, error)) ([]Statement, error) {
