@@ -20,15 +20,7 @@ type Parser struct {
 }
 
 func NewParser(r io.Reader, keywords KeywordSet) (*Parser, error) {
-	// scan, err := Scan(r, keywords)
-	// if err != nil {
-	// 	return nil, err
-	// }
 	var p Parser
-	// if n, ok := r.(interface{ Name() string }); ok {
-	// 	p.cwd = filepath.Dir(n.Name())
-	// }
-	// p.scan = scan
 	frame, err := createFrame(r, keywords)
 	if err != nil {
 		return nil, err
@@ -99,7 +91,7 @@ func (p *Parser) Parse() (Statement, error) {
 		return nil, err
 	}
 	if !p.is(EOL) {
-		return nil, fmt.Errorf("want \";\" after statement but got %s", p.curr)
+		return p.wantError("statement", ";")
 	}
 	p.next()
 	return stmt, nil
@@ -114,7 +106,7 @@ func (p *Parser) parseMacro() error {
 	case "DEFINE":
 		err = p.parseDefineMacro()
 	default:
-		err = fmt.Errorf("unknown macro %s", p.curr.Literal)
+		err = fmt.Errorf("macro %s unsupported", p.curr.Literal)
 	}
 	if err != nil {
 		return err
@@ -129,7 +121,7 @@ func (p *Parser) parseIncludeMacro() error {
 	p.next()
 
 	if !p.is(EOL) {
-		return fmt.Errorf("include: want \";\" after statement but got %s", p.curr)
+		return p.wantError("include", ";")
 	}
 	p.next()
 
@@ -1029,14 +1021,6 @@ func (p *Parser) parseAlias(stmt Statement) (Statement, error) {
 	return stmt, nil
 }
 
-// func (p *Parser) is(r rune) bool {
-// 	return p.curr.Type == r
-// }
-
-// func (p *Parser) peekIs(r rune) bool {
-// 	return p.peek.Type == r
-// }
-
 func (p *Parser) isKeyword(kw string) bool {
 	return p.curr.Type == Keyword && p.curr.Literal == kw
 }
@@ -1047,6 +1031,10 @@ func (p *Parser) currBinding() int {
 
 func (p *Parser) peekBinding() int {
 	return bindings[p.peek.asSymbol()]
+}
+
+func (p *Parser) wantError(ctx, str string) error {
+	return fmt.Errorf("%s: expected %q! got %s", ctx, str, p.curr.Literal)
 }
 
 func (p *Parser) unexpected(ctx string) error {

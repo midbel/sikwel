@@ -1,3 +1,28 @@
+insert(
+	employees
+	firstname
+	lastname
+	values(
+		'john'
+		'smith'
+	)
+	values(
+		'john'
+		'smith'
+	)
+)
+
+insert(
+	employees
+	firstname
+	lastname
+	select(
+		first
+		last
+		from(users)
+	)
+)
+
 with(
 	managers(
 		name

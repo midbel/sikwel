@@ -25,3 +25,8 @@ end 'seniority'
 from employees e;
 
 @include 'include.sql';
+
+insert into employees(firstname, lastname) select * from users;
+insert into employees(firstname, lastname) values
+	('john', 'smith'),
+	('warren', 'dennis');

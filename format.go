@@ -76,6 +76,7 @@ func (w *Writer) formatStatement(stmt Statement) error {
 	case ExceptStatement:
 		err = w.formatExcept(stmt)
 	case InsertStatement:
+		err = w.formatInsert(stmt)
 	case DeleteStatement:
 	case UpdateStatement:
 	case WithStatement:
@@ -138,6 +139,36 @@ func (w *Writer) formatIntersect(stmt IntersectStatement) error {
 	}
 	w.writeNL()
 	return w.formatStatement(stmt.Right)
+}
+
+func (w *Writer) formatInsert(stmt InsertStatement) error {
+	w.enter()
+	defer w.leave()
+
+	w.writeString(strings.Repeat(w.Indent, w.prefix))
+	w.writeString("INSERT INTO")
+	w.writeBlank()
+	w.writeString(stmt.Table)
+	w.writeBlank()
+	if len(stmt.Columns) > 0 {
+		w.writeString("(")
+		for i, c := range stmt.Columns {
+			if i > 0 {
+				w.writeString(",")
+				w.writeBlank()
+			}
+			w.writeString(c)
+		}
+		w.writeString(")")
+	}
+	var err error
+	switch stmt := stmt.Values.(type) {
+	case List:
+	case SelectStatement:
+		w.writeNL()
+		err = w.formatSelect(stmt)
+	}
+	return err
 }
 
 func (w *Writer) formatSelect(stmt SelectStatement) error {

@@ -605,7 +605,39 @@ func (p *Parser) parseUpdate(_ string) (sweet.Statement, error) {
 }
 
 func (p *Parser) parseInsert(_ string) (sweet.Statement, error) {
-	return nil, nil
+	var (
+		ins sweet.InsertStatement
+		err error
+	)
+	if !p.is(Ident) {
+		return nil, p.unexpected()
+	}
+	ins.Table = p.curr.Literal
+	p.next()
+	for !p.done() {
+		if !p.is(Ident) {
+			return nil, p.unexpected()
+		}
+		ins.Columns = append(ins.Columns, p.curr.Literal)
+		p.next()
+		if err := p.ensureEOL(); err != nil {
+			return nil, err
+		}
+		if ok := p.check("select", "values"); ok && p.is(Ident) {
+			break
+		}
+	}
+	if !p.is(Ident) {
+		return nil, p.unexpected()
+	}
+	switch {
+	case p.check("values"):
+	case p.check("select"):
+		ins.Values, err =  withParens(p, p.parseSelect)
+	default:
+		return nil, p.unexpected()
+	}
+	return ins, err
 }
 
 func (p *Parser) parseDelete(_ string) (sweet.Statement, error) {
