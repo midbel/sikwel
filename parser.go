@@ -317,10 +317,10 @@ func (p *Parser) parseInsert() (Statement, error) {
 func (p *Parser) parseValues() (Statement, error) {
 	var list List
 	for !p.done() && !p.is(Rparen) {
-		expr, err := p.parseExpression("values", powLowest, func() bool {
+		expr, err := p.parseExpression(powLowest, func() bool {
 			return p.is(EOL) || p.is(Rparen)
 		})
-		if err != nil {
+		if err = wrapError("values", err); err != nil {
 			return nil, err
 		}
 		if err := p.ensureEnd("values", Comma, Rparen); err != nil {
@@ -353,34 +353,37 @@ func (p *Parser) parseCase() (Statement, error) {
 		err  error
 	)
 	if !p.isKeyword("WHEN") {
-		stmt.Cdt, err = p.parseExpression("case", powLowest, func() bool {
+		stmt.Cdt, err = p.parseExpression(powLowest, func() bool {
 			return p.isKeyword("WHEN")
 		})
-		if err != nil {
+		if err = wrapError("case", err); err != nil {
 			return nil, err
 		}
 	}
 	for p.isKeyword("WHEN") {
 		var when WhenStatement
 		p.next()
-		when.Cdt, err = p.parseExpression("when", powLowest, func() bool {
+		when.Cdt, err = p.parseExpression(powLowest, func() bool {
 			return p.isKeyword("THEN")
 		})
-		if err != nil {
+		if err = wrapError("when", err); err != nil {
 			return nil, err
 		}
 		p.next()
-		when.Body, err = p.parseExpression("then", powLowest, func() bool {
+		when.Body, err = p.parseExpression(powLowest, func() bool {
 			return p.isKeyword("WHEN") || p.isKeyword("ELSE") || p.isKeyword("END")
 		})
+		if err = wrapError("then", err); err != nil {
+			return nil, err
+		}
 		stmt.Body = append(stmt.Body, when)
 	}
 	if p.isKeyword("ELSE") {
 		p.next()
-		stmt.Else, err = p.parseExpression("else", powLowest, func() bool {
+		stmt.Else, err = p.parseExpression(powLowest, func() bool {
 			return p.isKeyword("END")
 		})
-		if err != nil {
+		if err = wrapError("else", err); err != nil {
 			return nil, err
 		}
 	}
@@ -396,10 +399,10 @@ func (p *Parser) parseWhile() (Statement, error) {
 		stmt WhileStatement
 		err  error
 	)
-	stmt.Cdt, err = p.parseExpression("while", powLowest, func() bool {
+	stmt.Cdt, err = p.parseExpression(powLowest, func() bool {
 		return p.isKeyword("DO")
 	})
-	if err != nil {
+	if err = wrapError("while", err); err != nil {
 		return nil, err
 	}
 	p.next()
@@ -479,8 +482,8 @@ func (p *Parser) parseColumns() ([]Statement, error) {
 		}
 	)
 	for !p.done() && !p.isKeyword("FROM") {
-		stmt, err := p.parseExpression("fields", powLowest, done)
-		if err != nil {
+		stmt, err := p.parseExpression(powLowest, done)
+		if err = wrapError("fields", err); err != nil {
 			return nil, err
 		}
 		switch {
@@ -503,7 +506,7 @@ func (p *Parser) parseColumns() ([]Statement, error) {
 
 func (p *Parser) parseFrom() ([]Statement, error) {
 	if !p.isKeyword("FROM") {
-		return nil, p.unexpected("tables")
+		return nil, p.unexpected("from")
 	}
 	p.next()
 
@@ -563,7 +566,7 @@ func (p *Parser) parseJoinOn() (Statement, error) {
 	p.next()
 	p.unregisterInfix("AS", Keyword)
 	defer p.registerInfix("AS", Keyword, p.parseKeywordExpr)
-	return p.parseExpression("on", powLowest, func() bool {
+	return p.parseExpression(powLowest, func() bool {
 		if p.is(EOL) {
 			return true
 		}
@@ -590,10 +593,10 @@ func (p *Parser) parseJoinUsing() (Statement, error) {
 
 	var list List
 	for !p.done() && !p.is(Rparen) {
-		stmt, err := p.parseExpression("using", powLowest, func() bool {
+		stmt, err := p.parseExpression(powLowest, func() bool {
 			return p.is(Comma) || p.is(Rparen)
 		})
-		if err != nil {
+		if err = wrapError("using", err); err != nil {
 			return nil, err
 		}
 		list.Values = append(list.Values, stmt)
@@ -615,7 +618,7 @@ func (p *Parser) parseWhere() (Statement, error) {
 	p.next()
 	p.unregisterInfix("AS", Keyword)
 	defer p.registerInfix("AS", Keyword, p.parseKeywordExpr)
-	return p.parseExpression("where", powLowest, func() bool {
+	return p.parseExpression(powLowest, func() bool {
 		if p.is(EOL) {
 			return true
 		}
@@ -646,7 +649,7 @@ func (p *Parser) parseHaving() (Statement, error) {
 	p.next()
 	p.unregisterInfix("AS", Keyword)
 	defer p.registerInfix("AS", Keyword, p.parseKeywordExpr)
-	return p.parseExpression("having", powLowest, func() bool {
+	return p.parseExpression(powLowest, func() bool {
 		if p.is(EOL) {
 			return true
 		}
@@ -725,7 +728,7 @@ func (p *Parser) parseReturning() (Statement, error) {
 			Literal: "*",
 		}, nil
 	}
-	return p.parseExpression("returning", powLowest, func() bool {
+	return p.parseExpression(powLowest, func() bool {
 		return p.is(EOL)
 	})
 }
@@ -758,7 +761,7 @@ func (p *Parser) getInfixExpr(left Statement, end func() bool) (Statement, error
 	return fn(left, end)
 }
 
-func (p *Parser) parseExpression(ctx string, power int, end func() bool) (Statement, error) {
+func (p *Parser) parseExpression(power int, end func() bool) (Statement, error) {
 	left, err := p.getPrefixExpr()
 	if err != nil {
 		return nil, err
@@ -798,12 +801,12 @@ func (p *Parser) parseInfixExpr(left Statement, end func() bool) (Statement, err
 	case p.is(Ge):
 		stmt.Op = ">="
 	default:
-		return nil, p.unexpected("infix expression")
+		return nil, p.unexpected("infix")
 	}
 	pow := p.currBinding()
 	p.next()
-	right, err := p.parseExpression("infix", pow, end)
-	if err != nil {
+	right, err := p.parseExpression(pow, end)
+	if err = wrapError("infix", err); err != nil {
 		return nil, err
 	}
 	stmt.Right = right
@@ -817,8 +820,8 @@ func (p *Parser) parseKeywordExpr(left Statement, end func() bool) (Statement, e
 	}
 	pow := p.currBinding()
 	p.next()
-	right, err := p.parseExpression("expression", pow, end)
-	if err != nil {
+	right, err := p.parseExpression(pow, end)
+	if err = wrapError("expression", err); err != nil {
 		return nil, err
 	}
 	stmt.Right = right
@@ -834,8 +837,8 @@ func (p *Parser) parseCallExpr(left Statement, _ func() bool) (Statement, error)
 		return p.is(Comma) || p.is(Rparen)
 	}
 	for !p.done() && !p.is(Rparen) {
-		arg, err := p.parseExpression("call", powLowest, done)
-		if err != nil {
+		arg, err := p.parseExpression(powLowest, done)
+		if err = wrapError("call", err); err != nil {
 			return nil, err
 		}
 		switch p.curr.Type {
@@ -864,18 +867,18 @@ func (p *Parser) parseUnary() (Statement, error) {
 	)
 	switch {
 	case p.is(Minus):
-		stmt, err = p.parseExpression("unary", powLowest, nil)
-		if err != nil {
-			break
+		stmt, err = p.parseExpression(powLowest, nil)
+		if err = wrapError("unary", err); err != nil {
+			return nil, err
 		}
 		stmt = Unary{
 			Right: stmt,
 			Op:    "-",
 		}
 	case p.isKeyword("NOT"):
-		stmt, err = p.parseExpression("unary", powLowest, nil)
-		if err != nil {
-			break
+		stmt, err = p.parseExpression(powLowest, nil)
+		if err = wrapError("when", err); err != nil {
+			return nil, err
 		}
 		stmt = Unary{
 			Right: stmt,
@@ -930,10 +933,10 @@ func (p *Parser) parseGroup() (Statement, error) {
 		p.next()
 		return p.parseAlias(stmt)
 	}
-	stmt, err := p.parseExpression("group", powLowest, func() bool {
+	stmt, err := p.parseExpression(powLowest, func() bool {
 		return p.curr.Type == Rparen
 	})
-	if err != nil {
+	if err = wrapError("group", err); err != nil {
 		return nil, err
 	}
 	if !p.is(Rparen) {
@@ -1064,7 +1067,7 @@ func (p *Parser) wantError(ctx, str string) error {
 }
 
 func (p *Parser) unexpected(ctx string) error {
-	return fmt.Errorf("%s: unexpected token %s", ctx, p.curr)
+	return wrapError(ctx, unexpected(p.curr))
 }
 
 func (p *Parser) ensureEnd(ctx string, sep, end rune) error {
@@ -1091,10 +1094,16 @@ func (p *Parser) done() bool {
 	return p.frame.done()
 }
 
-// func (p *Parser) next() {
-// 	p.curr = p.peek
-// 	p.peek = p.scan.Scan()
-// }
+func unexpected(tok Token) error {
+	return fmt.Errorf("unexpected token %s", tok)
+}
+
+func wrapError(ctx string, err error) error {
+	if err == nil {
+		return nil
+	}
+	return fmt.Errorf("%s: %w", ctx, err)
+}
 
 type prefixFunc func() (Statement, error)
 
