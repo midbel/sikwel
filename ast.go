@@ -126,6 +126,7 @@ type InsertStatement struct {
 type UpdateStatement struct {
 	Table  Statement
 	List   []Statement
+	Tables []Statement
 	Where  Statement
 	Return Statement
 }

@@ -77,8 +77,9 @@ func (w *Writer) formatStatement(stmt Statement) error {
 		err = w.formatExcept(stmt)
 	case InsertStatement:
 		err = w.formatInsert(stmt)
-	case DeleteStatement:
 	case UpdateStatement:
+		err = w.formatUpdate(stmt)
+	case DeleteStatement:
 	case WithStatement:
 	case CteStatement:
 	default:
@@ -139,6 +140,57 @@ func (w *Writer) formatIntersect(stmt IntersectStatement) error {
 	}
 	w.writeNL()
 	return w.formatStatement(stmt.Right)
+}
+
+func (w *Writer) formatUpdate(stmt UpdateStatement) error {
+	w.enter()
+	defer w.leave()
+
+	w.writeString(strings.Repeat(w.Indent, w.prefix))
+	w.writeString("UPDATE")
+	w.writeBlank()
+	switch stmt := stmt.Table.(type) {
+	case Name:
+		w.formatName(stmt)
+	case Alias:
+		if err := w.formatAlias(stmt); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("update: unexpected expression type (%T)", stmt)
+	}
+	w.writeBlank()
+	w.writeString("SET")
+	w.writeNL()
+
+	w.enter()
+	for i, s := range stmt.List {
+		if i > 0 {
+			w.writeString(",")
+			w.writeBlank()
+		}
+		ass, ok := s.(Assignment)
+		if !ok {
+			return fmt.Errorf("update: unexpected expression type (%T)", s)
+		}
+		w.writeString(strings.Repeat(w.Indent, w.prefix))
+		switch field := ass.Field.(type) {
+		case Name:
+			w.formatName(field)
+			w.writeString("=")
+		case List:
+		default:
+			return fmt.Errorf("update: unexpected expression type (%T)", s)
+		}
+	}
+	w.leave()
+	if err := w.formatUpdateFrom(stmt); err != nil {
+		return err
+	}
+	if err := w.formatUpdateWhere(stmt); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (w *Writer) formatInsert(stmt InsertStatement) error {
@@ -257,6 +309,17 @@ func (w *Writer) formatSelectColumns(stmt SelectStatement) error {
 }
 
 func (w *Writer) formatSelectFrom(stmt SelectStatement) error {
+	return w.formatFrom(stmt.Tables)
+}
+
+func (w *Writer) formatUpdateFrom(stmt UpdateStatement) error {
+	if len(stmt.Tables) == 0 {
+		return nil
+	}
+	return w.formatFrom(stmt.Tables)
+}
+
+func (w *Writer) formatFrom(list []Statement) error {
 	w.writeString(strings.Repeat(w.Indent, w.prefix))
 	w.writeString("FROM")
 	w.writeBlank()
@@ -268,7 +331,7 @@ func (w *Writer) formatSelectFrom(stmt SelectStatement) error {
 		err    error
 		prefix = strings.Repeat(w.Indent, w.prefix)
 	)
-	for i, s := range stmt.Tables {
+	for i, s := range list {
 		if i > 0 {
 			w.writeNL()
 			w.writeString(prefix)
@@ -282,7 +345,7 @@ func (w *Writer) formatSelectFrom(stmt SelectStatement) error {
 			err = w.formatFromJoin(s)
 		case SelectStatement:
 		default:
-			err = fmt.Errorf("select: unsupported statement (%T)", s)
+			err = fmt.Errorf("from: unsupported statement (%T)", s)
 		}
 		if err != nil {
 			return err
@@ -389,7 +452,15 @@ func (w *Writer) formatSelectLimit(stmt SelectStatement) error {
 }
 
 func (w *Writer) formatSelectWhere(stmt SelectStatement) error {
-	if stmt.Where == nil {
+	return w.formatWhere(stmt.Where)
+}
+
+func (w *Writer) formatUpdateWhere(stmt UpdateStatement) error {
+	return w.formatWhere(stmt.Where)
+}
+
+func (w *Writer) formatWhere(stmt Statement) error {
+	if stmt == nil {
 		return nil
 	}
 
@@ -401,7 +472,7 @@ func (w *Writer) formatSelectWhere(stmt SelectStatement) error {
 	w.enter()
 	defer w.leave()
 
-	return w.formatExpr(stmt.Where, true)
+	return w.formatExpr(stmt, true)
 }
 
 func (w *Writer) formatFromJoin(join Join) error {

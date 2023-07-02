@@ -272,11 +272,10 @@ func (p *Parser) parseUpdate() (Statement, error) {
 		stmt UpdateStatement
 		err  error
 	)
-	if !p.is(Ident) {
-		return nil, p.unexpected("update")
+	stmt.Table, err = p.parseIdent()
+	if err != nil {
+		return nil, err
 	}
-	stmt.Table = p.curr.Literal
-	p.next()
 
 	if !p.isKeyword("SET") {
 		return nil, p.unexpected("update")
