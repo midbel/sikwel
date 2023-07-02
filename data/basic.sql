@@ -30,3 +30,5 @@ insert into employees(firstname, lastname) select * from users;
 insert into employees(firstname, lastname) values
 	('john', 'smith'),
 	('warren', 'dennis');
+
+update employees set dept='IT' where manager=0;

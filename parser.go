@@ -281,7 +281,7 @@ func (p *Parser) parseUpdate() (Statement, error) {
 	if !p.isKeyword("SET") {
 		return nil, p.unexpected("update")
 	}
-	p.done()
+	p.next()
 
 	for !p.done() && !p.isKeyword("WHERE") && !p.isKeyword("FROM") && !p.isKeyword("RETURN") {
 		var ass Assignment
@@ -334,10 +334,14 @@ func (p *Parser) parseUpdate() (Statement, error) {
 			}
 			p.next()
 		} else {
-			ass.Value, err = p.parseExpression(powLowest, nil)
+			ass.Value, err = p.parseExpression(powLowest, p.tokCheck(Comma, Keyword))
 			if err != nil {
 				return nil, p.unexpected("update")
 			}
+		}
+		stmt.List = append(stmt.List, ass)
+		if err := p.ensureEnd("update", Comma, Keyword); err != nil {
+			return nil, err
 		}
 	}
 
