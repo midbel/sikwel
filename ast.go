@@ -36,13 +36,6 @@ func (i List) Len() int {
 	return len(i.Values)
 }
 
-func (i List) AsStatement() Statement {
-	if i.Len() == 1 {
-		return i.Values[0]
-	}
-	return i
-}
-
 type Value struct {
 	Literal string
 }
@@ -72,6 +65,11 @@ type Join struct {
 	Type  string
 	Table Statement
 	Where Statement
+}
+
+type Assignment struct {
+	Field Statement
+	Value Statement
 }
 
 type CteStatement struct {
@@ -126,9 +124,10 @@ type InsertStatement struct {
 }
 
 type UpdateStatement struct {
-	Table string
-	List  []Statement
-	Where Statement
+	Table  Statement
+	List   []Statement
+	Where  Statement
+	Return Statement
 }
 
 type DeleteStatement struct {

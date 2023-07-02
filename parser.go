@@ -268,8 +268,90 @@ func (p *Parser) parseDelete() (Statement, error) {
 
 func (p *Parser) parseUpdate() (Statement, error) {
 	p.next()
-	var stmt UpdateStatement
-	return stmt, nil
+	var (
+		stmt UpdateStatement
+		err  error
+	)
+	if !p.is(Ident) {
+		return nil, p.unexpected("update")
+	}
+	stmt.Table = p.curr.Literal
+	p.next()
+
+	if !p.isKeyword("SET") {
+		return nil, p.unexpected("update")
+	}
+	p.done()
+
+	for !p.done() && !p.isKeyword("WHERE") && !p.isKeyword("FROM") && !p.isKeyword("RETURN") {
+		var ass Assignment
+		switch {
+		case p.is(Ident):
+			ass.Field, err = p.parseIdent()
+			if err != nil {
+				return nil, err
+			}
+		case p.is(Lparen):
+			p.next()
+			var list List
+			for !p.done() && !p.is(Rparen) {
+				stmt, err := p.parseIdent()
+				if err != nil {
+					return nil, err
+				}
+				list.Values = append(list.Values, stmt)
+				if err = p.ensureEnd("update", Comma, Rparen); err != nil {
+					return nil, err
+				}
+			}
+			if !p.is(Rparen) {
+				return nil, err
+			}
+			p.next()
+			ass.Field = list
+		default:
+			return nil, p.unexpected("update")
+		}
+		if !p.is(Eq) {
+			return nil, p.unexpected("update")
+		}
+		p.next()
+		if p.is(Lparen) {
+			p.next()
+			var list List
+			for !p.done() && !p.is(Rparen) {
+				expr, err := p.parseExpression(powLowest, p.tokCheck(Comma, Rparen))
+				if err != nil {
+					return nil, err
+				}
+				if err = p.ensureEnd("update", Comma, Rparen); err != nil {
+					return nil, err
+				}
+				list.Values = append(list.Values, expr)
+			}
+			if !p.is(Rparen) {
+				return nil, p.unexpected("update")
+			}
+			p.next()
+		} else {
+			ass.Value, err = p.parseExpression(powLowest, nil)
+			if err != nil {
+				return nil, p.unexpected("update")
+			}
+		}
+	}
+
+	if p.isKeyword("FROM") {
+		_, err = p.parseFrom()
+		if err != nil {
+			return nil, err
+		}
+	}
+	if stmt.Where, err = p.parseWhere(); err != nil {
+		return nil, err
+	}
+	stmt.Return, err = p.parseReturning()
+	return stmt, wrapError("update", err)
 }
 
 func (p *Parser) parseInsert() (Statement, error) {
