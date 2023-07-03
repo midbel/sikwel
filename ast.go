@@ -118,8 +118,8 @@ type ExceptStatement struct {
 
 type UpsertStatement struct {
 	Columns []string
+	List    []Statement
 	Where   Statement
-	Update  Statement
 }
 
 type InsertStatement struct {

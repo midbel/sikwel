@@ -192,43 +192,7 @@ func (w *Writer) formatUpdate(stmt UpdateStatement) error {
 }
 
 func (w *Writer) formatUpdateList(stmt UpdateStatement) error {
-	w.enter()
-	defer w.leave()
-
-	var err error
-	for i, s := range stmt.List {
-		if i > 0 {
-			w.writeString(",")
-			w.writeBlank()
-		}
-		ass, ok := s.(Assignment)
-		if !ok {
-			return fmt.Errorf("update: unexpected expression type (%T)", s)
-		}
-		w.writeString(strings.Repeat(w.Indent, w.prefix))
-		switch field := ass.Field.(type) {
-		case Name:
-			w.formatName(field)
-		case List:
-			err = w.formatList(field)
-		default:
-			err = fmt.Errorf("update: unexpected expression type (%T)", s)
-		}
-		if err != nil {
-			return err
-		}
-		w.writeString("=")
-		switch value := ass.Value.(type) {
-		case List:
-			err = w.formatList(value)
-		default:
-			err = w.formatExpr(value, false)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return err
+	return w.formatAssignment(stmt.List)
 }
 
 func (w *Writer) formatUpdateFrom(stmt UpdateStatement) error {
@@ -304,8 +268,12 @@ func (w *Writer) formatUpsert(stmt Statement) error {
 	if !ok {
 		return fmt.Errorf("unexpected type for upsert (%T)", stmt)
 	}
+
+	w.writeNL()
+	w.writeString(strings.Repeat(w.Indent, w.prefix))
 	w.writeString("ON CONFLICT")
 	w.writeBlank()
+
 	if len(upsert.Columns) > 0 {
 		w.writeString("(")
 		for i, s := range upsert.Columns {
@@ -318,13 +286,16 @@ func (w *Writer) formatUpsert(stmt Statement) error {
 		w.writeString(")")
 	}
 	w.writeBlank()
-	if upsert.Update == nil {
+	if len(upsert.List) == 0 {
 		w.writeString("DO NOTHING")
 		return nil
 	}
 	w.writeString("UPDATE SET")
 	w.writeBlank()
-	return nil
+	if err := w.formatAssignment(upsert.List); err != nil {
+		return err
+	}
+	return w.formatWhere(upsert.Where)
 }
 
 func (w *Writer) formatSelect(stmt SelectStatement) error {
@@ -532,6 +503,46 @@ func (w *Writer) formatSelectLimit(stmt SelectStatement) error {
 		w.writeString(strconv.Itoa(lim.Offset))
 	}
 	return nil
+}
+
+func (w *Writer) formatAssignment(list []Statement) error {
+	w.enter()
+	defer w.leave()
+
+	var err error
+	for i, s := range list {
+		if i > 0 {
+			w.writeString(",")
+			w.writeBlank()
+		}
+		ass, ok := s.(Assignment)
+		if !ok {
+			return fmt.Errorf("update: unexpected expression type (%T)", s)
+		}
+		w.writeString(strings.Repeat(w.Indent, w.prefix))
+		switch field := ass.Field.(type) {
+		case Name:
+			w.formatName(field)
+		case List:
+			err = w.formatList(field)
+		default:
+			err = fmt.Errorf("update: unexpected expression type (%T)", s)
+		}
+		if err != nil {
+			return err
+		}
+		w.writeString("=")
+		switch value := ass.Value.(type) {
+		case List:
+			err = w.formatList(value)
+		default:
+			err = w.formatExpr(value, false)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return err
 }
 
 func (w *Writer) formatReturn(stmt Statement) error {

@@ -300,72 +300,83 @@ func (p *Parser) parseUpdate() (Statement, error) {
 }
 
 func (p *Parser) parseUpdateList() ([]Statement, error) {
-	var (
-		list []Statement
-		err  error
-	)
-	for !p.done() && !p.isKeyword("WHERE") && !p.isKeyword("FROM") && !p.isKeyword("RETURN") {
-		var ass Assignment
-		switch {
-		case p.is(Ident):
-			ass.Field, err = p.parseIdent()
-			if err != nil {
-				return nil, err
-			}
-		case p.is(Lparen):
-			p.next()
-			var list List
-			for !p.done() && !p.is(Rparen) {
-				stmt, err := p.parseIdent()
-				if err != nil {
-					return nil, err
-				}
-				list.Values = append(list.Values, stmt)
-				if err = p.ensureEnd("update", Comma, Rparen); err != nil {
-					return nil, err
-				}
-			}
-			if !p.is(Rparen) {
-				return nil, err
-			}
-			p.next()
-			ass.Field = list
-		default:
-			return nil, p.unexpected("update")
+	var list []Statement
+	for !p.done() && !p.is(EOL) && !p.isKeyword("WHERE") && !p.isKeyword("FROM") && !p.isKeyword("RETURNING") {
+		stmt, err := p.parseAssignment()
+		if err != nil {
+			return nil, err
 		}
-		if !p.is(Eq) {
-			return nil, p.unexpected("update")
-		}
-		p.next()
-		if p.is(Lparen) {
-			p.next()
-			var list List
-			for !p.done() && !p.is(Rparen) {
-				expr, err := p.parseExpression(powLowest, p.tokCheck(Comma, Rparen))
-				if err != nil {
-					return nil, err
-				}
-				if err = p.ensureEnd("update", Comma, Rparen); err != nil {
-					return nil, err
-				}
-				list.Values = append(list.Values, expr)
-			}
-			if !p.is(Rparen) {
-				return nil, p.unexpected("update")
-			}
-			p.next()
-		} else {
-			ass.Value, err = p.parseExpression(powLowest, p.tokCheck(Comma, Keyword))
-			if err != nil {
-				return nil, p.unexpected("update")
-			}
+		if p.is(EOL) {
+			break
 		}
 		if err := p.ensureEnd("update", Comma, Keyword); err != nil {
 			return nil, err
 		}
-		list = append(list, ass)
+		list = append(list, stmt)
 	}
 	return list, nil
+}
+
+func (p *Parser) parseAssignment() (Statement, error) {
+	var (
+		ass Assignment
+		err error
+	)
+	switch {
+	case p.is(Ident):
+		ass.Field, err = p.parseIdent()
+		if err != nil {
+			return nil, err
+		}
+	case p.is(Lparen):
+		p.next()
+		var list List
+		for !p.done() && !p.is(Rparen) {
+			stmt, err := p.parseIdent()
+			if err != nil {
+				return nil, err
+			}
+			list.Values = append(list.Values, stmt)
+			if err = p.ensureEnd("update", Comma, Rparen); err != nil {
+				return nil, err
+			}
+		}
+		if !p.is(Rparen) {
+			return nil, err
+		}
+		p.next()
+		ass.Field = list
+	default:
+		return nil, p.unexpected("update")
+	}
+	if !p.is(Eq) {
+		return nil, p.unexpected("update")
+	}
+	p.next()
+	if p.is(Lparen) {
+		p.next()
+		var list List
+		for !p.done() && !p.is(Rparen) {
+			expr, err := p.parseExpression(powLowest, p.tokCheck(Comma, Rparen))
+			if err != nil {
+				return nil, err
+			}
+			if err = p.ensureEnd("update", Comma, Rparen); err != nil {
+				return nil, err
+			}
+			list.Values = append(list.Values, expr)
+		}
+		if !p.is(Rparen) {
+			return nil, p.unexpected("update")
+		}
+		p.next()
+	} else {
+		ass.Value, err = p.parseExpression(powLowest, p.tokCheck(Comma, Keyword))
+		if err != nil {
+			return nil, p.unexpected("update")
+		}
+	}
+	return ass, nil
 }
 
 func (p *Parser) parseInsert() (Statement, error) {
@@ -457,7 +468,37 @@ func (p *Parser) parseUpsert() (Statement, error) {
 		p.next()
 		return stmt, nil
 	}
-	return stmt, nil
+	if !p.isKeyword("UPDATE") {
+		return nil, p.unexpected("upsert")
+	}
+	p.next()
+	if !p.isKeyword("SET") {
+		return nil, p.unexpected("upsert")
+	}
+	p.next()
+	if stmt.List, err = p.parseUpsertList(); err != nil {
+		return nil, err
+	}
+	stmt.Where, err = p.parseWhere()
+	return stmt, wrapError("upsert", err)
+}
+
+func (p *Parser) parseUpsertList() ([]Statement, error) {
+	var list []Statement
+	for !p.done() && !p.is(EOL) && !p.isKeyword("WHERE") && !p.isKeyword("RETURNING") {
+		stmt, err := p.parseAssignment()
+		if err != nil {
+			return nil, err
+		}
+		if p.is(EOL) {
+			break
+		}
+		if err := p.ensureEnd("update", Comma, Keyword); err != nil {
+			return nil, err
+		}
+		list = append(list, stmt)
+	}
+	return list, nil
 }
 
 func (p *Parser) parseValues() (Statement, error) {
