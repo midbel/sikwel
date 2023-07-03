@@ -149,7 +149,7 @@ func (w *Writer) formatDelete(stmt DeleteStatement) error {
 
 	w.writeString(strings.Repeat(w.Indent, w.prefix))
 	w.writeString("DELETE FROM")
-	w.writeBlank()	
+	w.writeBlank()
 	w.writeString(stmt.Table)
 	w.writeBlank()
 	if err := w.formatWhere(stmt.Where); err != nil {
@@ -290,7 +290,41 @@ func (w *Writer) formatInsert(stmt InsertStatement) error {
 	if err != nil {
 		return err
 	}
+	if err := w.formatUpsert(stmt.Upsert); err != nil {
+		return err
+	}
 	return w.formatReturn(stmt.Return)
+}
+
+func (w *Writer) formatUpsert(stmt Statement) error {
+	if stmt == nil {
+		return nil
+	}
+	upsert, ok := stmt.(UpsertStatement)
+	if !ok {
+		return fmt.Errorf("unexpected type for upsert (%T)", stmt)
+	}
+	w.writeString("ON CONFLICT")
+	w.writeBlank()
+	if len(upsert.Columns) > 0 {
+		w.writeString("(")
+		for i, s := range upsert.Columns {
+			if i > 0 {
+				w.writeString(",")
+				w.writeBlank()
+			}
+			w.writeString(s)
+		}
+		w.writeString(")")
+	}
+	w.writeBlank()
+	if upsert.Update == nil {
+		w.writeString("DO NOTHING")
+		return nil
+	}
+	w.writeString("UPDATE SET")
+	w.writeBlank()
+	return nil
 }
 
 func (w *Writer) formatSelect(stmt SelectStatement) error {

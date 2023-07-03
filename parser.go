@@ -282,6 +282,28 @@ func (p *Parser) parseUpdate() (Statement, error) {
 	}
 	p.next()
 
+	if stmt.List, err = p.parseUpdateList(); err != nil {
+		return nil, err
+	}
+
+	if p.isKeyword("FROM") {
+		_, err = p.parseFrom()
+		if err != nil {
+			return nil, err
+		}
+	}
+	if stmt.Where, err = p.parseWhere(); err != nil {
+		return nil, err
+	}
+	stmt.Return, err = p.parseReturning()
+	return stmt, wrapError("update", err)
+}
+
+func (p *Parser) parseUpdateList() ([]Statement, error) {
+	var (
+		list []Statement
+		err  error
+	)
 	for !p.done() && !p.isKeyword("WHERE") && !p.isKeyword("FROM") && !p.isKeyword("RETURN") {
 		var ass Assignment
 		switch {
@@ -338,23 +360,12 @@ func (p *Parser) parseUpdate() (Statement, error) {
 				return nil, p.unexpected("update")
 			}
 		}
-		stmt.List = append(stmt.List, ass)
 		if err := p.ensureEnd("update", Comma, Keyword); err != nil {
 			return nil, err
 		}
+		list = append(list, ass)
 	}
-
-	if p.isKeyword("FROM") {
-		_, err = p.parseFrom()
-		if err != nil {
-			return nil, err
-		}
-	}
-	if stmt.Where, err = p.parseWhere(); err != nil {
-		return nil, err
-	}
-	stmt.Return, err = p.parseReturning()
-	return stmt, wrapError("update", err)
+	return list, nil
 }
 
 func (p *Parser) parseInsert() (Statement, error) {
@@ -382,7 +393,7 @@ func (p *Parser) parseInsert() (Statement, error) {
 	case p.isKeyword("VALUES"):
 		p.next()
 		var all List
-		for !p.done() && !p.isKeyword("RETURNING") && !p.is(EOL) {
+		for !p.done() && !p.isKeyword("RETURNING") && !p.isKeyword("ON") && !p.is(EOL) {
 			if !p.is(Lparen) {
 				return nil, p.unexpected("values")
 			}
@@ -410,8 +421,43 @@ func (p *Parser) parseInsert() (Statement, error) {
 	if err = wrapError("insert", err); err != nil {
 		return nil, err
 	}
+	if stmt.Upsert, err = p.parseUpsert(); err != nil {
+		return nil, err
+	}
 	stmt.Return, err = p.parseReturning()
 	return stmt, wrapError("insert", err)
+}
+
+func (p *Parser) parseUpsert() (Statement, error) {
+	if !p.isKeyword("ON") {
+		return nil, nil
+	}
+	p.next()
+	if !p.isKeyword("CONFLICT") {
+		return nil, p.unexpected("upsert")
+	}
+	p.next()
+
+	var (
+		stmt UpsertStatement
+		err  error
+	)
+
+	if !p.isKeyword("DO") {
+		stmt.Columns, err = p.parseColumnsList()
+		if err != nil {
+			return nil, err
+		}
+	}
+	if !p.isKeyword("DO") {
+		return nil, p.unexpected("upsert")
+	}
+	p.next()
+	if p.isKeyword("NOTHING") {
+		p.next()
+		return stmt, nil
+	}
+	return stmt, nil
 }
 
 func (p *Parser) parseValues() (Statement, error) {

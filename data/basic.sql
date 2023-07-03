@@ -31,6 +31,12 @@ insert into employees(firstname, lastname) values
 	('john', 'smith'),
 	('warren', 'dennis');
 
+insert into employees(firstname, lastname)
+	values ('john', 'smith')
+	on conflict do nothing
+	returning *;
+
+
 update employees set dept='IT' where manager=0;
 
 delete from employees;

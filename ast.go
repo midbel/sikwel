@@ -116,10 +116,17 @@ type ExceptStatement struct {
 	Distinct bool
 }
 
+type UpsertStatement struct {
+	Columns []string
+	Where   Statement
+	Update  Statement
+}
+
 type InsertStatement struct {
 	Table   string
 	Columns []string
 	Values  Statement
+	Upsert  Statement
 	Return  Statement
 }
 
