@@ -35,4 +35,4 @@ update employees set dept='IT' where manager=0;
 
 delete from employees;
 
-delete from employees where id = 89;
+delete from employees where id = 89 RETURNING *;

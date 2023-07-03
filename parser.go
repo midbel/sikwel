@@ -761,14 +761,27 @@ func (p *Parser) parseReturning() (Statement, error) {
 	}
 	p.next()
 	if p.is(Star) {
-		defer p.next()
-		return Value{
+		stmt := Value{
 			Literal: "*",
-		}, nil
+		}
+		p.next()
+		if !p.is(EOL) {
+			return nil, p.unexpected("returning")
+		}
+		return stmt, nil
 	}
-	return p.parseExpression(powLowest, func() bool {
-		return p.is(EOL)
-	})
+	var list List
+	for !p.done() && !p.is(EOL) {
+		stmt, err := p.parseExpression(powLowest, p.tokCheck(EOL, Comma))
+		if err != nil {
+			return nil, err
+		}
+		list.Values = append(list.Values, stmt)
+		if err = p.ensureEnd("returning", Comma, EOL); err != nil {
+			return nil, err
+		}
+	}
+	return list, nil
 }
 
 func (p *Parser) registerPrefix(literal string, kind rune, fn prefixFunc) {

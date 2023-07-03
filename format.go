@@ -155,7 +155,7 @@ func (w *Writer) formatDelete(stmt DeleteStatement) error {
 	if err := w.formatWhere(stmt.Where); err != nil {
 		return err
 	}
-	return nil
+	return w.formatReturn(stmt.Return)
 }
 
 func (w *Writer) formatUpdate(stmt UpdateStatement) error {
@@ -188,7 +188,7 @@ func (w *Writer) formatUpdate(stmt UpdateStatement) error {
 	if err := w.formatUpdateWhere(stmt); err != nil {
 		return err
 	}
-	return nil
+	return w.formatReturn(stmt.Return)
 }
 
 func (w *Writer) formatUpdateList(stmt UpdateStatement) error {
@@ -287,7 +287,10 @@ func (w *Writer) formatInsert(stmt InsertStatement) error {
 		w.writeNL()
 		err = w.formatSelect(stmt)
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	return w.formatReturn(stmt.Return)
 }
 
 func (w *Writer) formatSelect(stmt SelectStatement) error {
@@ -493,6 +496,33 @@ func (w *Writer) formatSelectLimit(stmt SelectStatement) error {
 		w.writeString("OFFSET")
 		w.writeBlank()
 		w.writeString(strconv.Itoa(lim.Offset))
+	}
+	return nil
+}
+
+func (w *Writer) formatReturn(stmt Statement) error {
+	if stmt == nil {
+		return nil
+	}
+	w.enter()
+	defer w.leave()
+
+	w.writeString(strings.Repeat(w.Indent, w.prefix))
+	w.writeString("RETURNING")
+	w.writeBlank()
+
+	list, ok := stmt.(List)
+	if !ok {
+		return w.formatExpr(stmt, false)
+	}
+	for i, s := range list.Values {
+		if i > 0 {
+			w.writeString(",")
+			w.writeBlank()
+		}
+		if err := w.formatExpr(s, false); err != nil {
+			return err
+		}
 	}
 	return nil
 }
