@@ -60,6 +60,7 @@ func NewParser(r io.Reader, keywords KeywordSet) (*Parser, error) {
 	p.registerInfix("BETWEEN", Keyword, p.parseKeywordExpr)
 	p.registerInfix("AS", Keyword, p.parseKeywordExpr)
 	p.registerInfix("IN", Keyword, p.parseKeywordExpr)
+	p.registerInfix("IS", Keyword, p.parseKeywordExpr)
 
 	p.prefix = make(map[symbol]prefixFunc)
 	p.registerPrefix("", Ident, p.parseIdent)
@@ -979,6 +980,7 @@ func (p *Parser) parseUnary() (Statement, error) {
 	)
 	switch {
 	case p.is(Minus):
+		p.next()
 		stmt, err = p.parseExpression(powLowest, nil)
 		if err = wrapError("reverse", err); err != nil {
 			return nil, err
@@ -988,6 +990,7 @@ func (p *Parser) parseUnary() (Statement, error) {
 			Op:    "-",
 		}
 	case p.isKeyword("NOT"):
+		p.next()
 		stmt, err = p.parseExpression(powLowest, nil)
 		if err = wrapError("not", err); err != nil {
 			return nil, err
@@ -1280,6 +1283,7 @@ var bindings = map[symbol]int{
 	symbolFor(Keyword, "BETWEEN"): powCmp,
 	symbolFor(Keyword, "IN"):      powCmp,
 	symbolFor(Keyword, "AS"):      powKw,
+	symbolFor(Keyword, "IS"):      powKw,
 	symbolFor(Lt, ""):             powCmp,
 	symbolFor(Le, ""):             powCmp,
 	symbolFor(Gt, ""):             powCmp,

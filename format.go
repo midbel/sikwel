@@ -151,11 +151,21 @@ func (w *Writer) formatDelete(stmt DeleteStatement) error {
 	w.writeString("DELETE FROM")
 	w.writeBlank()
 	w.writeString(stmt.Table)
-	w.writeBlank()
-	if err := w.formatWhere(stmt.Where); err != nil {
-		return err
+	if stmt.Where != nil {
+		w.writeBlank()
+		w.enter()
+		if err := w.formatWhere(stmt.Where); err != nil {
+			return err
+		}
+		w.leave()
 	}
-	return w.formatReturn(stmt.Return)
+	if stmt.Return != nil {
+		w.writeNL()
+		if err := w.formatReturn(stmt.Return); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (w *Writer) formatUpdate(stmt UpdateStatement) error {
@@ -227,8 +237,21 @@ func (w *Writer) formatInsert(stmt InsertStatement) error {
 		w.writeString(")")
 	}
 	w.writeBlank()
-	w.writeString("VALUES")
+	if err := w.formatInsertValues(stmt); err != nil {
+		return err
+	}
+	if err := w.formatUpsert(stmt.Upsert); err != nil {
+		return err
+	}
+	if stmt.Upsert != nil {
+		w.writeNL()
+	}
+	return w.formatReturn(stmt.Return)
+}
 
+func (w *Writer) formatInsertValues(stmt InsertStatement) error {
+	w.writeString("VALUES")
+	
 	w.enter()
 	defer w.leave()
 
@@ -251,13 +274,7 @@ func (w *Writer) formatInsert(stmt InsertStatement) error {
 		w.writeNL()
 		err = w.formatSelect(stmt)
 	}
-	if err != nil {
-		return err
-	}
-	if err := w.formatUpsert(stmt.Upsert); err != nil {
-		return err
-	}
-	return w.formatReturn(stmt.Return)
+	return err
 }
 
 func (w *Writer) formatUpsert(stmt Statement) error {
@@ -291,7 +308,7 @@ func (w *Writer) formatUpsert(stmt Statement) error {
 		return nil
 	}
 	w.writeString("UPDATE SET")
-	w.writeBlank()
+	w.writeNL()
 	if err := w.formatAssignment(upsert.List); err != nil {
 		return err
 	}
@@ -749,6 +766,7 @@ func (w *Writer) formatBetween(stmt Between, nl bool) error {
 
 func (w *Writer) formatUnary(stmt Unary, nl bool) error {
 	w.writeString(stmt.Op)
+	w.writeBlank()
 	return w.formatExpr(stmt.Right, nl)
 }
 

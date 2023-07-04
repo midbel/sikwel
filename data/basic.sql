@@ -1,5 +1,8 @@
 select * from employees;
 
+select * from employees where manager is null;
+select * from employees where manager is not null;
+
 select d.name, count(e.id) members 
 from departments d
 left outer join employees e on d.id=e.dept
@@ -36,18 +39,18 @@ insert into employees(firstname, lastname)
 	on conflict do nothing
 	returning *;
 
+insert into employes (name, dept) values 
+	('john smith', 'it')
+  on conflict (dept) do nothing;
 
-update employees set dept='IT' where manager=0;
+insert into employes(id, name, dept) values
+	(default, 'john smith', 'it')
+	on conflict (dept) do update set dept='other'
+	where manager = 0
+	returning *;
+
+update employees set dept='it' where manager=0;
 
 delete from employees;
 
-delete from employees where id = 89 RETURNING *;
-
-INSERT INTO distributors (did, dname) VALUES 
-	(7, 'Redline GmbH')
-  ON CONFLICT (did) DO NOTHING;
-
-INSERT INTO distributors (did, dname) VALUES 
-	(5, 'Gizmo Transglobal'), 
-	(6, 'Associated Computing, Inc')
-  ON CONFLICT (did) DO UPDATE SET dname = EXCLUDED.dname;
+delete from employees where id = 89 returning *;

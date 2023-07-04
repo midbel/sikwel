@@ -80,6 +80,8 @@ var keywords = KeywordSet{
 	{"else", "if"},
 	{"with"},
 	{"returning"},
+	{"is"},
+	{"not"},
 }
 
 func KeywordsForDialect(dialect string) KeywordSet {
