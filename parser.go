@@ -205,6 +205,9 @@ func (p *Parser) parseWith() (Statement, error) {
 			return nil, err
 		}
 		stmt.Queries = append(stmt.Queries, cte)
+		if err = p.ensureEnd("with", Comma, Keyword); err != nil {
+			return nil, err
+		}
 	}
 	stmt.Statement, err = p.parseStatement()
 	return stmt, wrapError("with", err)

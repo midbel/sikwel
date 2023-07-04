@@ -82,11 +82,65 @@ func (w *Writer) formatStatement(stmt Statement) error {
 	case DeleteStatement:
 		err = w.formatDelete(stmt)
 	case WithStatement:
+		err = w.formatWith(stmt)
 	case CteStatement:
+		err = w.formatCte(stmt)
 	default:
 		err = fmt.Errorf("unsupported statement type %T", stmt)
 	}
 	return err
+}
+
+func (w *Writer) formatWith(stmt WithStatement) error {
+	w.enter()
+
+	w.writeString(strings.Repeat(w.Indent, w.prefix))
+	w.writeString("WITH")
+	w.writeBlank()
+	w.writeNL()
+
+	for i, q := range stmt.Queries {
+		if i > 0 {
+			w.writeString(",")
+			w.writeNL()
+		}
+		if err := w.formatStatement(q); err != nil {
+			return err
+		}
+	}
+	w.writeNL()
+	w.leave()
+	return w.formatStatement(stmt.Statement)
+}
+
+func (w *Writer) formatCte(stmt CteStatement) error {
+	w.enter()
+	defer w.leave()
+
+	w.writeString(strings.Repeat(w.Indent, w.prefix))
+	w.writeString(stmt.Ident)
+	if len(stmt.Columns) > 0 {
+		w.writeString("(")
+		for i, s := range stmt.Columns {
+			if i > 0 {
+				w.writeString(",")
+				w.writeBlank()
+			}
+			w.writeString(s)
+		}
+		w.writeString(")")
+	}
+	w.writeBlank()
+	w.writeString("AS")
+	w.writeBlank()
+	w.writeString("(")
+	w.writeNL()
+	if err := w.formatStatement(stmt.Statement); err != nil {
+		return err
+	}
+	w.writeNL()
+	w.writeString(")")
+	return nil
 }
 
 func (w *Writer) formatUnion(stmt UnionStatement) error {
@@ -251,7 +305,7 @@ func (w *Writer) formatInsert(stmt InsertStatement) error {
 
 func (w *Writer) formatInsertValues(stmt InsertStatement) error {
 	w.writeString("VALUES")
-	
+
 	w.enter()
 	defer w.leave()
 

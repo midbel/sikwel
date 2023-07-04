@@ -54,3 +54,10 @@ update employees set dept='it' where manager=0;
 delete from employees;
 
 delete from employees where id = 89 returning *;
+
+with managers(name, dept) as (
+	select name, dept from employees where manager is null
+), departments as (
+	select name from departments
+)
+select * from managers m join departments d on m.dept=d.id;

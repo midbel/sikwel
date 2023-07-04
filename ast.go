@@ -40,6 +40,34 @@ type Value struct {
 	Literal string
 }
 
+// type Value[T string | float64 | int64 | bool] struct {
+// 	Literal T
+// }
+
+// func createString(s string) Value[string] {
+// 	return Value[string]{
+// 		Literal: s,
+// 	}
+// }
+
+// func createBool(b bool) Value[bool] {
+// 	return Value[bool]{
+// 		Literal: b,
+// 	}
+// }
+
+// func createInt(i int64) Value[int64] {
+// 	return Value[int64]{
+// 		Literal: i,
+// 	}
+// }
+
+// func createFloat(f float64) Value[float64] {
+// 	return Value[float64]{
+// 		Literal: f,
+// 	}
+// }
+
 type Name struct {
 	Prefix string
 	Ident  string
