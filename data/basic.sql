@@ -61,3 +61,8 @@ with managers(name, dept) as (
 	select name from departments
 )
 select * from managers m join departments d on m.dept=d.id;
+
+declare i int default 10;
+declare f real;
+declare v varchar(32);
+declare c char(1);

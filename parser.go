@@ -39,6 +39,7 @@ func NewParser(r io.Reader, keywords KeywordSet) (*Parser, error) {
 		"WHILE":       p.parseWhile,
 		"COMMIT":      p.parseCommit,
 		"ROLLBACK":    p.parseRollback,
+		"DECLARE":     p.parseDeclare,
 	}
 
 	p.infix = make(map[symbol]infixFunc)
@@ -159,6 +160,60 @@ func (p *Parser) parseStatement() (Statement, error) {
 		return nil, p.unexpected("statement")
 	}
 	return fn()
+}
+
+func (p *Parser) parseDeclare() (Statement, error) {
+	p.next()
+
+	var (
+		stmt Declare
+		err  error
+	)
+	if !p.is(Ident) {
+		return nil, p.unexpected("declare")
+	}
+	stmt.Ident = p.curr.Literal
+	p.next()
+
+	stmt.Type, err = p.parseType()
+	if err != nil {
+		return nil, err
+	}
+
+	if p.isKeyword("DEFAULT") {
+		p.next()
+		stmt.Value, err = p.parseExpression(powLowest, p.tokCheck(EOL))
+		if err != nil {
+			return nil, err
+		}
+	}
+	return stmt, nil
+}
+
+func (p *Parser) parseType() (Type, error) {
+	var t Type
+	if !p.is(Ident) {
+		return t, p.unexpected("type")
+	}
+	t.Name = p.curr.Literal
+	p.next()
+	if p.is(Lparen) {
+		p.next()
+		if !p.is(Number) {
+			return t, p.unexpected("type")
+		}
+		size, err := strconv.Atoi(p.curr.Literal)
+		if err != nil {
+			return t, err
+		}
+		t.Length = size
+		p.next()
+		if !p.is(Rparen) {
+			return t, p.unexpected("type")
+		}
+		p.next()
+	}
+	return t, nil
 }
 
 func (p *Parser) parseIf() (Statement, error) {

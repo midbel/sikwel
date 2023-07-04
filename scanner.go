@@ -62,7 +62,9 @@ func (s *Scanner) Scan() Token {
 		s.scanComment(&tok)
 	case isLetter(s.char):
 		s.scanIdent(&tok)
-	case isQuote(s.char):
+	case isIdentQ(s.char):
+		s.scanQuotedIdent(&tok)
+	case isLiteralQ(s.char):
 		s.scanString(&tok)
 	case isDigit(s.char):
 		s.scanNumber(&tok)
@@ -111,6 +113,19 @@ func (s *Scanner) scanIdent(tok *Token) {
 	s.scanKeyword(tok)
 }
 
+func (s *Scanner) scanQuotedIdent(tok *Token) {
+	s.read()
+	for !isIdentQ(s.char) && !s.done() {
+		s.write()
+		s.read()
+	}
+	tok.Type = Ident
+	tok.Literal = s.literal()
+	if !isIdentQ(s.char) {
+		tok.Type = Invalid
+	}
+}
+
 func (s *Scanner) scanKeyword(tok *Token) {
 	list := []string{tok.Literal}
 	if kw, ok := s.keywords.Is(list); !ok && kw == "" {
@@ -149,13 +164,13 @@ func (s *Scanner) scanUntil(until func(rune) bool) {
 
 func (s *Scanner) scanString(tok *Token) {
 	s.read()
-	for !isQuote(s.char) && !s.done() {
+	for !isLiteralQ(s.char) && !s.done() {
 		s.write()
 		s.read()
 	}
 	tok.Literal = s.literal()
 	tok.Type = Literal
-	if !isQuote(s.char) {
+	if !isLiteralQ(s.char) {
 		tok.Type = Invalid
 	}
 	if tok.Type == Literal {
@@ -315,7 +330,8 @@ const (
 	semicolon  = ';'
 	nl         = '\n'
 	cr         = '\r'
-	quote      = '\''
+	dquote     = '"'
+	squote     = '\''
 	underscore = '_'
 	star       = '*'
 	dot        = '.'
@@ -357,8 +373,12 @@ func isSpace(r rune) bool {
 	return r == space || r == tab
 }
 
-func isQuote(r rune) bool {
-	return r == quote
+func isIdentQ(r rune) bool {
+	return r == dquote
+}
+
+func isLiteralQ(r rune) bool {
+	return r == squote
 }
 
 func isPunct(r rune) bool {

@@ -6,6 +6,17 @@ type Commit struct{}
 
 type Rollback struct{}
 
+type Type struct {
+	Name   string
+	Length int
+}
+
+type Declare struct {
+	Ident string
+	Type  Type
+	Value Statement
+}
+
 type Call struct {
 	Ident Statement
 	Args  []Statement
