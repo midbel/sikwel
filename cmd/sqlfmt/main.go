@@ -8,7 +8,7 @@ import (
 
 	"github.com/midbel/sweet/internal/format"
 	"github.com/midbel/sweet/internal/lang"
-	"github.com/midbel/sweet/rest"
+	"github.com/midbel/sweet/internal/rest"
 )
 
 func main() {
