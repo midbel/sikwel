@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 type Parser struct {
@@ -28,26 +29,27 @@ func NewParser(r io.Reader, keywords KeywordSet) (*Parser, error) {
 	}
 	p.frame = frame
 	p.set = keywords
-	p.keywords = map[string]func() (Statement, error){
-		"SELECT":      p.parseSelect,
-		"DELETE FROM": p.parseDelete,
-		"UPDATE":      p.parseUpdate,
-		"INSERT INTO": p.parseInsert,
-		"WITH":        p.parseWith,
-		"IF":          p.parseIf,
-		"CASE":        p.parseCase,
-		"WHILE":       p.parseWhile,
-		"COMMIT":      p.parseCommit,
-		"ROLLBACK":    p.parseRollback,
-		"DECLARE":     p.parseDeclare,
-		"SET":         p.parseSet,
-	}
+	p.keywords = make(map[string]func() (Statement, error))
+
+	p.RegisterParseFunc("SELECT", p.parseSelect)
+	p.RegisterParseFunc("DELETE FROM", p.parseDelete)
+	p.RegisterParseFunc("UPDATE", p.parseUpdate)
+	p.RegisterParseFunc("INSERT INTO", p.parseInsert)
+	p.RegisterParseFunc("WITH", p.parseWith)
+	p.RegisterParseFunc("IF", p.parseIf)
+	p.RegisterParseFunc("CASE", p.parseCase)
+	p.RegisterParseFunc("WHILE", p.parseWhile)
+	p.RegisterParseFunc("COMMIT", p.parseCommit)
+	p.RegisterParseFunc("ROLLBACK", p.parseRollback)
+	p.RegisterParseFunc("DECLARE", p.parseDeclare)
+	p.RegisterParseFunc("SET", p.parseSet)
 
 	p.infix = make(map[symbol]infixFunc)
 	p.registerInfix("", Plus, p.parseInfixExpr)
 	p.registerInfix("", Minus, p.parseInfixExpr)
 	p.registerInfix("", Slash, p.parseInfixExpr)
 	p.registerInfix("", Star, p.parseInfixExpr)
+	p.registerInfix("", Concat, p.parseInfixExpr)
 	p.registerInfix("", Eq, p.parseInfixExpr)
 	p.registerInfix("", Ne, p.parseInfixExpr)
 	p.registerInfix("", Lt, p.parseInfixExpr)
@@ -79,6 +81,16 @@ func NewParser(r io.Reader, keywords KeywordSet) (*Parser, error) {
 	p.registerPrefix("SELECT", Keyword, p.parseSelect)
 
 	return &p, nil
+}
+
+func (p *Parser) RegisterParseFunc(kw string, fn func() (Statement, error)) {
+	kw = strings.ToUpper(kw)
+	p.keywords[kw] = fn
+}
+
+func (p *Parser) UnregisterParseFunc(kw string) {
+	kw = strings.ToUpper(kw)
+	delete(p.keywords, kw)
 }
 
 func (p *Parser) Parse() (Statement, error) {
@@ -217,7 +229,7 @@ func (p *Parser) parseType() (Type, error) {
 	return t, nil
 }
 
-func (p *Parset) parseSet() (Statement, error) {
+func (p *Parser) parseSet() (Statement, error) {
 	p.next()
 	var (
 		stmt SetStatement
@@ -253,7 +265,11 @@ func (p *Parser) parseIf() (Statement, error) {
 	p.next()
 
 	for !p.done() && !p.isKeyword("ELSE") && !p.isKeyword("ELSIF") && !p.isKeyword("END IF") {
-		stmt, err := p.parse()
+		stmt, err := p.parseStatement()
+		if err != nil {
+			return nil, err
+		}
+		_ = stmt
 	}
 
 	return stmt, nil
@@ -1345,16 +1361,17 @@ type prefixFunc func() (Statement, error)
 type infixFunc func(Statement, func() bool) (Statement, error)
 
 var operandMapping = map[rune]string{
-	Plus:  "+",
-	Minus: "-",
-	Slash: "/",
-	Star:  "*",
-	Eq:    "=",
-	Ne:    "<>",
-	Gt:    ">",
-	Ge:    ">=",
-	Lt:    "<",
-	Le:    "<=",
+	Plus:   "+",
+	Minus:  "-",
+	Slash:  "/",
+	Star:   "*",
+	Eq:     "=",
+	Ne:     "<>",
+	Gt:     ">",
+	Ge:     ">=",
+	Lt:     "<",
+	Le:     "<=",
+	Concat: "||",
 }
 
 const (

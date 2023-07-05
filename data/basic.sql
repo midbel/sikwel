@@ -18,6 +18,8 @@ from employees e
 join departments d on e.dept=d.id
 join (select id, concat_ws('firstname', 'lastname') manager from employees) m on e.manager=m.id;
 
+select id, "first" || ' ' || "last" from employees;
+
 select
 *,
 case

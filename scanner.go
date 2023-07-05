@@ -53,6 +53,7 @@ func (s *Scanner) Scan() Token {
 
 	var tok Token
 	tok.Offset = s.curr
+	tok.Position = s.cursor.Position
 	if s.done() {
 		tok.Type = EOF
 		return tok
@@ -124,6 +125,9 @@ func (s *Scanner) scanQuotedIdent(tok *Token) {
 	if !isIdentQ(s.char) {
 		tok.Type = Invalid
 	}
+	if tok.Type == Ident {
+		s.read()
+	}
 }
 
 func (s *Scanner) scanKeyword(tok *Token) {
@@ -167,6 +171,12 @@ func (s *Scanner) scanString(tok *Token) {
 	for !isLiteralQ(s.char) && !s.done() {
 		s.write()
 		s.read()
+		if s.char == squote && s.peek() == s.char {
+			s.write()
+			s.read()
+			s.write()
+			s.read()
+		}
 	}
 	tok.Literal = s.literal()
 	tok.Type = Literal
@@ -279,6 +289,11 @@ func (s *Scanner) read() {
 		s.next = len(s.input)
 		return
 	}
+	if s.char == nl {
+		s.cursor.Line++
+		s.cursor.Column = 0
+	}
+	s.cursor.Column++
 	s.char, s.curr, s.next = r, s.next, s.next+n
 }
 
