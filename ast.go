@@ -204,3 +204,8 @@ type WhenStatement struct {
 	Cdt  Statement
 	Body Statement
 }
+
+type SetStatement struct {
+	Ident string
+	Expr  Statement
+}

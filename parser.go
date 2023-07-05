@@ -40,6 +40,7 @@ func NewParser(r io.Reader, keywords KeywordSet) (*Parser, error) {
 		"COMMIT":      p.parseCommit,
 		"ROLLBACK":    p.parseRollback,
 		"DECLARE":     p.parseDeclare,
+		"SET":         p.parseSet,
 	}
 
 	p.infix = make(map[symbol]infixFunc)
@@ -216,8 +217,45 @@ func (p *Parser) parseType() (Type, error) {
 	return t, nil
 }
 
+func (p *Parset) parseSet() (Statement, error) {
+	p.next()
+	var (
+		stmt SetStatement
+		err  error
+	)
+	if !p.is(Ident) {
+		return nil, p.unexpected("set")
+	}
+	stmt.Ident = p.curr.Literal
+	p.next()
+	if !p.is(Eq) {
+		return nil, p.unexpected("set")
+	}
+	p.next()
+
+	stmt.Expr, err = p.parseExpression(powLowest, p.tokCheck(EOL))
+	return stmt, err
+}
+
 func (p *Parser) parseIf() (Statement, error) {
-	var stmt IfStatement
+	p.next()
+
+	var (
+		stmt IfStatement
+		err  error
+	)
+	if stmt.Cdt, err = p.parseExpression(powLowest, p.kwCheck("THEN")); err != nil {
+		return nil, err
+	}
+	if !p.isKeyword("THEN") {
+		return nil, p.unexpected("if")
+	}
+	p.next()
+
+	for !p.done() && !p.isKeyword("ELSE") && !p.isKeyword("ELSIF") && !p.isKeyword("END IF") {
+		stmt, err := p.parse()
+	}
+
 	return stmt, nil
 }
 
