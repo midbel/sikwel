@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/midbel/sweet"
+	"github.com/midbel/sweet/internal/format"
 )
 
 const MaxBodySize = (1 << 16) - 1
 
-const SqlContent = "text/sql"
+const SqlContent = "application/sql"
 
 func Format(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -26,12 +26,12 @@ func Format(w http.ResponseWriter, r *http.Request) {
 		ws bytes.Buffer
 		rs = io.LimitReader(r.Body, MaxBodySize)
 	)
-	if err := sweet.WriteAnsi(rs, &ws); err != nil {
+	if err := format.WriteAnsi(rs, &ws); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		io.WriteString(w, err.Error())
 		return
 	}
-	w.Header().Set("content-type", "text/sql")
+	w.Header().Set("content-type", "application/sql")
 	w.Header().Set("content-length", strconv.Itoa(ws.Len()))
 	io.Copy(w, &ws)
 }

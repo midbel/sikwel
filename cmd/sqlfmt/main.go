@@ -6,7 +6,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/midbel/sweet"
+	"github.com/midbel/sweet/internal/format"
+	"github.com/midbel/sweet/internal/lang"
 	"github.com/midbel/sweet/rest"
 )
 
@@ -19,9 +20,9 @@ func main() {
 	flag.Parse()
 
 	if *listen {
-		err = serve(flag.Arg(0))
+		err = runServe(flag.Arg(0))
 	} else {
-		err = format(flag.Arg(0), *dialect)
+		err = runFormat(flag.Arg(0), *dialect)
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -29,12 +30,12 @@ func main() {
 	}
 }
 
-func serve(addr string) error {
+func runServe(addr string) error {
 	http.HandleFunc("/format", rest.Format)
 	return http.ListenAndServe(addr, nil)
 }
 
-func format(file, dialect string) error {
+func runFormat(file, dialect string) error {
 	r, err := os.Open(file)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -42,6 +43,6 @@ func format(file, dialect string) error {
 	}
 	defer r.Close()
 
-	w := sweet.NewWriter(os.Stdout)
-	return w.Format(r, sweet.KeywordsForDialect(dialect))
+	w := format.NewWriter(os.Stdout)
+	return w.Format(r, lang.GetKeywords())
 }
