@@ -1,6 +1,8 @@
 package sqlite
 
 import (
+	"io"
+
 	"github.com/midbel/sweet/internal/lang"
 )
 
@@ -13,13 +15,13 @@ func NewParser(r io.Reader) (*Parser, error) {
 		local Parser
 		err   error
 	)
-	if local.Parser, err = lang.NewParser(r, lang.GetKeywords()); err != nil {
+	if local.Parser, err = lang.NewParser(r); err != nil {
 		return nil, err
 	}
 	local.RegisterParseFunc("ORDER BY", local.parseOrder)
 	return &local, nil
 }
 
-func (p *Parser) parseOrder() (ast.Statement, error) {
+func (p *Parser) parseOrder() (lang.Statement, error) {
 	return nil, nil
 }

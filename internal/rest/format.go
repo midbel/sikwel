@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/midbel/sweet/internal/format"
+	"github.com/midbel/sweet/internal/lang"
 )
 
 const MaxBodySize = (1 << 16) - 1
@@ -25,8 +25,10 @@ func Format(w http.ResponseWriter, r *http.Request) {
 	var (
 		ws bytes.Buffer
 		rs = io.LimitReader(r.Body, MaxBodySize)
+		wf = lang.NewWriter(&ws)
 	)
-	if err := format.WriteAnsi(rs, &ws); err != nil {
+
+	if err := wf.Format(rs); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		io.WriteString(w, err.Error())
 		return
