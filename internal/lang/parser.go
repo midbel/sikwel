@@ -241,7 +241,6 @@ func (p *Parser) parseSet() (Statement, error) {
 	if stmt.Field, err = p.parseIdent(); err != nil {
 		return nil, wrapError("set", err)
 	}
-	p.next()
 	if !p.is(Eq) {
 		return nil, p.unexpected("set")
 	}
@@ -265,15 +264,27 @@ func (p *Parser) parseIf() (Statement, error) {
 		return nil, p.unexpected("if")
 	}
 	p.next()
-
-	for !p.done() && !p.isKeyword("ELSE") && !p.isKeyword("ELSIF") && !p.isKeyword("END IF") {
-		stmt, err := p.parseStatement()
-		if err != nil {
-			return nil, err
-		}
-		_ = stmt
+	stmt.Csq, err = p.parseBody(p.kwCheck("ELSE", "ELSIF", "END IF"))
+	if err != nil {
+		return nil, err
 	}
-
+	switch {
+	case p.isKeyword("ELSE"):
+		p.next()
+		stmt.Alt, err = p.parseBody(p.kwCheck("END IF"))
+	case p.isKeyword("ELSIF"):
+		stmt.Alt, err = p.parseIf()
+	case p.isKeyword("END IF"):
+	default:
+		return nil, p.unexpected("if")
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !p.isKeyword("END IF") {
+		return nil, p.unexpected("if")
+	}
+	p.next()
 	return stmt, nil
 }
 
@@ -282,12 +293,44 @@ func (p *Parser) parseWhile() (Statement, error) {
 		stmt WhileStatement
 		err  error
 	)
+	p.next()
+
 	stmt.Cdt, err = p.parseExpression(powLowest, p.kwCheck("DO"))
 	if err = wrapError("while", err); err != nil {
 		return nil, err
 	}
+	if !p.isKeyword("DO") {
+		return nil, p.unexpected("while")
+	}
+	p.next()
+	stmt.Body, err = p.parseBody(p.kwCheck("END WHILE"))
+	if err != nil {
+		return nil, err
+	}
+	if !p.isKeyword("END WHILE") {
+		return nil, p.unexpected("while")
+	}
 	p.next()
 	return stmt, nil
+}
+
+func (p *Parser) parseBody(done func() bool) (Statement, error) {
+	var list List
+	for !p.done() && !done() {
+		stmt, err := p.parseStatement()
+		if err != nil {
+			return nil, err
+		}
+		if !p.is(EOL) {
+			return nil, p.unexpected("body")
+		}
+		p.next()
+		list.Values = append(list.Values, stmt)
+	}
+	if !done() {
+		return nil, p.unexpected("body")
+	}
+	return list, nil
 }
 
 func (p *Parser) parseCommit() (Statement, error) {

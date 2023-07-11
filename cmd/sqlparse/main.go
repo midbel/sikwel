@@ -8,14 +8,11 @@ import (
 	"io"
 	"os"
 
-	"github.com/midbel/sweet"
+	"github.com/midbel/sweet/internal/lang"
 )
 
 func main() {
-	var (
-		dialect = flag.String("d", "", "dialect")
-		jsonify = flag.Bool("j", false, "jsonify parsed query")
-	)
+	jsonify := flag.Bool("j", false, "jsonify parsed query")
 	flag.Parse()
 
 	r, err := os.Open(flag.Arg(0))
@@ -25,7 +22,7 @@ func main() {
 	}
 	defer r.Close()
 
-	p, err := sweet.NewParser(r, sweet.KeywordsForDialect(*dialect))
+	p, err := lang.NewParser(r)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
