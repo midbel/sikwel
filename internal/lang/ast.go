@@ -47,6 +47,10 @@ func (i List) Len() int {
 	return len(i.Values)
 }
 
+type Return struct {
+	Statement
+}
+
 type Value struct {
 	Literal string
 }

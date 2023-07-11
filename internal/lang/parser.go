@@ -41,6 +41,7 @@ func NewParser(r io.Reader) (*Parser, error) {
 	p.RegisterParseFunc("ROLLBACK", p.parseRollback)
 	p.RegisterParseFunc("DECLARE", p.parseDeclare)
 	p.RegisterParseFunc("SET", p.parseSet)
+	p.RegisterParseFunc("RETURN", p.parseReturn)
 
 	p.infix = make(map[symbol]infixFunc)
 	p.registerInfix("", Plus, p.parseInfixExpr)
@@ -204,6 +205,16 @@ func (p *Parser) parseDeclare() (Statement, error) {
 		}
 	}
 	return stmt, nil
+}
+
+func (p *Parser) parseReturn() (Statement, error) {
+	p.next()
+	var (
+		ret Return
+		err error
+	)
+	ret.Statement, err = p.parseExpression(powLowest, p.tokCheck(EOL))
+	return ret, err
 }
 
 func (p *Parser) parseType() (Type, error) {

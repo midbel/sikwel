@@ -70,6 +70,7 @@ var keywords = KeywordSet{
 	{"else"},
 	{"else", "if"},
 	{"with"},
+	{"return"},
 	{"returning"},
 	{"is"},
 	{"not"},
