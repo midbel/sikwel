@@ -126,6 +126,10 @@ type WithStatement struct {
 	Statement
 }
 
+type ValuesStatement struct {
+	List []Statement
+}
+
 type SelectStatement struct {
 	All      bool
 	Distinct bool

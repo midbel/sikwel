@@ -30,6 +30,7 @@ func NewParser(r io.Reader) (*Parser, error) {
 	p.keywords = make(map[string]func() (Statement, error))
 
 	p.RegisterParseFunc("SELECT", p.parseSelect)
+	p.RegisterParseFunc("VALUES", p.parseValues)
 	p.RegisterParseFunc("DELETE FROM", p.parseDelete)
 	p.RegisterParseFunc("UPDATE", p.parseUpdate)
 	p.RegisterParseFunc("INSERT INTO", p.parseInsert)
@@ -727,6 +728,25 @@ func (p *Parser) parseCase() (Statement, error) {
 	}
 	p.next()
 	return p.parseAlias(stmt)
+}
+
+func (p *Parser) parseValues() (Statement, error) {
+	p.next()
+	var (
+		stmt ValuesStatement
+		err error
+	)
+	for !p.done() && !p.is(EOL) {
+		expr, err := p.parseExpression(powLowest, p.tokCheck(EOL, Comma))
+		if err != nil {
+			return nil, err
+		}
+		if err := p.ensureEnd("values", Comma, EOL); err != nil {
+			return nil, err
+		}
+		stmt.List = append(stmt.List, expr)
+	}
+	return stmt, err
 }
 
 func (p *Parser) parseSelect() (Statement, error) {
