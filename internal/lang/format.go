@@ -356,10 +356,10 @@ func (w *Writer) formatSelect(stmt SelectStatement) error {
 	if err := w.formatSelectColumns(stmt); err != nil {
 		return err
 	}
-	if err := w.formatSelectFrom(stmt); err != nil {
+	if err := w.formatFrom(stmt.Tables); err != nil {
 		return err
 	}
-	if err := w.formatSelectWhere(stmt); err != nil {
+	if err := w.formatWhere(stmt.Where); err != nil {
 		return err
 	}
 	if err := w.formatSelectGroupBy(stmt); err != nil {
@@ -377,22 +377,10 @@ func (w *Writer) formatSelect(stmt SelectStatement) error {
 	return nil
 }
 
-func (w *Writer) formatSelectFrom(stmt SelectStatement) error {
-	return w.formatFrom(stmt.Tables)
-}
-
-func (w *Writer) formatSelectWhere(stmt SelectStatement) error {
-	return w.formatWhere(stmt.Where)
-}
-
 func (w *Writer) formatSelectColumns(stmt SelectStatement) error {
 	w.enter()
 	defer w.leave()
 
-	var (
-		err    error
-		prefix = strings.Repeat(w.Indent, w.prefix)
-	)
 	w.writeNL()
 	defer w.writeNL()
 	for i, s := range stmt.Columns {
@@ -400,26 +388,12 @@ func (w *Writer) formatSelectColumns(stmt SelectStatement) error {
 			w.writeString(",")
 			w.writeNL()
 		}
-		w.writeString(prefix)
-		switch s := s.(type) {
-		case Value:
-			w.writeString(s.Literal)
-		case Name:
-			w.formatName(s)
-		case Alias:
-			err = w.formatAlias(s)
-		case Call, Binary, Unary:
-			err = w.formatExpr(s, false)
-		case CaseStatement:
-			err = w.formatCase(s)
-		default:
-			return w.canNotUse("select", s)
-		}
-		if err != nil {
-			break
+		w.writePrefix()
+		if err := w.formatExpr(s, false); err != nil {
+			return err
 		}
 	}
-	return err
+	return nil
 }
 
 func (w *Writer) formatFrom(list []Statement) error {
@@ -430,14 +404,11 @@ func (w *Writer) formatFrom(list []Statement) error {
 	w.enter()
 	defer w.leave()
 
-	var (
-		err    error
-		prefix = strings.Repeat(w.Indent, w.prefix)
-	)
+	var err error
 	for i, s := range list {
 		if i > 0 {
 			w.writeNL()
-			w.writeString(prefix)
+			w.writePrefix()
 		}
 		switch s := s.(type) {
 		case Name:
@@ -447,8 +418,15 @@ func (w *Writer) formatFrom(list []Statement) error {
 		case Join:
 			err = w.formatFromJoin(s)
 		case SelectStatement:
+			w.writeString("(")
+			err = w.formatStatement(s)
+			if err == nil {
+				w.writeNL()
+				w.writeString(")")
+				w.writeNL()
+			}
 		default:
-			return w.canNotUse("from", s)
+			err = w.canNotUse("from", s)
 		}
 		if err != nil {
 			return err
@@ -724,7 +702,9 @@ func (w *Writer) formatExpr(stmt Statement, nl bool) error {
 	case Name:
 		w.formatName(stmt)
 	case Value:
-		w.writeQuoted(stmt.Literal)
+		w.formatValue(stmt.Literal)
+	case Alias:
+		err = w.formatAlias(stmt)
 	case Call:
 		err = w.formatCall(stmt)
 	case List:
@@ -740,7 +720,7 @@ func (w *Writer) formatExpr(stmt Statement, nl bool) error {
 	case WhenStatement:
 		err = w.formatWhen(stmt)
 	default:
-		return w.canNotUse("expression", stmt)
+		err = w.formatStatement(stmt)
 	}
 	return err
 }
@@ -860,6 +840,17 @@ func (w *Writer) formatAlias(alias Alias) error {
 	return nil
 }
 
+func (w *Writer) formatValue(literal string) {
+	if literal == "NULL" || literal == "DEFAULT" || literal == "*" {
+		w.writeString(literal)
+	}
+	if _, err := strconv.Atoi(literal); err == nil {
+		w.writeString(literal)
+		return
+	}
+	w.writeQuoted(literal)
+}
+
 func (w *Writer) enter() {
 	if w.Compact {
 		return
@@ -903,7 +894,7 @@ func (w *Writer) writePrefix() {
 	if w.prefix <= 0 {
 		return
 	}
-	w.writePrefix()
+	w.writeString(strings.Repeat(w.Indent, w.prefix))
 }
 
 func (w *Writer) canNotUse(ctx string, stmt Statement) error {

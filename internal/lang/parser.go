@@ -118,6 +118,8 @@ func (p *Parser) parseMacro() error {
 		err = p.parseIncludeMacro()
 	case "DEFINE":
 		err = p.parseDefineMacro()
+	case "USE":
+		err = p.parseUseMacro()
 	default:
 		err = fmt.Errorf("macro %s unsupported", p.curr.Literal)
 	}
@@ -155,6 +157,10 @@ func (p *Parser) parseIncludeMacro() error {
 }
 
 func (p *Parser) parseDefineMacro() error {
+	return nil
+}
+
+func (p *Parser) parseUseMacro() error {
 	return nil
 }
 
