@@ -8,11 +8,14 @@ import (
 	"io"
 	"os"
 
-	"github.com/midbel/sweet/internal/lang"
+	"github.com/midbel/sweet/internal/dialect"
 )
 
 func main() {
-	jsonify := flag.Bool("j", false, "jsonify parsed query")
+	var (
+		jsonify = flag.Bool("j", false, "jsonify parsed query")
+		vendor  = flag.String("d", "", "dialect")
+	)
 	flag.Parse()
 
 	r, err := os.Open(flag.Arg(0))
@@ -22,10 +25,16 @@ func main() {
 	}
 	defer r.Close()
 
-	p, err := lang.NewParser(r)
-	if err != nil {
+	if err := parseReader(r, *vendor, *jsonify); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
+	}
+}
+
+func parseReader(r io.Reader, vendor string, jsonify bool) error {
+	p, err := dialect.NewParser(r, vendor)
+	if err != nil {
+		return err
 	}
 	for i := 1; ; i++ {
 		stmt, err := p.Parse()
@@ -33,20 +42,18 @@ func main() {
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			fmt.Fprintf(os.Stderr, "parsing query #%d fails - %s", i, err)
-			fmt.Fprintln(os.Stderr)
-			continue
+			return fmt.Errorf("parsing query #%d fails - %s", i, err)
 		}
-		if *jsonify {
+		if jsonify {
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "    ")
 			if err := enc.Encode(stmt); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(2)
+				return err
 			}
 		} else {
 			fmt.Printf("%d: %#v", i, stmt)
 			fmt.Println()
 		}
 	}
+	return nil
 }
