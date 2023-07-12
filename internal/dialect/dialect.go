@@ -14,7 +14,6 @@ const (
 	Maria    = "maria"
 	Mysql    = "mysql"
 	Db2      = "db2"
-	Sqlite   = "sqlite"
 )
 
 type Parser interface {
@@ -33,19 +32,19 @@ func FormatAnsi(w io.Writer) Writer {
 	return lang.NewWriter(w)
 }
 
-func FormatSqlite(w io.Writer) Writer {
-	return nil
-}
-
 func ParseSqlite(r io.Reader) (Parser, error) {
 	return sqlite.NewParser(r)
+}
+
+func FormatSqlite(w io.Writer) Writer {
+	return lang.NewWriter(w)
 }
 
 func NewParser(r io.Reader, dialect string) (Parser, error) {
 	switch dialect {
 	case "", Ansi:
 		return ParseAnsi(r)
-	case Sqlite:
+	case sqlite.Vendor:
 		return ParseSqlite(r)
 	case Postgres:
 	case Mysql:
@@ -61,7 +60,8 @@ func NewWriter(w io.Writer, dialect string) (Writer, error) {
 	switch dialect {
 	case "", Ansi:
 		return FormatAnsi(w), nil
-	case Sqlite:
+	case sqlite.Vendor:
+		return FormatSqlite(w), nil
 	case Postgres:
 	case Mysql:
 	case Maria:

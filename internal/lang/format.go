@@ -9,6 +9,16 @@ import (
 	"strings"
 )
 
+type SelectFormatter interface {
+	FormatSelectColumns([]Statement) error
+	FormatFrom([]Statement) error
+	FormatWhere(Statement) error
+	FormatGroupBy([]Statement) error
+	FormatHaving(Statement) error
+	FormatOrderBy([]Statement) error
+	FormatLimit(Statement) error
+}
+
 type Writer struct {
 	inner   *bufio.Writer
 	Compact bool
@@ -54,8 +64,8 @@ func (w *Writer) format(stmt Statement) error {
 	w.prefix = -1
 	err := w.formatStatement(stmt)
 	if err == nil {
-		w.writeString(";")
-		w.writeNL()
+		w.WriteString(";")
+		w.WriteNL()
 	}
 	return err
 }
@@ -64,7 +74,7 @@ func (w *Writer) formatStatement(stmt Statement) error {
 	var err error
 	switch stmt := stmt.(type) {
 	case SelectStatement:
-		err = w.formatSelect(stmt)
+		err = w.FormatSelectStatement(w, stmt)
 	case UnionStatement:
 		err = w.formatUnion(stmt)
 	case IntersectStatement:
@@ -88,51 +98,51 @@ func (w *Writer) formatStatement(stmt Statement) error {
 }
 
 func (w *Writer) formatWith(stmt WithStatement) error {
-	w.writePrefix()
-	w.writeString("WITH")
-	w.writeBlank()
-	w.writeNL()
+	w.WritePrefix()
+	w.WriteString("WITH")
+	w.WriteBlank()
+	w.WriteNL()
 
 	for i, q := range stmt.Queries {
 		if i > 0 {
-			w.writeString(",")
-			w.writeNL()
+			w.WriteString(",")
+			w.WriteNL()
 		}
 		if err := w.formatStatement(q); err != nil {
 			return err
 		}
 	}
-	w.writeNL()
+	w.WriteNL()
 	return w.formatStatement(stmt.Statement)
 }
 
 func (w *Writer) formatCte(stmt CteStatement) error {
-	w.enter()
-	defer w.leave()
+	w.Enter()
+	defer w.Leave()
 
-	w.writePrefix()
-	w.writeString(stmt.Ident)
+	w.WritePrefix()
+	w.WriteString(stmt.Ident)
 	if len(stmt.Columns) > 0 {
-		w.writeString("(")
+		w.WriteString("(")
 		for i, s := range stmt.Columns {
 			if i > 0 {
-				w.writeString(",")
-				w.writeBlank()
+				w.WriteString(",")
+				w.WriteBlank()
 			}
-			w.writeString(s)
+			w.WriteString(s)
 		}
-		w.writeString(")")
+		w.WriteString(")")
 	}
-	w.writeBlank()
-	w.writeString("AS")
-	w.writeBlank()
-	w.writeString("(")
-	w.writeNL()
+	w.WriteBlank()
+	w.WriteString("AS")
+	w.WriteBlank()
+	w.WriteString("(")
+	w.WriteNL()
 	if err := w.formatStatement(stmt.Statement); err != nil {
 		return err
 	}
-	w.writeNL()
-	w.writeString(")")
+	w.WriteNL()
+	w.WriteString(")")
 	return nil
 }
 
@@ -140,17 +150,17 @@ func (w *Writer) formatUnion(stmt UnionStatement) error {
 	if err := w.formatStatement(stmt.Left); err != nil {
 		return err
 	}
-	w.writeNL()
-	w.writeString("UNION")
+	w.WriteNL()
+	w.WriteString("UNION")
 	if stmt.All {
-		w.writeBlank()
-		w.writeString("ALL")
+		w.WriteBlank()
+		w.WriteString("ALL")
 	}
 	if stmt.Distinct {
-		w.writeBlank()
-		w.writeString("DISTINCT")
+		w.WriteBlank()
+		w.WriteString("DISTINCT")
 	}
-	w.writeNL()
+	w.WriteNL()
 	return w.formatStatement(stmt.Right)
 }
 
@@ -158,17 +168,17 @@ func (w *Writer) formatExcept(stmt ExceptStatement) error {
 	if err := w.formatStatement(stmt.Left); err != nil {
 		return err
 	}
-	w.writeNL()
-	w.writeString("EXCEPT")
+	w.WriteNL()
+	w.WriteString("EXCEPT")
 	if stmt.All {
-		w.writeBlank()
-		w.writeString("ALL")
+		w.WriteBlank()
+		w.WriteString("ALL")
 	}
 	if stmt.Distinct {
-		w.writeBlank()
-		w.writeString("DISTINCT")
+		w.WriteBlank()
+		w.WriteString("DISTINCT")
 	}
-	w.writeNL()
+	w.WriteNL()
 	return w.formatStatement(stmt.Right)
 }
 
@@ -176,39 +186,39 @@ func (w *Writer) formatIntersect(stmt IntersectStatement) error {
 	if err := w.formatStatement(stmt.Left); err != nil {
 		return err
 	}
-	w.writeNL()
-	w.writeString("INTERSECT")
+	w.WriteNL()
+	w.WriteString("INTERSECT")
 	if stmt.All {
-		w.writeBlank()
-		w.writeString("ALL")
+		w.WriteBlank()
+		w.WriteString("ALL")
 	}
 	if stmt.Distinct {
-		w.writeBlank()
-		w.writeString("DISTINCT")
+		w.WriteBlank()
+		w.WriteString("DISTINCT")
 	}
-	w.writeNL()
+	w.WriteNL()
 	return w.formatStatement(stmt.Right)
 }
 
 func (w *Writer) formatDelete(stmt DeleteStatement) error {
-	w.enter()
-	defer w.leave()
+	w.Enter()
+	defer w.Leave()
 
-	w.writePrefix()
-	w.writeString("DELETE FROM")
-	w.writeBlank()
-	w.writeString(stmt.Table)
+	w.WritePrefix()
+	w.WriteString("DELETE FROM")
+	w.WriteBlank()
+	w.WriteString(stmt.Table)
 	if stmt.Where != nil {
-		w.writeBlank()
-		w.enter()
-		if err := w.formatWhere(stmt.Where); err != nil {
+		w.WriteBlank()
+		w.Enter()
+		if err := w.FormatWhere(stmt.Where); err != nil {
 			return err
 		}
-		w.leave()
+		w.Leave()
 	}
 	if stmt.Return != nil {
-		w.writeNL()
-		if err := w.formatReturn(stmt.Return); err != nil {
+		w.WriteNL()
+		if err := w.FormatReturn(stmt.Return); err != nil {
 			return err
 		}
 	}
@@ -216,59 +226,59 @@ func (w *Writer) formatDelete(stmt DeleteStatement) error {
 }
 
 func (w *Writer) formatUpdate(stmt UpdateStatement) error {
-	w.enter()
-	defer w.leave()
+	w.Enter()
+	defer w.Leave()
 
-	w.writePrefix()
-	w.writeString("UPDATE")
-	w.writeBlank()
+	w.WritePrefix()
+	w.WriteString("UPDATE")
+	w.WriteBlank()
 	switch stmt := stmt.Table.(type) {
 	case Name:
-		w.formatName(stmt)
+		w.FormatName(stmt)
 	case Alias:
-		if err := w.formatAlias(stmt); err != nil {
+		if err := w.FormatAlias(stmt); err != nil {
 			return err
 		}
 	default:
-		return w.canNotUse("update", stmt)
+		return w.CanNotUse("update", stmt)
 	}
-	w.writeBlank()
-	w.writeString("SET")
-	w.writeNL()
+	w.WriteBlank()
+	w.WriteString("SET")
+	w.WriteNL()
 	if err := w.formatAssignment(stmt.List); err != nil {
 		return err
 	}
 
-	if err := w.formatFrom(stmt.Tables); err != nil {
+	if err := w.FormatFrom(stmt.Tables); err != nil {
 		return err
 	}
-	if err := w.formatWhere(stmt.Where); err != nil {
+	if err := w.FormatWhere(stmt.Where); err != nil {
 		return err
 	}
-	return w.formatReturn(stmt.Return)
+	return w.FormatReturn(stmt.Return)
 }
 
 func (w *Writer) formatInsert(stmt InsertStatement) error {
-	w.enter()
-	defer w.leave()
+	w.Enter()
+	defer w.Leave()
 
-	w.writePrefix()
-	w.writeString("INSERT INTO")
-	w.writeBlank()
-	w.writeString(stmt.Table)
-	w.writeBlank()
+	w.WritePrefix()
+	w.WriteString("INSERT INTO")
+	w.WriteBlank()
+	w.WriteString(stmt.Table)
+	w.WriteBlank()
 	if len(stmt.Columns) > 0 {
-		w.writeString("(")
+		w.WriteString("(")
 		for i, c := range stmt.Columns {
 			if i > 0 {
-				w.writeString(",")
-				w.writeBlank()
+				w.WriteString(",")
+				w.WriteBlank()
 			}
-			w.writeString(c)
+			w.WriteString(c)
 		}
-		w.writeString(")")
+		w.WriteString(")")
 	}
-	w.writeBlank()
+	w.WriteBlank()
 	if err := w.formatInsertValues(stmt); err != nil {
 		return err
 	}
@@ -276,35 +286,35 @@ func (w *Writer) formatInsert(stmt InsertStatement) error {
 		return err
 	}
 	if stmt.Upsert != nil {
-		w.writeNL()
+		w.WriteNL()
 	}
-	return w.formatReturn(stmt.Return)
+	return w.FormatReturn(stmt.Return)
 }
 
 func (w *Writer) formatInsertValues(stmt InsertStatement) error {
-	w.writeString("VALUES")
+	w.WriteString("VALUES")
 
-	w.enter()
-	defer w.leave()
+	w.Enter()
+	defer w.Leave()
 
 	var err error
 	switch stmt := stmt.Values.(type) {
 	case List:
-		w.writeBlank()
-		w.writeNL()
+		w.WriteBlank()
+		w.WriteNL()
 		for i, v := range stmt.Values {
 			if i > 0 {
-				w.writeString(",")
-				w.writeNL()
+				w.WriteString(",")
+				w.WriteNL()
 			}
-			w.writePrefix()
+			w.WritePrefix()
 			if err := w.formatExpr(v, false); err != nil {
 				return err
 			}
 		}
 	case SelectStatement:
-		w.writeNL()
-		err = w.formatSelect(stmt)
+		w.WriteNL()
+		err = w.FormatSelectStatement(w, stmt)
 	}
 	return err
 }
@@ -315,80 +325,80 @@ func (w *Writer) formatUpsert(stmt Statement) error {
 	}
 	upsert, ok := stmt.(UpsertStatement)
 	if !ok {
-		return w.canNotUse("insert(upsert)", stmt)
+		return w.CanNotUse("insert(upsert)", stmt)
 	}
 
-	w.writeNL()
-	w.writePrefix()
-	w.writeString("ON CONFLICT")
-	w.writeBlank()
+	w.WriteNL()
+	w.WritePrefix()
+	w.WriteString("ON CONFLICT")
+	w.WriteBlank()
 
 	if len(upsert.Columns) > 0 {
-		w.writeString("(")
+		w.WriteString("(")
 		for i, s := range upsert.Columns {
 			if i > 0 {
-				w.writeString(",")
-				w.writeBlank()
+				w.WriteString(",")
+				w.WriteBlank()
 			}
-			w.writeString(s)
+			w.WriteString(s)
 		}
-		w.writeString(")")
+		w.WriteString(")")
 	}
-	w.writeBlank()
+	w.WriteBlank()
 	if len(upsert.List) == 0 {
-		w.writeString("DO NOTHING")
+		w.WriteString("DO NOTHING")
 		return nil
 	}
-	w.writeString("UPDATE SET")
-	w.writeNL()
+	w.WriteString("UPDATE SET")
+	w.WriteNL()
 	if err := w.formatAssignment(upsert.List); err != nil {
 		return err
 	}
-	return w.formatWhere(upsert.Where)
+	return w.FormatWhere(upsert.Where)
 }
 
-func (w *Writer) formatSelect(stmt SelectStatement) error {
-	w.enter()
-	defer w.leave()
+func (w *Writer) FormatSelectStatement(wf SelectFormatter, stmt SelectStatement) error {
+	w.Enter()
+	defer w.Leave()
 
-	w.writePrefix()
-	w.writeString("SELECT")
-	if err := w.formatSelectColumns(stmt); err != nil {
+	w.WritePrefix()
+	w.WriteString("SELECT")
+	if err := wf.FormatSelectColumns(stmt.Columns); err != nil {
 		return err
 	}
-	if err := w.formatFrom(stmt.Tables); err != nil {
+	if err := wf.FormatFrom(stmt.Tables); err != nil {
 		return err
 	}
-	if err := w.formatWhere(stmt.Where); err != nil {
+	if err := wf.FormatWhere(stmt.Where); err != nil {
 		return err
 	}
-	if err := w.formatSelectGroupBy(stmt); err != nil {
+	if err := wf.FormatGroupBy(stmt.Groups); err != nil {
 		return err
 	}
-	if err := w.formatSelectHaving(stmt); err != nil {
+	if err := wf.FormatHaving(stmt.Having); err != nil {
 		return err
 	}
-	if err := w.formatSelectOrderBy(stmt); err != nil {
+	if err := wf.FormatOrderBy(stmt.Orders); err != nil {
 		return err
 	}
-	if err := w.formatSelectLimit(stmt); err != nil {
+	if err := wf.FormatLimit(stmt.Limit); err != nil {
 		return nil
 	}
 	return nil
 }
 
-func (w *Writer) formatSelectColumns(stmt SelectStatement) error {
-	w.enter()
-	defer w.leave()
+func (w *Writer) FormatSelectColumns(columns []Statement) error {
+	w.Enter()
+	defer w.Leave()
 
-	w.writeNL()
-	defer w.writeNL()
-	for i, s := range stmt.Columns {
+	w.WriteNL()
+	defer w.WriteNL()
+	for i, s := range columns {
 		if i > 0 {
-			w.writeString(",")
-			w.writeNL()
+			w.WriteString(",")
+			w.WriteNL()
 		}
-		w.writePrefix()
+		w.WritePrefix()
 		if err := w.formatExpr(s, false); err != nil {
 			return err
 		}
@@ -396,37 +406,37 @@ func (w *Writer) formatSelectColumns(stmt SelectStatement) error {
 	return nil
 }
 
-func (w *Writer) formatFrom(list []Statement) error {
-	w.writePrefix()
-	w.writeString("FROM")
-	w.writeBlank()
+func (w *Writer) FormatFrom(list []Statement) error {
+	w.WritePrefix()
+	w.WriteString("FROM")
+	w.WriteBlank()
 
-	w.enter()
-	defer w.leave()
+	w.Enter()
+	defer w.Leave()
 
 	var err error
 	for i, s := range list {
 		if i > 0 {
-			w.writeNL()
-			w.writePrefix()
+			w.WriteNL()
+			w.WritePrefix()
 		}
 		switch s := s.(type) {
 		case Name:
-			w.formatName(s)
+			w.FormatName(s)
 		case Alias:
-			err = w.formatAlias(s)
+			err = w.FormatAlias(s)
 		case Join:
 			err = w.formatFromJoin(s)
 		case SelectStatement:
-			w.writeString("(")
+			w.WriteString("(")
 			err = w.formatStatement(s)
 			if err == nil {
-				w.writeNL()
-				w.writeString(")")
-				w.writeNL()
+				w.WriteNL()
+				w.WriteString(")")
+				w.WriteNL()
 			}
 		default:
-			err = w.canNotUse("from", s)
+			err = w.CanNotUse("from", s)
 		}
 		if err != nil {
 			return err
@@ -435,55 +445,55 @@ func (w *Writer) formatFrom(list []Statement) error {
 	return nil
 }
 
-func (w *Writer) formatSelectGroupBy(stmt SelectStatement) error {
-	if len(stmt.Groups) == 0 {
+func (w *Writer) FormatGroupBy(groups []Statement) error {
+	if len(groups) == 0 {
 		return nil
 	}
-	w.writeNL()
-	w.writeString("GROUP BY")
-	w.writeBlank()
-	for i, s := range stmt.Groups {
+	w.WriteNL()
+	w.WriteString("GROUP BY")
+	w.WriteBlank()
+	for i, s := range groups {
 		if i > 0 {
-			w.writeString(",")
-			w.writeBlank()
+			w.WriteString(",")
+			w.WriteBlank()
 		}
 		n, ok := s.(Name)
 		if !ok {
-			return w.canNotUse("group by", s)
+			return w.CanNotUse("group by", s)
 		}
-		w.formatName(n)
+		w.FormatName(n)
 	}
 	return nil
 }
 
-func (w *Writer) formatSelectHaving(stmt SelectStatement) error {
-	w.enter()
-	defer w.leave()
+func (w *Writer) FormatHaving(having Statement) error {
+	w.Enter()
+	defer w.Leave()
 
-	if stmt.Having == nil {
+	if having == nil {
 		return nil
 	}
-	w.writeNL()
-	w.writeString("HAVING")
-	w.writeBlank()
-	return w.formatExpr(stmt.Having, true)
+	w.WriteNL()
+	w.WriteString("HAVING")
+	w.WriteBlank()
+	return w.formatExpr(having, true)
 }
 
-func (w *Writer) formatSelectOrderBy(stmt SelectStatement) error {
-	if len(stmt.Orders) == 0 {
+func (w *Writer) FormatOrderBy(orders []Statement) error {
+	if len(orders) == 0 {
 		return nil
 	}
-	w.writeNL()
-	w.writeString("ORDER BY")
-	w.writeBlank()
-	for i, s := range stmt.Orders {
+	w.WriteNL()
+	w.WriteString("ORDER BY")
+	w.WriteBlank()
+	for i, s := range orders {
 		if i > 0 {
-			w.writeString(",")
-			w.writeBlank()
+			w.WriteString(",")
+			w.WriteBlank()
 		}
 		order, ok := s.(Order)
 		if !ok {
-			return w.canNotUse("order by", s)
+			return w.CanNotUse("order by", s)
 		}
 		if err := w.formatOrder(order); err != nil {
 			return err
@@ -495,70 +505,70 @@ func (w *Writer) formatSelectOrderBy(stmt SelectStatement) error {
 func (w *Writer) formatOrder(order Order) error {
 	n, ok := order.Statement.(Name)
 	if !ok {
-		return w.canNotUse("order by", order.Statement)
+		return w.CanNotUse("order by", order.Statement)
 	}
-	w.formatName(n)
+	w.FormatName(n)
 	if order.Orient != "" {
-		w.writeBlank()
-		w.writeString(order.Orient)
+		w.WriteBlank()
+		w.WriteString(order.Orient)
 	}
 	if order.Nulls != "" {
-		w.writeBlank()
-		w.writeString("NULLS")
-		w.writeBlank()
-		w.writeString(order.Nulls)
+		w.WriteBlank()
+		w.WriteString("NULLS")
+		w.WriteBlank()
+		w.WriteString(order.Nulls)
 	}
 	return nil
 }
 
-func (w *Writer) formatSelectLimit(stmt SelectStatement) error {
-	if stmt.Limit == nil {
+func (w *Writer) FormatLimit(limit Statement) error {
+	if limit == nil {
 		return nil
 	}
-	lim, ok := stmt.Limit.(Limit)
+	lim, ok := limit.(Limit)
 	if !ok {
-		return w.canNotUse("limit", stmt.Limit)
+		return w.CanNotUse("limit", limit)
 	}
-	w.writeNL()
-	w.writeString("LIMIT")
-	w.writeBlank()
-	w.writeString(strconv.Itoa(lim.Count))
+	w.WriteNL()
+	w.WriteString("LIMIT")
+	w.WriteBlank()
+	w.WriteString(strconv.Itoa(lim.Count))
 	if lim.Offset > 0 {
-		w.writeBlank()
-		w.writeString("OFFSET")
-		w.writeBlank()
-		w.writeString(strconv.Itoa(lim.Offset))
+		w.WriteBlank()
+		w.WriteString("OFFSET")
+		w.WriteBlank()
+		w.WriteString(strconv.Itoa(lim.Offset))
 	}
 	return nil
 }
 
 func (w *Writer) formatAssignment(list []Statement) error {
-	w.enter()
-	defer w.leave()
+	w.Enter()
+	defer w.Leave()
 
 	var err error
 	for i, s := range list {
 		if i > 0 {
-			w.writeString(",")
-			w.writeBlank()
+			w.WriteString(",")
+			w.WriteBlank()
 		}
 		ass, ok := s.(Assignment)
 		if !ok {
-			return w.canNotUse("assignment", s)
+			return w.CanNotUse("assignment", s)
 		}
-		w.writePrefix()
+		w.WritePrefix()
 		switch field := ass.Field.(type) {
 		case Name:
-			w.formatName(field)
+			w.FormatName(field)
 		case List:
 			err = w.formatList(field)
 		default:
-			return w.canNotUse("assignment", s)
+			return w.CanNotUse("assignment", s)
 		}
 		if err != nil {
 			return err
 		}
-		w.writeString("=")
+		w.WriteString("=")
 		switch value := ass.Value.(type) {
 		case List:
 			err = w.formatList(value)
@@ -572,16 +582,16 @@ func (w *Writer) formatAssignment(list []Statement) error {
 	return err
 }
 
-func (w *Writer) formatReturn(stmt Statement) error {
+func (w *Writer) FormatReturn(stmt Statement) error {
 	if stmt == nil {
 		return nil
 	}
-	w.enter()
-	defer w.leave()
+	w.Enter()
+	defer w.Leave()
 
-	w.writePrefix()
-	w.writeString("RETURNING")
-	w.writeBlank()
+	w.WritePrefix()
+	w.WriteString("RETURNING")
+	w.WriteBlank()
 
 	list, ok := stmt.(List)
 	if !ok {
@@ -589,8 +599,8 @@ func (w *Writer) formatReturn(stmt Statement) error {
 	}
 	for i, s := range list.Values {
 		if i > 0 {
-			w.writeString(",")
-			w.writeBlank()
+			w.WriteString(",")
+			w.WriteBlank()
 		}
 		if err := w.formatExpr(s, false); err != nil {
 			return err
@@ -599,38 +609,38 @@ func (w *Writer) formatReturn(stmt Statement) error {
 	return nil
 }
 
-func (w *Writer) formatWhere(stmt Statement) error {
+func (w *Writer) FormatWhere(stmt Statement) error {
 	if stmt == nil {
 		return nil
 	}
 
-	w.writeNL()
-	w.writePrefix()
-	w.writeString("WHERE")
-	w.writeBlank()
+	w.WriteNL()
+	w.WritePrefix()
+	w.WriteString("WHERE")
+	w.WriteBlank()
 
-	w.enter()
-	defer w.leave()
+	w.Enter()
+	defer w.Leave()
 
 	return w.formatExpr(stmt, true)
 }
 
 func (w *Writer) formatFromJoin(join Join) error {
-	w.writeString(join.Type)
-	w.writeBlank()
+	w.WriteString(join.Type)
+	w.WriteBlank()
 
 	var err error
 	switch s := join.Table.(type) {
 	case Name:
-		w.formatName(s)
+		w.FormatName(s)
 	case Alias:
-		err = w.formatAlias(s)
+		err = w.FormatAlias(s)
 	case SelectStatement:
-		w.writeString("(")
-		err = w.formatSelect(s)
-		w.writeString(")")
+		w.WriteString("(")
+		err = w.FormatSelectStatement(w, s)
+		w.WriteString(")")
 	default:
-		return w.canNotUse("from", s)
+		return w.CanNotUse("from", s)
 		err = fmt.Errorf("from: unsupported statement (%T)", s)
 	}
 	if err != nil {
@@ -638,61 +648,61 @@ func (w *Writer) formatFromJoin(join Join) error {
 	}
 	switch s := join.Where.(type) {
 	case Binary:
-		w.writeBlank()
-		w.writeString("ON")
-		w.writeBlank()
+		w.WriteBlank()
+		w.WriteString("ON")
+		w.WriteBlank()
 		err = w.formatBinary(s, false)
 	case List:
-		w.writeBlank()
-		w.writeString("USING")
-		w.writeBlank()
+		w.WriteBlank()
+		w.WriteString("USING")
+		w.WriteBlank()
 		err = w.formatList(s)
 	default:
-		return w.canNotUse("from", s)
+		return w.CanNotUse("from", s)
 	}
 	return err
 }
 
 func (w *Writer) formatCase(stmt CaseStatement) error {
-	w.writeString("CASE")
+	w.WriteString("CASE")
 	if stmt.Cdt != nil {
-		w.writeBlank()
+		w.WriteBlank()
 		w.formatExpr(stmt.Cdt, false)
 	}
-	w.writeBlank()
-	w.enter()
+	w.WriteBlank()
+	w.Enter()
 	for _, s := range stmt.Body {
-		w.writeNL()
+		w.WriteNL()
 		if err := w.formatExpr(s, false); err != nil {
 			return err
 		}
 	}
 	if stmt.Else != nil {
-		w.writeNL()
-		w.writePrefix()
-		w.writeString("ELSE")
-		w.writeBlank()
+		w.WriteNL()
+		w.WritePrefix()
+		w.WriteString("ELSE")
+		w.WriteBlank()
 		if err := w.formatExpr(stmt.Else, false); err != nil {
 			return err
 		}
 	}
-	w.leave()
-	w.writeNL()
-	w.writePrefix()
-	w.writeString("END")
+	w.Leave()
+	w.WriteNL()
+	w.WritePrefix()
+	w.WriteString("END")
 	return nil
 }
 
 func (w *Writer) formatWhen(stmt WhenStatement) error {
-	w.writePrefix()
-	w.writeString("WHEN")
-	w.writeBlank()
+	w.WritePrefix()
+	w.WriteString("WHEN")
+	w.WriteBlank()
 	if err := w.formatExpr(stmt.Cdt, false); err != nil {
 		return err
 	}
-	w.writeBlank()
-	w.writeString("THEN")
-	w.writeBlank()
+	w.WriteBlank()
+	w.WriteString("THEN")
+	w.WriteBlank()
 	return w.formatExpr(stmt.Body, false)
 }
 
@@ -700,11 +710,11 @@ func (w *Writer) formatExpr(stmt Statement, nl bool) error {
 	var err error
 	switch stmt := stmt.(type) {
 	case Name:
-		w.formatName(stmt)
+		w.FormatName(stmt)
 	case Value:
 		w.formatValue(stmt.Literal)
 	case Alias:
-		err = w.formatAlias(stmt)
+		err = w.FormatAlias(stmt)
 	case Call:
 		err = w.formatCall(stmt)
 	case List:
@@ -726,37 +736,37 @@ func (w *Writer) formatExpr(stmt Statement, nl bool) error {
 }
 
 func (w *Writer) formatList(stmt List) error {
-	w.writeString("(")
+	w.WriteString("(")
 	for i, v := range stmt.Values {
 		if i > 0 {
-			w.writeString(",")
-			w.writeBlank()
+			w.WriteString(",")
+			w.WriteBlank()
 		}
 		if err := w.formatExpr(v, false); err != nil {
 			return err
 		}
 	}
-	w.writeString(")")
+	w.WriteString(")")
 	return nil
 }
 
 func (w *Writer) formatCall(call Call) error {
 	n, ok := call.Ident.(Name)
 	if !ok {
-		return w.canNotUse("call", call.Ident)
+		return w.CanNotUse("call", call.Ident)
 	}
-	w.writeString(n.Ident)
-	w.writeString("(")
+	w.WriteString(n.Ident)
+	w.WriteString("(")
 	for i, s := range call.Args {
 		if i > 0 {
-			w.writeString(",")
-			w.writeBlank()
+			w.WriteString(",")
+			w.WriteBlank()
 		}
 		if err := w.formatExpr(s, false); err != nil {
 			return err
 		}
 	}
-	w.writeString(")")
+	w.WriteString(")")
 	return nil
 }
 
@@ -764,21 +774,21 @@ func (w *Writer) formatBetween(stmt Between, nl bool) error {
 	if err := w.formatExpr(stmt.Ident, nl); err != nil {
 		return err
 	}
-	w.writeBlank()
-	w.writeString("BETWEEN")
-	w.writeBlank()
+	w.WriteBlank()
+	w.WriteString("BETWEEN")
+	w.WriteBlank()
 	if err := w.formatExpr(stmt.Lower, false); err != nil {
 		return err
 	}
-	w.writeBlank()
-	w.writeString("AND")
-	w.writeBlank()
+	w.WriteBlank()
+	w.WriteString("AND")
+	w.WriteBlank()
 	return w.formatExpr(stmt.Upper, false)
 }
 
 func (w *Writer) formatUnary(stmt Unary, nl bool) error {
-	w.writeString(stmt.Op)
-	w.writeBlank()
+	w.WriteString(stmt.Op)
+	w.WriteBlank()
 	return w.formatExpr(stmt.Right, nl)
 }
 
@@ -787,116 +797,116 @@ func (w *Writer) formatBinary(stmt Binary, nl bool) error {
 		return err
 	}
 	if nl && (stmt.Op == "AND" || stmt.Op == "OR") {
-		w.writeNL()
-		w.writePrefix()
+		w.WriteNL()
+		w.WritePrefix()
 	} else {
-		w.writeBlank()
+		w.WriteBlank()
 	}
-	w.writeString(stmt.Op)
-	w.writeBlank()
+	w.WriteString(stmt.Op)
+	w.WriteBlank()
 	if err := w.formatExpr(stmt.Right, nl); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (w *Writer) formatName(name Name) {
+func (w *Writer) FormatName(name Name) {
 	if name.Prefix != "" {
-		w.writeString(name.Prefix)
-		w.writeString(".")
+		w.WriteString(name.Prefix)
+		w.WriteString(".")
 	}
-	w.writeString(name.Ident)
+	w.WriteString(name.Ident)
 }
 
-func (w *Writer) formatAlias(alias Alias) error {
+func (w *Writer) FormatAlias(alias Alias) error {
 	var err error
 	switch s := alias.Statement.(type) {
 	case Name:
-		w.formatName(s)
+		w.FormatName(s)
 	case Call:
 		err = w.formatCall(s)
 	case CaseStatement:
 		err = w.formatCase(s)
 	case SelectStatement:
-		w.writeString("(")
-		w.writeNL()
-		err = w.formatSelect(s)
+		w.WriteString("(")
+		w.WriteNL()
+		err = w.FormatSelectStatement(w, s)
 		if err != nil {
 			break
 		}
-		w.writeNL()
-		w.writePrefix()
-		w.writeString(")")
+		w.WriteNL()
+		w.WritePrefix()
+		w.WriteString(")")
 	default:
 		return fmt.Errorf("alias: unsupported expression type used with alias (%T)", s)
 	}
 	if err != nil {
 		return err
 	}
-	w.writeBlank()
-	w.writeString("AS")
-	w.writeBlank()
-	w.writeString(alias.Alias)
+	w.WriteBlank()
+	w.WriteString("AS")
+	w.WriteBlank()
+	w.WriteString(alias.Alias)
 	return nil
 }
 
 func (w *Writer) formatValue(literal string) {
 	if literal == "NULL" || literal == "DEFAULT" || literal == "*" {
-		w.writeString(literal)
+		w.WriteString(literal)
 	}
 	if _, err := strconv.Atoi(literal); err == nil {
-		w.writeString(literal)
+		w.WriteString(literal)
 		return
 	}
-	w.writeQuoted(literal)
+	w.WriteQuoted(literal)
 }
 
-func (w *Writer) enter() {
+func (w *Writer) Enter() {
 	if w.Compact {
 		return
 	}
 	w.prefix++
 }
 
-func (w *Writer) leave() {
+func (w *Writer) Leave() {
 	if w.Compact {
 		return
 	}
 	w.prefix--
 }
 
-func (w *Writer) writeString(str string) {
+func (w *Writer) WriteString(str string) {
 	if w.Compact && str == "\n" {
 		str = " "
 	}
 	w.inner.WriteString(str)
 }
 
-func (w *Writer) writeQuoted(str string) {
+func (w *Writer) WriteQuoted(str string) {
 	w.inner.WriteRune('\'')
-	w.writeString(str)
+	w.WriteString(str)
 	w.inner.WriteRune('\'')
 }
 
-func (w *Writer) writeNL() {
+func (w *Writer) WriteNL() {
 	if w.Compact {
-		w.writeBlank()
+		w.WriteBlank()
 		return
 	}
 	w.inner.WriteRune('\n')
 }
 
-func (w *Writer) writeBlank() {
+func (w *Writer) WriteBlank() {
 	w.inner.WriteRune(' ')
 }
 
-func (w *Writer) writePrefix() {
+func (w *Writer) WritePrefix() {
 	if w.prefix <= 0 {
 		return
 	}
-	w.writeString(strings.Repeat(w.Indent, w.prefix))
+	w.WriteString(strings.Repeat(w.Indent, w.prefix))
 }
 
-func (w *Writer) canNotUse(ctx string, stmt Statement) error {
+func (w *Writer) CanNotUse(ctx string, stmt Statement) error {
 	return fmt.Errorf("%T can not be used as statement in %s", stmt, ctx)
 }
