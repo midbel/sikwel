@@ -15,6 +15,12 @@ const (
 
 var keywords = lang.KeywordSet{
 	{"collate"},
+	{"replace", "into"},
+	{"insert", "or", "abort", "into"},
+	{"insert", "or", "fail", "into"},
+	{"insert", "or", "ignore", "into"},
+	{"insert", "or", "replace", "into"},
+	{"insert", "or", "rollback", "into"},
 }
 
 const Vendor = "sqlite"
@@ -33,11 +39,41 @@ func NewParser(r io.Reader) (*Parser, error) {
 		return nil, err
 	}
 	local.RegisterParseFunc("SELECT", local.ParseSelect)
+	local.RegisterParseFunc("REPLACE INTO", local.ParseInsert)
+	local.RegisterParseFunc("INSERT OR ABORT INTO", local.ParseInsert)
+	local.RegisterParseFunc("INSERT OR FAIL INTO", local.ParseInsert)
+	local.RegisterParseFunc("INSERT OR IGNORE INTO", local.ParseInsert)
+	local.RegisterParseFunc("INSERT OR REPLACE INTO", local.ParseInsert)
+	local.RegisterParseFunc("INSERT OR ROLLBACK INTO", local.ParseInsert)
 	return &local, nil
 }
 
 func (p *Parser) ParseSelect() (lang.Statement, error) {
 	return p.ParseSelectStatement(p)
+}
+
+func (p *Parser) ParseInsert() (lang.Statement, error) {
+	var (
+		stmt InsertStatement
+		err  error
+	)
+	switch {
+	case p.IsKeyword("INSERT INTO") || p.IsKeyword("REPLACE INTO"):
+	case p.IsKeyword("INSERT OR ABORT INTO"):
+		stmt.Action = "ABORT"
+	case p.IsKeyword("INSERT OR FAIL INTO"):
+		stmt.Action = "FAIL"
+	case p.IsKeyword("INSERT OR IGNORE INTO"):
+		stmt.Action = "IGNORE"
+	case p.IsKeyword("INSERT OR REPLACE INTO"):
+		stmt.Action = "REPLACE"
+	case p.IsKeyword("INSERT OR ROLLBACK INTO"):
+		stmt.Action = "REPLACE"
+	default:
+		return nil, p.UnexpectedDialect("insert", Vendor)
+	}
+	stmt.Statement, err = p.Parser.ParseInsert()
+	return stmt, err
 }
 
 func (p *Parser) ParseOrderBy() ([]lang.Statement, error) {

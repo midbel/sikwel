@@ -47,7 +47,7 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 	p.RegisterParseFunc("VALUES", p.parseValues)
 	p.RegisterParseFunc("DELETE FROM", p.parseDelete)
 	p.RegisterParseFunc("UPDATE", p.parseUpdate)
-	p.RegisterParseFunc("INSERT INTO", p.parseInsert)
+	p.RegisterParseFunc("INSERT INTO", p.ParseInsert)
 	p.RegisterParseFunc("WITH", p.parseWith)
 	p.RegisterParseFunc("IF", p.parseIf)
 	p.RegisterParseFunc("CASE", p.parseCase)
@@ -162,7 +162,7 @@ func (p *Parser) ParseIncludeMacro() error {
 	}
 	defer r.Close()
 
-	frame, err := createFrame(r, p.stack[0].set)
+	frame, err := createFrame(r, p.frame.set)
 	if err != nil {
 		return err
 	}
@@ -563,23 +563,20 @@ func (p *Parser) parseAssignment() (Statement, error) {
 	return ass, nil
 }
 
-func (p *Parser) parseInsert() (Statement, error) {
+func (p *Parser) ParseInsert() (Statement, error) {
 	p.Next()
 	var (
 		stmt InsertStatement
 		err  error
 	)
-	if !p.Is(Ident) {
-		return nil, p.Unexpected("insert")
+	stmt.Table, err = p.ParseIdent()
+	if err != nil {
+		return nil, err
 	}
-	stmt.Table = p.curr.Literal
-	p.Next()
 
-	if p.Is(Lparen) {
-		stmt.Columns, err = p.parseColumnsList()
-		if err = wrapError("insert", err); err != nil {
-			return nil, err
-		}
+	stmt.Columns, err = p.parseColumnsList()
+	if err = wrapError("insert", err); err != nil {
+		return nil, err
 	}
 
 	switch {
@@ -1224,6 +1221,9 @@ func (p *Parser) ParseIdent() (Statement, error) {
 		name.Prefix = p.curr.Literal
 		p.Next()
 		p.Next()
+	}
+	if !p.Is(Ident) && !p.Is(Star) {
+		return nil, p.Unexpected("identifier")
 	}
 	name.Ident = p.curr.Literal
 	if p.Is(Star) {

@@ -37,7 +37,7 @@ func ParseSqlite(r io.Reader) (Parser, error) {
 }
 
 func FormatSqlite(w io.Writer) Writer {
-	return lang.NewWriter(w)
+	return sqlite.NewWriter(w)
 }
 
 func NewParser(r io.Reader, dialect string) (Parser, error) {

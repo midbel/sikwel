@@ -9,16 +9,6 @@ import (
 	"strings"
 )
 
-type SelectFormatter interface {
-	FormatSelectColumns([]Statement) error
-	FormatFrom([]Statement) error
-	FormatWhere(Statement) error
-	FormatGroupBy([]Statement) error
-	FormatHaving(Statement) error
-	FormatOrderBy([]Statement) error
-	FormatLimit(Statement) error
-}
-
 type Writer struct {
 	inner   *bufio.Writer
 	Compact bool
@@ -59,9 +49,9 @@ func (w *Writer) FormatStatement(stmt Statement) error {
 }
 
 func (w *Writer) format(stmt Statement) error {
-	defer w.inner.Flush()
+	defer w.Flush()
 
-	w.prefix = -1
+	w.Reset()
 	err := w.formatStatement(stmt)
 	if err == nil {
 		w.WriteString(";")
@@ -74,30 +64,30 @@ func (w *Writer) formatStatement(stmt Statement) error {
 	var err error
 	switch stmt := stmt.(type) {
 	case SelectStatement:
-		err = w.FormatSelectStatement(w, stmt)
+		err = w.FormatSelect(stmt)
 	case UnionStatement:
-		err = w.formatUnion(stmt)
+		err = w.FormatUnion(stmt)
 	case IntersectStatement:
-		err = w.formatIntersect(stmt)
+		err = w.FormatIntersect(stmt)
 	case ExceptStatement:
-		err = w.formatExcept(stmt)
+		err = w.FormatExcept(stmt)
 	case InsertStatement:
-		err = w.formatInsert(stmt)
+		err = w.FormatInsert(stmt)
 	case UpdateStatement:
-		err = w.formatUpdate(stmt)
+		err = w.FormatUpdate(stmt)
 	case DeleteStatement:
-		err = w.formatDelete(stmt)
+		err = w.FormatDelete(stmt)
 	case WithStatement:
-		err = w.formatWith(stmt)
+		err = w.FormatWith(stmt)
 	case CteStatement:
-		err = w.formatCte(stmt)
+		err = w.FormatCte(stmt)
 	default:
 		err = fmt.Errorf("unsupported statement type %T", stmt)
 	}
 	return err
 }
 
-func (w *Writer) formatWith(stmt WithStatement) error {
+func (w *Writer) FormatWith(stmt WithStatement) error {
 	w.WritePrefix()
 	w.WriteString("WITH")
 	w.WriteBlank()
@@ -116,7 +106,7 @@ func (w *Writer) formatWith(stmt WithStatement) error {
 	return w.formatStatement(stmt.Statement)
 }
 
-func (w *Writer) formatCte(stmt CteStatement) error {
+func (w *Writer) FormatCte(stmt CteStatement) error {
 	w.Enter()
 	defer w.Leave()
 
@@ -146,7 +136,7 @@ func (w *Writer) formatCte(stmt CteStatement) error {
 	return nil
 }
 
-func (w *Writer) formatUnion(stmt UnionStatement) error {
+func (w *Writer) FormatUnion(stmt UnionStatement) error {
 	if err := w.formatStatement(stmt.Left); err != nil {
 		return err
 	}
@@ -164,7 +154,7 @@ func (w *Writer) formatUnion(stmt UnionStatement) error {
 	return w.formatStatement(stmt.Right)
 }
 
-func (w *Writer) formatExcept(stmt ExceptStatement) error {
+func (w *Writer) FormatExcept(stmt ExceptStatement) error {
 	if err := w.formatStatement(stmt.Left); err != nil {
 		return err
 	}
@@ -182,7 +172,7 @@ func (w *Writer) formatExcept(stmt ExceptStatement) error {
 	return w.formatStatement(stmt.Right)
 }
 
-func (w *Writer) formatIntersect(stmt IntersectStatement) error {
+func (w *Writer) FormatIntersect(stmt IntersectStatement) error {
 	if err := w.formatStatement(stmt.Left); err != nil {
 		return err
 	}
@@ -200,7 +190,7 @@ func (w *Writer) formatIntersect(stmt IntersectStatement) error {
 	return w.formatStatement(stmt.Right)
 }
 
-func (w *Writer) formatDelete(stmt DeleteStatement) error {
+func (w *Writer) FormatDelete(stmt DeleteStatement) error {
 	w.Enter()
 	defer w.Leave()
 
@@ -225,7 +215,7 @@ func (w *Writer) formatDelete(stmt DeleteStatement) error {
 	return nil
 }
 
-func (w *Writer) formatUpdate(stmt UpdateStatement) error {
+func (w *Writer) FormatUpdate(stmt UpdateStatement) error {
 	w.Enter()
 	defer w.Leave()
 
@@ -258,14 +248,16 @@ func (w *Writer) formatUpdate(stmt UpdateStatement) error {
 	return w.FormatReturn(stmt.Return)
 }
 
-func (w *Writer) formatInsert(stmt InsertStatement) error {
+func (w *Writer) FormatInsert(stmt InsertStatement) error {
 	w.Enter()
 	defer w.Leave()
 
 	w.WritePrefix()
 	w.WriteString("INSERT INTO")
 	w.WriteBlank()
-	w.WriteString(stmt.Table)
+	if err := w.formatExpr(stmt.Table, false); err != nil {
+		return err
+	}
 	w.WriteBlank()
 	if len(stmt.Columns) > 0 {
 		w.WriteString("(")
@@ -314,7 +306,7 @@ func (w *Writer) formatInsertValues(stmt InsertStatement) error {
 		}
 	case SelectStatement:
 		w.WriteNL()
-		err = w.FormatSelectStatement(w, stmt)
+		err = w.FormatSelect(stmt)
 	}
 	return err
 }
@@ -357,31 +349,31 @@ func (w *Writer) formatUpsert(stmt Statement) error {
 	return w.FormatWhere(upsert.Where)
 }
 
-func (w *Writer) FormatSelectStatement(wf SelectFormatter, stmt SelectStatement) error {
+func (w *Writer) FormatSelect(stmt SelectStatement) error {
 	w.Enter()
 	defer w.Leave()
 
 	w.WritePrefix()
 	w.WriteString("SELECT")
-	if err := wf.FormatSelectColumns(stmt.Columns); err != nil {
+	if err := w.FormatSelectColumns(stmt.Columns); err != nil {
 		return err
 	}
-	if err := wf.FormatFrom(stmt.Tables); err != nil {
+	if err := w.FormatFrom(stmt.Tables); err != nil {
 		return err
 	}
-	if err := wf.FormatWhere(stmt.Where); err != nil {
+	if err := w.FormatWhere(stmt.Where); err != nil {
 		return err
 	}
-	if err := wf.FormatGroupBy(stmt.Groups); err != nil {
+	if err := w.FormatGroupBy(stmt.Groups); err != nil {
 		return err
 	}
-	if err := wf.FormatHaving(stmt.Having); err != nil {
+	if err := w.FormatHaving(stmt.Having); err != nil {
 		return err
 	}
-	if err := wf.FormatOrderBy(stmt.Orders); err != nil {
+	if err := w.FormatOrderBy(stmt.Orders); err != nil {
 		return err
 	}
-	if err := wf.FormatLimit(stmt.Limit); err != nil {
+	if err := w.FormatLimit(stmt.Limit); err != nil {
 		return nil
 	}
 	return nil
@@ -637,7 +629,7 @@ func (w *Writer) formatFromJoin(join Join) error {
 		err = w.FormatAlias(s)
 	case SelectStatement:
 		w.WriteString("(")
-		err = w.FormatSelectStatement(w, s)
+		err = w.FormatSelect(s)
 		w.WriteString(")")
 	default:
 		return w.CanNotUse("from", s)
@@ -830,7 +822,7 @@ func (w *Writer) FormatAlias(alias Alias) error {
 	case SelectStatement:
 		w.WriteString("(")
 		w.WriteNL()
-		err = w.FormatSelectStatement(w, s)
+		err = w.FormatSelect(s)
 		if err != nil {
 			break
 		}
@@ -905,6 +897,14 @@ func (w *Writer) WritePrefix() {
 		return
 	}
 	w.WriteString(strings.Repeat(w.Indent, w.prefix))
+}
+
+func (w *Writer) Flush() {
+	w.inner.Flush()
+}
+
+func (w *Writer) Reset() {
+	w.prefix = -1
 }
 
 func (w *Writer) CanNotUse(ctx string, stmt Statement) error {

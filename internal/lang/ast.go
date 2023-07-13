@@ -170,7 +170,7 @@ type UpsertStatement struct {
 }
 
 type InsertStatement struct {
-	Table   string
+	Table   Statement
 	Columns []string
 	Values  Statement
 	Upsert  Statement

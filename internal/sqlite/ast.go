@@ -8,3 +8,8 @@ type Order struct {
 	lang.Order
 	Collate string
 }
+
+type InsertStatement struct {
+	lang.Statement
+	Action string
+}
