@@ -46,7 +46,7 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 	p.RegisterParseFunc("SELECT", p.ParseSelect)
 	p.RegisterParseFunc("VALUES", p.parseValues)
 	p.RegisterParseFunc("DELETE FROM", p.parseDelete)
-	p.RegisterParseFunc("UPDATE", p.parseUpdate)
+	p.RegisterParseFunc("UPDATE", p.ParseUpdate)
 	p.RegisterParseFunc("INSERT INTO", p.ParseInsert)
 	p.RegisterParseFunc("WITH", p.parseWith)
 	p.RegisterParseFunc("IF", p.parseIf)
@@ -450,7 +450,7 @@ func (p *Parser) parseDelete() (Statement, error) {
 	return stmt, nil
 }
 
-func (p *Parser) parseUpdate() (Statement, error) {
+func (p *Parser) ParseUpdate() (Statement, error) {
 	p.Next()
 	var (
 		stmt UpdateStatement

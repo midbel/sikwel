@@ -65,9 +65,9 @@ func (w *Writer) formatStatement(stmt lang.Statement) error {
 		err = w.FormatIntersect(stmt)
 	case lang.ExceptStatement:
 		err = w.FormatExcept(stmt)
-	case lang.InsertStatement:
+	case InsertStatement:
 		err = w.FormatInsert(stmt)
-	case lang.UpdateStatement:
+	case UpdateStatement:
 		err = w.FormatUpdate(stmt)
 	case lang.DeleteStatement:
 		err = w.FormatDelete(stmt)
@@ -79,6 +79,26 @@ func (w *Writer) formatStatement(stmt lang.Statement) error {
 		err = fmt.Errorf("unsupported statement type %T", stmt)
 	}
 	return err
+}
+
+func (w *Writer) FormatInsert(stmt InsertStatement) error {
+	kw, err := stmt.Keyword()
+	if err != nil {
+		return err
+	}
+	w.WriteString(kw)
+	w.WriteBlank()
+	return w.Writer.FormatStatement(stmt.Statement)
+}
+
+func (w *Writer) FormatUpdate(stmt UpdateStatement) error {
+	kw, err := stmt.Keyword()
+	if err != nil {
+		return err
+	}
+	w.WriteString(kw)
+	w.WriteBlank()
+	return w.Writer.FormatStatement(stmt.Statement)
 }
 
 func (w *Writer) FormatSelect(stmt lang.SelectStatement) error {

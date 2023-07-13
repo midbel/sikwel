@@ -21,6 +21,11 @@ var keywords = lang.KeywordSet{
 	{"insert", "or", "ignore", "into"},
 	{"insert", "or", "replace", "into"},
 	{"insert", "or", "rollback", "into"},
+	{"update", "or", "abort"},
+	{"update", "or", "fail"},
+	{"update", "or", "ignore"},
+	{"update", "or", "replace"},
+	{"update", "or", "rollback"},
 }
 
 const Vendor = "sqlite"
@@ -45,11 +50,40 @@ func NewParser(r io.Reader) (*Parser, error) {
 	local.RegisterParseFunc("INSERT OR IGNORE INTO", local.ParseInsert)
 	local.RegisterParseFunc("INSERT OR REPLACE INTO", local.ParseInsert)
 	local.RegisterParseFunc("INSERT OR ROLLBACK INTO", local.ParseInsert)
+	local.RegisterParseFunc("UPDATE OR ABORT", local.ParseUpdate)
+	local.RegisterParseFunc("UPDATE OR FAIL", local.ParseUpdate)
+	local.RegisterParseFunc("UPDATE OR IGNORE", local.ParseUpdate)
+	local.RegisterParseFunc("UPDATE OR REPLACE", local.ParseUpdate)
+	local.RegisterParseFunc("UPDATE OR ROLLBACK", local.ParseUpdate)
 	return &local, nil
 }
 
 func (p *Parser) ParseSelect() (lang.Statement, error) {
 	return p.ParseSelectStatement(p)
+}
+
+func (p *Parser) ParseUpdate() (lang.Statement, error) {
+	var (
+		stmt UpdateStatement
+		err  error
+	)
+	switch {
+	case p.IsKeyword("UPDATE"):
+	case p.IsKeyword("UPDATE OR ABORT"):
+		stmt.Action = "ABORT"
+	case p.IsKeyword("UPDATE OR FAIL"):
+		stmt.Action = "FAIL"
+	case p.IsKeyword("UPDATE OR IGNORE"):
+		stmt.Action = "IGNORE"
+	case p.IsKeyword("UPDATE OR REPLACE"):
+		stmt.Action = "REPLACE"
+	case p.IsKeyword("UPDATE OR ROLLBACK"):
+		stmt.Action = "ROLLBACK"
+	default:
+		return nil, p.UnexpectedDialect("update", Vendor)
+	}
+	stmt.Statement, err = p.Parser.ParseUpdate()
+	return stmt, err
 }
 
 func (p *Parser) ParseInsert() (lang.Statement, error) {
@@ -68,7 +102,7 @@ func (p *Parser) ParseInsert() (lang.Statement, error) {
 	case p.IsKeyword("INSERT OR REPLACE INTO"):
 		stmt.Action = "REPLACE"
 	case p.IsKeyword("INSERT OR ROLLBACK INTO"):
-		stmt.Action = "REPLACE"
+		stmt.Action = "ROLLBACK"
 	default:
 		return nil, p.UnexpectedDialect("insert", Vendor)
 	}
