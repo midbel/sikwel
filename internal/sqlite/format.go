@@ -82,23 +82,105 @@ func (w *Writer) formatStatement(stmt lang.Statement) error {
 }
 
 func (w *Writer) FormatInsert(stmt InsertStatement) error {
+	w.Enter()
+	defer w.Leave()
+
 	kw, err := stmt.Keyword()
 	if err != nil {
 		return err
 	}
 	w.WriteString(kw)
 	w.WriteBlank()
-	return w.Writer.FormatStatement(stmt.Statement)
+	return w.formatInsertStatement(stmt.Statement)
+}
+
+func (w *Writer) formatInsertStatement(stmt lang.Statement) error {
+	ins, ok := stmt.(lang.InsertStatement)
+	if !ok {
+		return fmt.Errorf("insert: unexpected statement type(%T)", stmt)
+	}
+	if err := w.FormatExpr(ins.Table, false); err != nil {
+		return err
+	}
+	if len(ins.Columns) > 0 {
+		w.WriteString("(")
+		for i, c := range ins.Columns {
+			if i > 0 {
+				w.WriteString(",")
+				w.WriteBlank()
+			}
+			w.WriteString(c)
+		}
+		w.WriteString(")")
+	}
+	w.WriteBlank()
+	if err := w.FormatInsertValues(ins); err != nil {
+		return err
+	}
+	if err := w.FormatUpsert(ins.Upsert); err != nil {
+		return err
+	}
+	if ins.Upsert != nil {
+		w.WriteNL()
+	}
+	return w.FormatReturn(ins.Return)
 }
 
 func (w *Writer) FormatUpdate(stmt UpdateStatement) error {
+	w.Enter()
+	defer w.Leave()
+
 	kw, err := stmt.Keyword()
 	if err != nil {
 		return err
 	}
+	w.WritePrefix()
 	w.WriteString(kw)
 	w.WriteBlank()
-	return w.Writer.FormatStatement(stmt.Statement)
+
+	return w.formatUpdateStatement(stmt.Statement)
+}
+
+func (w *Writer) formatUpdateStatement(stmt lang.Statement) error {
+	up, ok := stmt.(lang.UpdateStatement)
+	if !ok {
+		return fmt.Errorf("update: unexpected statement type(%T)", stmt)
+	}
+
+	switch stmt := up.Table.(type) {
+	case lang.Name:
+		w.FormatName(stmt)
+	case lang.Alias:
+		if err := w.FormatAlias(stmt); err != nil {
+			return err
+		}
+	default:
+		return w.CanNotUse("update", stmt)
+	}
+
+	w.WriteBlank()
+	w.WriteString("SET")
+	w.WriteNL()
+
+if len(up.Tables) > 0 {
+		w.WriteNL()
+		if err := w.FormatFrom(up.Tables); err != nil {
+			return err
+		}
+	}
+	if up.Where != nil {
+		w.WriteNL()
+		if err := w.FormatWhere(up.Where); err != nil {
+			return err
+		}
+	}
+	if up.Return != nil {
+		w.WriteNL()
+		if err := w.FormatReturn(up.Return); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (w *Writer) FormatSelect(stmt lang.SelectStatement) error {
@@ -107,26 +189,43 @@ func (w *Writer) FormatSelect(stmt lang.SelectStatement) error {
 
 	w.WritePrefix()
 	w.WriteString("SELECT")
+	w.WriteNL()
 	if err := w.FormatSelectColumns(stmt.Columns); err != nil {
 		return err
 	}
+	w.WriteNL()
 	if err := w.FormatFrom(stmt.Tables); err != nil {
 		return err
 	}
-	if err := w.FormatWhere(stmt.Where); err != nil {
-		return err
+	if stmt.Where != nil {
+		w.WriteNL()
+		if err := w.FormatWhere(stmt.Where); err != nil {
+			return err
+		}
 	}
-	if err := w.FormatGroupBy(stmt.Groups); err != nil {
-		return err
+	if len(stmt.Groups) > 0 {
+		w.WriteNL()
+		if err := w.FormatGroupBy(stmt.Groups); err != nil {
+			return err
+		}
 	}
-	if err := w.FormatHaving(stmt.Having); err != nil {
-		return err
+	if stmt.Having != nil {
+		w.WriteNL()
+		if err := w.FormatHaving(stmt.Having); err != nil {
+			return err
+		}
 	}
-	if err := w.FormatOrderBy(stmt.Orders); err != nil {
-		return err
+	if len(stmt.Orders) > 0 {
+		w.WriteNL()
+		if err := w.FormatOrderBy(stmt.Orders); err != nil {
+			return err
+		}
 	}
-	if err := w.FormatLimit(stmt.Limit); err != nil {
-		return nil
+	if stmt.Limit != nil {
+		w.WriteNL()
+		if err := w.FormatLimit(stmt.Limit); err != nil {
+			return nil
+		}
 	}
 	return nil
 }
@@ -135,7 +234,7 @@ func (w *Writer) FormatOrderBy(orders []lang.Statement) error {
 	if len(orders) == 0 {
 		return nil
 	}
-	w.WriteNL()
+	w.WritePrefix()
 	w.WriteString("ORDER BY")
 	w.WriteBlank()
 	for i, s := range orders {

@@ -235,17 +235,29 @@ func (w *Writer) FormatUpdate(stmt UpdateStatement) error {
 	w.WriteBlank()
 	w.WriteString("SET")
 	w.WriteNL()
-	if err := w.formatAssignment(stmt.List); err != nil {
+	if err := w.FormatAssignment(stmt.List); err != nil {
 		return err
 	}
 
-	if err := w.FormatFrom(stmt.Tables); err != nil {
-		return err
+	if len(stmt.Tables) > 0 {
+		w.WriteNL()
+		if err := w.FormatFrom(stmt.Tables); err != nil {
+			return err
+		}
 	}
-	if err := w.FormatWhere(stmt.Where); err != nil {
-		return err
+	if stmt.Where != nil {
+		w.WriteNL()
+		if err := w.FormatWhere(stmt.Where); err != nil {
+			return err
+		}
 	}
-	return w.FormatReturn(stmt.Return)
+	if stmt.Return != nil {
+		w.WriteNL()
+		if err := w.FormatReturn(stmt.Return); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (w *Writer) FormatInsert(stmt InsertStatement) error {
@@ -255,7 +267,7 @@ func (w *Writer) FormatInsert(stmt InsertStatement) error {
 	w.WritePrefix()
 	w.WriteString("INSERT INTO")
 	w.WriteBlank()
-	if err := w.formatExpr(stmt.Table, false); err != nil {
+	if err := w.FormatExpr(stmt.Table, false); err != nil {
 		return err
 	}
 	w.WriteBlank()
@@ -271,10 +283,10 @@ func (w *Writer) FormatInsert(stmt InsertStatement) error {
 		w.WriteString(")")
 	}
 	w.WriteBlank()
-	if err := w.formatInsertValues(stmt); err != nil {
+	if err := w.FormatInsertValues(stmt); err != nil {
 		return err
 	}
-	if err := w.formatUpsert(stmt.Upsert); err != nil {
+	if err := w.FormatUpsert(stmt.Upsert); err != nil {
 		return err
 	}
 	if stmt.Upsert != nil {
@@ -283,7 +295,7 @@ func (w *Writer) FormatInsert(stmt InsertStatement) error {
 	return w.FormatReturn(stmt.Return)
 }
 
-func (w *Writer) formatInsertValues(stmt InsertStatement) error {
+func (w *Writer) FormatInsertValues(stmt InsertStatement) error {
 	w.WriteString("VALUES")
 
 	w.Enter()
@@ -300,7 +312,7 @@ func (w *Writer) formatInsertValues(stmt InsertStatement) error {
 				w.WriteNL()
 			}
 			w.WritePrefix()
-			if err := w.formatExpr(v, false); err != nil {
+			if err := w.FormatExpr(v, false); err != nil {
 				return err
 			}
 		}
@@ -311,7 +323,7 @@ func (w *Writer) formatInsertValues(stmt InsertStatement) error {
 	return err
 }
 
-func (w *Writer) formatUpsert(stmt Statement) error {
+func (w *Writer) FormatUpsert(stmt Statement) error {
 	if stmt == nil {
 		return nil
 	}
@@ -343,7 +355,7 @@ func (w *Writer) formatUpsert(stmt Statement) error {
 	}
 	w.WriteString("UPDATE SET")
 	w.WriteNL()
-	if err := w.formatAssignment(upsert.List); err != nil {
+	if err := w.FormatAssignment(upsert.List); err != nil {
 		return err
 	}
 	return w.FormatWhere(upsert.Where)
@@ -355,26 +367,43 @@ func (w *Writer) FormatSelect(stmt SelectStatement) error {
 
 	w.WritePrefix()
 	w.WriteString("SELECT")
+	w.WriteNL()
 	if err := w.FormatSelectColumns(stmt.Columns); err != nil {
 		return err
 	}
+	w.WriteNL()
 	if err := w.FormatFrom(stmt.Tables); err != nil {
 		return err
 	}
-	if err := w.FormatWhere(stmt.Where); err != nil {
-		return err
+	if stmt.Where != nil {
+		w.WriteNL()
+		if err := w.FormatWhere(stmt.Where); err != nil {
+			return err
+		}
 	}
-	if err := w.FormatGroupBy(stmt.Groups); err != nil {
-		return err
+	if len(stmt.Groups) > 0 {
+		w.WriteNL()
+		if err := w.FormatGroupBy(stmt.Groups); err != nil {
+			return err
+		}
 	}
-	if err := w.FormatHaving(stmt.Having); err != nil {
-		return err
+	if stmt.Having != nil {
+		w.WriteNL()
+		if err := w.FormatHaving(stmt.Having); err != nil {
+			return err
+		}
 	}
-	if err := w.FormatOrderBy(stmt.Orders); err != nil {
-		return err
+	if len(stmt.Orders) > 0 {
+		w.WriteNL()
+		if err := w.FormatOrderBy(stmt.Orders); err != nil {
+			return err
+		}
 	}
-	if err := w.FormatLimit(stmt.Limit); err != nil {
-		return nil
+	if stmt.Limit != nil {
+		w.WriteNL()
+		if err := w.FormatLimit(stmt.Limit); err != nil {
+			return nil
+		}
 	}
 	return nil
 }
@@ -382,16 +411,13 @@ func (w *Writer) FormatSelect(stmt SelectStatement) error {
 func (w *Writer) FormatSelectColumns(columns []Statement) error {
 	w.Enter()
 	defer w.Leave()
-
-	w.WriteNL()
-	defer w.WriteNL()
 	for i, s := range columns {
 		if i > 0 {
 			w.WriteString(",")
 			w.WriteNL()
 		}
 		w.WritePrefix()
-		if err := w.formatExpr(s, false); err != nil {
+		if err := w.FormatExpr(s, false); err != nil {
 			return err
 		}
 	}
@@ -441,7 +467,7 @@ func (w *Writer) FormatGroupBy(groups []Statement) error {
 	if len(groups) == 0 {
 		return nil
 	}
-	w.WriteNL()
+	w.WritePrefix()
 	w.WriteString("GROUP BY")
 	w.WriteBlank()
 	for i, s := range groups {
@@ -465,17 +491,17 @@ func (w *Writer) FormatHaving(having Statement) error {
 	if having == nil {
 		return nil
 	}
-	w.WriteNL()
+	w.WritePrefix()
 	w.WriteString("HAVING")
 	w.WriteBlank()
-	return w.formatExpr(having, true)
+	return w.FormatExpr(having, true)
 }
 
 func (w *Writer) FormatOrderBy(orders []Statement) error {
 	if len(orders) == 0 {
 		return nil
 	}
-	w.WriteNL()
+	w.WritePrefix()
 	w.WriteString("ORDER BY")
 	w.WriteBlank()
 	for i, s := range orders {
@@ -521,7 +547,7 @@ func (w *Writer) FormatLimit(limit Statement) error {
 	if !ok {
 		return w.CanNotUse("limit", limit)
 	}
-	w.WriteNL()
+	w.WritePrefix()
 	w.WriteString("LIMIT")
 	w.WriteBlank()
 	w.WriteString(strconv.Itoa(lim.Count))
@@ -534,7 +560,7 @@ func (w *Writer) FormatLimit(limit Statement) error {
 	return nil
 }
 
-func (w *Writer) formatAssignment(list []Statement) error {
+func (w *Writer) FormatAssignment(list []Statement) error {
 	w.Enter()
 	defer w.Leave()
 
@@ -565,7 +591,7 @@ func (w *Writer) formatAssignment(list []Statement) error {
 		case List:
 			err = w.formatList(value)
 		default:
-			err = w.formatExpr(value, false)
+			err = w.FormatExpr(value, false)
 		}
 		if err != nil {
 			return err
@@ -587,14 +613,14 @@ func (w *Writer) FormatReturn(stmt Statement) error {
 
 	list, ok := stmt.(List)
 	if !ok {
-		return w.formatExpr(stmt, false)
+		return w.FormatExpr(stmt, false)
 	}
 	for i, s := range list.Values {
 		if i > 0 {
 			w.WriteString(",")
 			w.WriteBlank()
 		}
-		if err := w.formatExpr(s, false); err != nil {
+		if err := w.FormatExpr(s, false); err != nil {
 			return err
 		}
 	}
@@ -605,8 +631,6 @@ func (w *Writer) FormatWhere(stmt Statement) error {
 	if stmt == nil {
 		return nil
 	}
-
-	w.WriteNL()
 	w.WritePrefix()
 	w.WriteString("WHERE")
 	w.WriteBlank()
@@ -614,7 +638,7 @@ func (w *Writer) FormatWhere(stmt Statement) error {
 	w.Enter()
 	defer w.Leave()
 
-	return w.formatExpr(stmt, true)
+	return w.FormatExpr(stmt, true)
 }
 
 func (w *Writer) formatFromJoin(join Join) error {
@@ -659,13 +683,13 @@ func (w *Writer) formatCase(stmt CaseStatement) error {
 	w.WriteString("CASE")
 	if stmt.Cdt != nil {
 		w.WriteBlank()
-		w.formatExpr(stmt.Cdt, false)
+		w.FormatExpr(stmt.Cdt, false)
 	}
 	w.WriteBlank()
 	w.Enter()
 	for _, s := range stmt.Body {
 		w.WriteNL()
-		if err := w.formatExpr(s, false); err != nil {
+		if err := w.FormatExpr(s, false); err != nil {
 			return err
 		}
 	}
@@ -674,7 +698,7 @@ func (w *Writer) formatCase(stmt CaseStatement) error {
 		w.WritePrefix()
 		w.WriteString("ELSE")
 		w.WriteBlank()
-		if err := w.formatExpr(stmt.Else, false); err != nil {
+		if err := w.FormatExpr(stmt.Else, false); err != nil {
 			return err
 		}
 	}
@@ -689,16 +713,16 @@ func (w *Writer) formatWhen(stmt WhenStatement) error {
 	w.WritePrefix()
 	w.WriteString("WHEN")
 	w.WriteBlank()
-	if err := w.formatExpr(stmt.Cdt, false); err != nil {
+	if err := w.FormatExpr(stmt.Cdt, false); err != nil {
 		return err
 	}
 	w.WriteBlank()
 	w.WriteString("THEN")
 	w.WriteBlank()
-	return w.formatExpr(stmt.Body, false)
+	return w.FormatExpr(stmt.Body, false)
 }
 
-func (w *Writer) formatExpr(stmt Statement, nl bool) error {
+func (w *Writer) FormatExpr(stmt Statement, nl bool) error {
 	var err error
 	switch stmt := stmt.(type) {
 	case Name:
@@ -734,7 +758,7 @@ func (w *Writer) formatList(stmt List) error {
 			w.WriteString(",")
 			w.WriteBlank()
 		}
-		if err := w.formatExpr(v, false); err != nil {
+		if err := w.FormatExpr(v, false); err != nil {
 			return err
 		}
 	}
@@ -754,7 +778,7 @@ func (w *Writer) formatCall(call Call) error {
 			w.WriteString(",")
 			w.WriteBlank()
 		}
-		if err := w.formatExpr(s, false); err != nil {
+		if err := w.FormatExpr(s, false); err != nil {
 			return err
 		}
 	}
@@ -763,29 +787,29 @@ func (w *Writer) formatCall(call Call) error {
 }
 
 func (w *Writer) formatBetween(stmt Between, nl bool) error {
-	if err := w.formatExpr(stmt.Ident, nl); err != nil {
+	if err := w.FormatExpr(stmt.Ident, nl); err != nil {
 		return err
 	}
 	w.WriteBlank()
 	w.WriteString("BETWEEN")
 	w.WriteBlank()
-	if err := w.formatExpr(stmt.Lower, false); err != nil {
+	if err := w.FormatExpr(stmt.Lower, false); err != nil {
 		return err
 	}
 	w.WriteBlank()
 	w.WriteString("AND")
 	w.WriteBlank()
-	return w.formatExpr(stmt.Upper, false)
+	return w.FormatExpr(stmt.Upper, false)
 }
 
 func (w *Writer) formatUnary(stmt Unary, nl bool) error {
 	w.WriteString(stmt.Op)
 	w.WriteBlank()
-	return w.formatExpr(stmt.Right, nl)
+	return w.FormatExpr(stmt.Right, nl)
 }
 
 func (w *Writer) formatBinary(stmt Binary, nl bool) error {
-	if err := w.formatExpr(stmt.Left, nl); err != nil {
+	if err := w.FormatExpr(stmt.Left, nl); err != nil {
 		return err
 	}
 	if nl && (stmt.Op == "AND" || stmt.Op == "OR") {
@@ -796,7 +820,7 @@ func (w *Writer) formatBinary(stmt Binary, nl bool) error {
 	}
 	w.WriteString(stmt.Op)
 	w.WriteBlank()
-	if err := w.formatExpr(stmt.Right, nl); err != nil {
+	if err := w.FormatExpr(stmt.Right, nl); err != nil {
 		return err
 	}
 	return nil
