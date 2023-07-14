@@ -7,27 +7,6 @@ import (
 	"github.com/midbel/sweet/internal/lang"
 )
 
-const (
-	CollateBinary = "BINARY"
-	CollateNocase = "NOCASE"
-	CollateTrim   = "RTRIM"
-)
-
-var keywords = lang.KeywordSet{
-	{"collate"},
-	{"replace", "into"},
-	{"insert", "or", "abort", "into"},
-	{"insert", "or", "fail", "into"},
-	{"insert", "or", "ignore", "into"},
-	{"insert", "or", "replace", "into"},
-	{"insert", "or", "rollback", "into"},
-	{"update", "or", "abort"},
-	{"update", "or", "fail"},
-	{"update", "or", "ignore"},
-	{"update", "or", "replace"},
-	{"update", "or", "rollback"},
-}
-
 const Vendor = "sqlite"
 
 type Parser struct {
@@ -55,7 +34,26 @@ func NewParser(r io.Reader) (*Parser, error) {
 	local.RegisterParseFunc("UPDATE OR IGNORE", local.ParseUpdate)
 	local.RegisterParseFunc("UPDATE OR REPLACE", local.ParseUpdate)
 	local.RegisterParseFunc("UPDATE OR ROLLBACK", local.ParseUpdate)
+	local.RegisterParseFunc("VACUUM", local.ParseVacuum)
 	return &local, nil
+}
+
+func (p *Parser) ParseVacuum() (lang.Statement, error) {
+	var (
+		stmt VacuumStatement
+		err  error
+	)
+	p.Next()
+	if p.Is(lang.Ident) {
+		stmt.Schema = p.GetCurrLiteral()
+		p.Next()
+	}
+	if p.IsKeyword("INTO") {
+		p.Next()
+		stmt.File = p.GetCurrLiteral()
+		p.Next()
+	}
+	return stmt, err
 }
 
 func (p *Parser) ParseSelect() (lang.Statement, error) {

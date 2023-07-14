@@ -12,3 +12,7 @@ replace into employees(firstname, lastname) values
 
 insert or replace into employees(firstname, lastname) values
 	('john', 'smith');
+
+vacuum into 'dump.sql';
+vacuum schema into 'dump.sql';
+vacuum;

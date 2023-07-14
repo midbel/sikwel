@@ -11,6 +11,15 @@ type Order struct {
 	Collate string
 }
 
+type VacuumStatement struct {
+	Schema string
+	File   string
+}
+
+func (s VacuumStatement) Keyword() (string, error) {
+	return "VACUUM", nil
+}
+
 type InsertStatement struct {
 	lang.Statement
 	Action string

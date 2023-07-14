@@ -81,10 +81,26 @@ func (w *Writer) formatStatement(stmt Statement) error {
 		err = w.FormatWith(stmt)
 	case CteStatement:
 		err = w.FormatCte(stmt)
+	case Commit:
+		err = w.FormatCommit(stmt)
+	case Rollback:
+		err = w.FormatRollback(stmt)
 	default:
 		err = fmt.Errorf("unsupported statement type %T", stmt)
 	}
 	return err
+}
+
+func (w *Writer) FormatCommit(stmt Commit) error {
+	w.WritePrefix()
+	w.WriteString("COMMIT")
+	return nil
+}
+
+func (w *Writer) FormatRollback(stmt Rollback) error {
+	w.WritePrefix()
+	w.WriteString("ROLLBACK")
+	return nil
 }
 
 func (w *Writer) FormatWith(stmt WithStatement) error {

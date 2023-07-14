@@ -69,6 +69,8 @@ func (w *Writer) formatStatement(stmt lang.Statement) error {
 		err = w.FormatInsert(stmt)
 	case UpdateStatement:
 		err = w.FormatUpdate(stmt)
+	case VacuumStatement:
+		err = w.FormatVacuum(stmt)
 	case lang.DeleteStatement:
 		err = w.FormatDelete(stmt)
 	case lang.WithStatement:
@@ -79,6 +81,23 @@ func (w *Writer) formatStatement(stmt lang.Statement) error {
 		err = fmt.Errorf("unsupported statement type %T", stmt)
 	}
 	return err
+}
+
+func (w *Writer) FormatVacuum(stmt VacuumStatement) error {
+	kw, _ := stmt.Keyword()
+	w.WritePrefix()
+	w.WriteString(kw)
+	w.WriteBlank()
+	if stmt.Schema != "" {
+		w.WriteString(stmt.Schema)
+		w.WriteBlank()
+	}
+	if stmt.File != "" {
+		w.WriteString("INTO")
+		w.WriteBlank()
+		w.WriteString(stmt.File)
+	}
+	return nil
 }
 
 func (w *Writer) FormatInsert(stmt InsertStatement) error {
