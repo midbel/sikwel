@@ -1,0 +1,3 @@
+TRUNCATE employees, departments RESTART IDENTITY;
+
+TRUNCATE TABLE ONLY projects CASCADE;

@@ -6,11 +6,11 @@ import (
 
 	"github.com/midbel/sweet/internal/lang"
 	"github.com/midbel/sweet/internal/sqlite"
+	"github.com/midbel/sweet/internal/postgres"
 )
 
 const (
 	Ansi     = "ansi"
-	Postgres = "postgres"
 	Maria    = "maria"
 	Mysql    = "mysql"
 	Db2      = "db2"
@@ -26,6 +26,10 @@ type Writer interface {
 
 func ParseAnsi(r io.Reader) (Parser, error) {
 	return lang.NewParser(r)
+}
+
+func ParsePostgres(r io.Reader) (Parser, error) {
+	return postgres.NewParser(r)
 }
 
 func FormatAnsi(w io.Writer) Writer {
@@ -46,7 +50,8 @@ func NewParser(r io.Reader, dialect string) (Parser, error) {
 		return ParseAnsi(r)
 	case sqlite.Vendor:
 		return ParseSqlite(r)
-	case Postgres:
+	case postgres.Vendor:
+		return ParsePostgres(r)
 	case Mysql:
 	case Maria:
 	case Db2:
@@ -62,7 +67,7 @@ func NewWriter(w io.Writer, dialect string) (Writer, error) {
 		return FormatAnsi(w), nil
 	case sqlite.Vendor:
 		return FormatSqlite(w), nil
-	case Postgres:
+	case postgres.Vendor:
 	case Mysql:
 	case Maria:
 	case Db2:
