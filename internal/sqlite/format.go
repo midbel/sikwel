@@ -114,16 +114,22 @@ func (w *Writer) formatInsertStatement(stmt lang.Statement) error {
 		w.WriteString(")")
 	}
 	w.WriteBlank()
-	if err := w.FormatInsertValues(ins); err != nil {
-		return err
-	}
-	if err := w.FormatUpsert(ins.Upsert); err != nil {
+	if err := w.FormatInsertValues(ins.Values); err != nil {
 		return err
 	}
 	if ins.Upsert != nil {
 		w.WriteNL()
+		if err := w.FormatUpsert(ins.Upsert); err != nil {
+			return err
+		}
 	}
-	return w.FormatReturn(ins.Return)
+	if ins.Return != nil {
+		w.WriteNL()
+		if err := w.FormatReturn(ins.Return); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (w *Writer) FormatUpdate(stmt UpdateStatement) error {
@@ -162,7 +168,7 @@ func (w *Writer) formatUpdateStatement(stmt lang.Statement) error {
 	w.WriteString("SET")
 	w.WriteNL()
 
-if len(up.Tables) > 0 {
+	if len(up.Tables) > 0 {
 		w.WriteNL()
 		if err := w.FormatFrom(up.Tables); err != nil {
 			return err

@@ -199,12 +199,10 @@ func (w *Writer) FormatDelete(stmt DeleteStatement) error {
 	w.WriteBlank()
 	w.WriteString(stmt.Table)
 	if stmt.Where != nil {
-		w.WriteBlank()
-		w.Enter()
+		w.WriteNL()
 		if err := w.FormatWhere(stmt.Where); err != nil {
 			return err
 		}
-		w.Leave()
 	}
 	if stmt.Return != nil {
 		w.WriteNL()
@@ -235,6 +233,7 @@ func (w *Writer) FormatUpdate(stmt UpdateStatement) error {
 	w.WriteBlank()
 	w.WriteString("SET")
 	w.WriteNL()
+
 	if err := w.FormatAssignment(stmt.List); err != nil {
 		return err
 	}
@@ -283,42 +282,51 @@ func (w *Writer) FormatInsert(stmt InsertStatement) error {
 		w.WriteString(")")
 	}
 	w.WriteBlank()
-	if err := w.FormatInsertValues(stmt); err != nil {
-		return err
-	}
-	if err := w.FormatUpsert(stmt.Upsert); err != nil {
+	if err := w.FormatInsertValues(stmt.Values); err != nil {
 		return err
 	}
 	if stmt.Upsert != nil {
 		w.WriteNL()
+		if err := w.FormatUpsert(stmt.Upsert); err != nil {
+			return err
+		}
 	}
-	return w.FormatReturn(stmt.Return)
+	if stmt.Return != nil {
+		w.WriteNL()
+		if err := w.FormatReturn(stmt.Return); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func (w *Writer) FormatInsertValues(stmt InsertStatement) error {
-	w.WriteString("VALUES")
-
-	w.Enter()
-	defer w.Leave()
-
+func (w *Writer) FormatInsertValues(values Statement) error {
+	if values == nil {
+		return nil
+	}
 	var err error
-	switch stmt := stmt.Values.(type) {
+	switch stmt := values.(type) {
 	case List:
-		w.WriteBlank()
+		w.WriteString("VALUES")
 		w.WriteNL()
+
+		w.Enter()
+		defer w.Leave()
 		for i, v := range stmt.Values {
 			if i > 0 {
 				w.WriteString(",")
 				w.WriteNL()
 			}
 			w.WritePrefix()
-			if err := w.FormatExpr(v, false); err != nil {
-				return err
+			if err = w.FormatExpr(v, false); err != nil {
+				break
 			}
 		}
 	case SelectStatement:
 		w.WriteNL()
 		err = w.FormatSelect(stmt)
+	default:
+		err = fmt.Errorf("values: unexpected statement type(%T)", values)
 	}
 	return err
 }
@@ -332,7 +340,6 @@ func (w *Writer) FormatUpsert(stmt Statement) error {
 		return w.CanNotUse("insert(upsert)", stmt)
 	}
 
-	w.WriteNL()
 	w.WritePrefix()
 	w.WriteString("ON CONFLICT")
 	w.WriteBlank()
@@ -604,9 +611,6 @@ func (w *Writer) FormatReturn(stmt Statement) error {
 	if stmt == nil {
 		return nil
 	}
-	w.Enter()
-	defer w.Leave()
-
 	w.WritePrefix()
 	w.WriteString("RETURNING")
 	w.WriteBlank()
@@ -869,6 +873,7 @@ func (w *Writer) FormatAlias(alias Alias) error {
 func (w *Writer) formatValue(literal string) {
 	if literal == "NULL" || literal == "DEFAULT" || literal == "*" {
 		w.WriteString(literal)
+		return
 	}
 	if _, err := strconv.Atoi(literal); err == nil {
 		w.WriteString(literal)

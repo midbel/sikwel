@@ -115,6 +115,7 @@ func (p *Parser) Parse() (Statement, error) {
 		if err := p.ParseMacro(); err != nil {
 			return nil, err
 		}
+		return p.Parse()
 	}
 	stmt, err := p.parseStatement()
 	if err != nil {
@@ -1333,10 +1334,11 @@ func (p *Parser) ParseStatementList(ctx string, fn func(Statement) (Statement, e
 			}
 		}
 		list = append(list, stmt)
+
 		switch {
 		case p.Is(Comma):
 			p.Next()
-			if p.Is(Keyword) || p.Is(EOL) {
+			if p.Is(Keyword) || p.Is(EOL) || p.Is(Rparen) || p.Done() {
 				return nil, p.Unexpected(ctx)
 			}
 		case p.Is(Keyword):
@@ -1434,13 +1436,13 @@ func (p *Parser) kwCheck(str ...string) func() bool {
 }
 
 func (p *Parser) Done() bool {
-	if p.frame.done() {
+	if p.frame.Done() {
 		if n := len(p.stack); n > 0 {
 			p.frame = p.stack[n-1]
 			p.stack = p.stack[:n-1]
 		}
 	}
-	return p.frame.done()
+	return p.frame.Done()
 }
 
 type prefixFunc func() (Statement, error)
@@ -1499,8 +1501,8 @@ var bindings = map[symbol]int{
 }
 
 type frame struct {
-	*Scanner
-	set KeywordSet
+	scan *Scanner
+	set  KeywordSet
 
 	base string
 	curr Token
@@ -1513,8 +1515,8 @@ func createFrame(r io.Reader, set KeywordSet) (*frame, error) {
 		return nil, err
 	}
 	f := frame{
-		Scanner: scan,
-		set:     set,
+		scan: scan,
+		set:  set,
 	}
 	if n, ok := r.(interface{ Name() string }); ok {
 		f.base = filepath.Dir(n.Name())
@@ -1550,7 +1552,7 @@ func (f *frame) GetPeekType() rune {
 
 func (f *frame) Next() {
 	f.curr = f.peek
-	f.peek = f.Scan()
+	f.peek = f.scan.Scan()
 }
 
 func (f *frame) Done() bool {
