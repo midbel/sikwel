@@ -1066,8 +1066,9 @@ func (p *Parser) ParseFetch() (Statement, error) {
 		if !p.IsKeyword("ROW") && !p.IsKeyword("ROWS") {
 			return nil, p.Unexpected("fetch")
 		}
+		p.Next()
 	}
-	if !p.IsKeyword("OFFSET") {
+	if !p.IsKeyword("FETCH") {
 		return nil, p.Unexpected("fetch")
 	}
 	p.Next()
@@ -1087,6 +1088,7 @@ func (p *Parser) ParseFetch() (Statement, error) {
 	if !p.IsKeyword("ROW") && !p.IsKeyword("ROWS") {
 		return nil, p.Unexpected("fetch")
 	}
+	p.Next()
 	if !p.IsKeyword("ONLY") {
 		return nil, p.Unexpected("fetch")
 	}

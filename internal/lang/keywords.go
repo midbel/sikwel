@@ -22,6 +22,8 @@ var keywords = KeywordSet{
 	{"fetch"},
 	{"row"},
 	{"rows"},
+	{"next"},
+	{"only"},
 	{"group", "by"},
 	{"order", "by"},
 	{"as"},
