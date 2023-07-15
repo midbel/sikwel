@@ -1,5 +1,9 @@
 package lang
 
+import (
+	"fmt"
+)
+
 type Statement interface{}
 
 type Commit struct{}
@@ -98,6 +102,11 @@ type Limit struct {
 	Offset int
 }
 
+type Offset struct {
+	Limit
+	Next bool
+}
+
 type Order struct {
 	Statement
 	Orient string
@@ -126,8 +135,16 @@ type WithStatement struct {
 	Statement
 }
 
+func (s WithStatement) Keyword() (string, error) {
+	return "WITH", nil
+}
+
 type ValuesStatement struct {
 	List []Statement
+}
+
+func (s ValuesStatement) Keyword() (string, error) {
+	return "VALUES", nil
 }
 
 type SelectStatement struct {
@@ -142,11 +159,34 @@ type SelectStatement struct {
 	Limit    Statement
 }
 
+func (s SelectStatement) Keyword() (string, error) {
+	return "SELECT", nil
+}
+
+func getCompoundKeyword(kw string, all, distinct bool) (string, error) {
+	var suffix string
+	switch {
+	default:
+		return kw, nil
+	case all:
+		suffix = "ALL"
+	case distinct:
+		suffix = "DISTINCT"
+	case all && distinct:
+		return "", fmt.Errorf("%s: all and distinct can not be set at the same time", kw)
+	}
+	return fmt.Sprintf("%s %s", kw, suffix), nil
+}
+
 type UnionStatement struct {
 	Left     Statement
 	Right    Statement
 	All      bool
 	Distinct bool
+}
+
+func (s UnionStatement) Keyword() (string, error) {
+	return getCompoundKeyword("UNION", s.All, s.Distinct)
 }
 
 type IntersectStatement struct {
@@ -156,11 +196,19 @@ type IntersectStatement struct {
 	Distinct bool
 }
 
+func (s IntersectStatement) Keyword() (string, error) {
+	return getCompoundKeyword("INTERSECT", s.All, s.Distinct)
+}
+
 type ExceptStatement struct {
 	Left     Statement
 	Right    Statement
 	All      bool
 	Distinct bool
+}
+
+func (s ExceptStatement) Keyword() (string, error) {
+	return getCompoundKeyword("EXCEPT", s.All, s.Distinct)
 }
 
 type UpsertStatement struct {
@@ -177,6 +225,10 @@ type InsertStatement struct {
 	Return  Statement
 }
 
+func (s InsertStatement) Keyword() (string, error) {
+	return "INSERT INTO", nil
+}
+
 type UpdateStatement struct {
 	Table  Statement
 	List   []Statement
@@ -185,10 +237,18 @@ type UpdateStatement struct {
 	Return Statement
 }
 
+func (s UpdateStatement) Keyword() (string, error) {
+	return "UPDATE", nil
+}
+
 type DeleteStatement struct {
 	Table  string
 	Where  Statement
 	Return Statement
+}
+
+func (s DeleteStatement) Keyword() (string, error) {
+	return "DELETE FROM", nil
 }
 
 type WhileStatement struct {

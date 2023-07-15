@@ -5,15 +5,15 @@ import (
 	"io"
 
 	"github.com/midbel/sweet/internal/lang"
-	"github.com/midbel/sweet/internal/sqlite"
 	"github.com/midbel/sweet/internal/postgres"
+	"github.com/midbel/sweet/internal/sqlite"
 )
 
 const (
-	Ansi     = "ansi"
-	Maria    = "maria"
-	Mysql    = "mysql"
-	Db2      = "db2"
+	Ansi  = "ansi"
+	Maria = "maria"
+	Mysql = "mysql"
+	Db2   = "db2"
 )
 
 type Parser interface {

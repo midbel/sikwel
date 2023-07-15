@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/midbel/sweet/internal/lang"
@@ -56,10 +57,6 @@ func (p *Parser) ParseVacuum() (lang.Statement, error) {
 	return stmt, err
 }
 
-func (p *Parser) ParseSelect() (lang.Statement, error) {
-	return p.ParseSelectStatement(p)
-}
-
 func (p *Parser) ParseUpdate() (lang.Statement, error) {
 	var (
 		stmt UpdateStatement
@@ -106,6 +103,36 @@ func (p *Parser) ParseInsert() (lang.Statement, error) {
 	}
 	stmt.Statement, err = p.Parser.ParseInsert()
 	return stmt, err
+}
+
+func (p *Parser) ParseSelect() (lang.Statement, error) {
+	return p.ParseSelectStatement(p)
+}
+
+func (p *Parser) ParseLimit() (lang.Statement, error) {
+	if !p.IsKeyword("LIMIT") {
+		return nil, nil
+	}
+	var (
+		lim lang.Limit
+		err error
+	)
+	p.Next()
+	lim.Count, err = strconv.Atoi(p.GetCurrLiteral())
+	if err != nil {
+		return nil, p.Unexpected("limit")
+	}
+	p.Next()
+	if !p.Is(lang.Comma) && !p.IsKeyword("OFFSET") {
+		return lim, nil
+	}
+	p.Next()
+	lim.Offset, err = strconv.Atoi(p.GetCurrLiteral())
+	if err != nil {
+		return nil, p.Unexpected("offset")
+	}
+	p.Next()
+	return lim, nil
 }
 
 func (p *Parser) ParseOrderBy() ([]lang.Statement, error) {

@@ -5,7 +5,7 @@ import (
 )
 
 type TruncateStatement struct {
-	Only bool
+	Only     bool
 	Tables   []lang.Statement
 	Identity string
 	Cascade  bool
@@ -14,4 +14,10 @@ type TruncateStatement struct {
 
 func (s TruncateStatement) Keyword() (string, error) {
 	return "TRUNCATE", nil
+}
+
+type Order struct {
+	lang.Statement
+	Orient string
+	Nulls  string
 }

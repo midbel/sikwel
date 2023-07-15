@@ -568,7 +568,7 @@ func (w *Writer) FormatLimit(limit Statement) error {
 	}
 	lim, ok := limit.(Limit)
 	if !ok {
-		return w.CanNotUse("limit", limit)
+		return w.FormatOffset(limit)
 	}
 	w.WritePrefix()
 	w.WriteString("LIMIT")
@@ -580,6 +580,36 @@ func (w *Writer) FormatLimit(limit Statement) error {
 		w.WriteBlank()
 		w.WriteString(strconv.Itoa(lim.Offset))
 	}
+	return nil
+}
+
+func (w *Writer) FormatOffset(limit Statement) error {
+	lim, ok := limit.(Offset)
+	if !ok {
+		return w.CanNotUse("fetch", limit)
+	}
+	w.WritePrefix()
+	if lim.Offset > 0 {
+		w.WriteString("OFFSET")
+		w.WriteBlank()
+		w.WriteString(strconv.Itoa(lim.Offset))
+		w.WriteBlank()
+		w.WriteString("ROWS")
+		w.WriteBlank()
+	}
+	w.WriteString("FETCH")
+	w.WriteBlank()
+	if lim.Next {
+		w.WriteString("NEXT")
+	} else {
+		w.WriteString("FIRST")
+	}
+	w.WriteBlank()
+	w.WriteString(strconv.Itoa(lim.Count))
+	w.WriteBlank()
+	w.WriteString("ROWS")
+	w.WriteBlank()
+	w.WriteString("ONLY")
 	return nil
 }
 
