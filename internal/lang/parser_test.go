@@ -14,7 +14,7 @@ func TestParser(t *testing.T) {
 }
 
 func testSelect(t *testing.T) {
-	p, err := createParser("testdata/select.sql")
+	p, err := createParser("testdata/queries.sql")
 	if err != nil {
 		t.Errorf("fail to create parser: %s", err)
 		return
@@ -25,7 +25,7 @@ func testSelect(t *testing.T) {
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			t.Errorf("error parsing select statement: %s", err)
+			t.Errorf("error parsing statement: %s", err)
 			continue
 		}
 	}

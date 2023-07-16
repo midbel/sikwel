@@ -1,3 +1,4 @@
+-- all from employees
 select * from employees;
 select * from employees limit 10;
 select * from employees limit 10 offset 5;
@@ -16,6 +17,7 @@ count(e.id)
 from employees e
 where e.salary >= 1000 and e.manager is null
 group by e.dept;
+-- test with CTE
 with managers as (
 	select
 	id,
@@ -25,6 +27,7 @@ with managers as (
 )
 select * from employees join managers using(id);
 select * from employees e join managers m on e.manager=m.id;
+-- join with select
 select *
 from employees e 
 join (
@@ -34,3 +37,16 @@ join (
 	from employees
 	where manager is null
 ) m on e.manager=m.id;
+
+-- insert statements
+insert into employees (id, firstname, lastname, manager) values
+	(default, 'john', 'smith', null),
+	(default, 'john', 'brown', 1);
+
+insert into departments(name) select dept from employees;
+
+update employees set dept = 'it' where id >= 10;
+
+delete from employees;
+
+delete from employees where id <= 5;
