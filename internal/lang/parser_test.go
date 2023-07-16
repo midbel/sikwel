@@ -33,7 +33,7 @@ func testSelect(t *testing.T) {
 
 func createParser(file string) (*lang.Parser, error) {
 	r, err := os.Open(file)
-	if err != nil {	
+	if err != nil {
 		return nil, err
 	}
 	return lang.NewParser(r)

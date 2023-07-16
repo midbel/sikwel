@@ -41,7 +41,12 @@ join (
 -- insert statements
 insert into employees (id, firstname, lastname, manager) values
 	(default, 'john', 'smith', null),
-	(default, 'john', 'brown', 1);
+	(default, 'john', 'brown', 1)
+returning id, manager;
+
+insert into employees (id, firstname, lastname, manager) values
+	(default, 'john', 'smith', null)
+on conflict do nothing;
 
 insert into departments(name) select dept from employees;
 
@@ -49,4 +54,4 @@ update employees set dept = 'it' where id >= 10;
 
 delete from employees;
 
-delete from employees where id <= 5;
+delete from employees where id <= 5 returning *;
