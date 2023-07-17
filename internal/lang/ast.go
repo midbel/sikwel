@@ -171,22 +171,21 @@ const (
 	RowCurrent FrameRow = 1 << iota
 	RowPreceding
 	RowFollowing
-	RowUnbound
+	RowUnbounded
 )
 
 type FrameExclude int
 
 const (
-	ExludeCurrent FrameExclude = 1 << (iota + 1)
+	ExcludeCurrent FrameExclude = 1 << (iota + 1)
 	ExcludeNoOthers
 	ExcludeGroup
 	ExcludeTies
 )
 
 type FrameSpec struct {
-	Row     FrameRow
-	Expr    Statement
-	Exclude FrameExclude
+	Row  FrameRow
+	Expr Statement
 }
 
 type BetweenFrameSpec struct {

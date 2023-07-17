@@ -1062,7 +1062,61 @@ func (p *Parser) parseFrameSpec() (Statement, error) {
 
 	}
 	p.Next()
-	return nil, nil
+
+	var stmt BetweenFrameSpec
+	switch {
+	case p.IsKeyword("CURRENT ROW"):
+		stmt.Left.Row = RowCurrent
+	case p.IsKeyword("UNBOUNDED PRECEDING"):
+		stmt.Left.Row = RowPreceding | RowUnbounded
+	default:
+		expr, err := p.parseExpression(powLowest, p.kwCheck("PRECEDING", "FOLLOWING"))
+		if err != nil {
+			return nil, err
+		}
+		stmt.Left.Row = RowPreceding
+		stmt.Left.Expr = expr
+		if !p.IsKeyword("PRECEDING") && !p.IsKeyword("FOLLOWING") {
+			return nil, p.Unexpected("frame spec")
+		}
+	}
+	p.Next()
+	if !p.IsKeyword("AND") {
+		return nil, p.Unexpected("frame spec")
+	}
+	p.Next()
+	switch {
+	case p.IsKeyword("CURRENT ROW"):
+		stmt.Right.Row = RowCurrent
+	case p.IsKeyword("UNBOUNDED FOLLOWING"):
+		stmt.Right.Row = RowFollowing | RowUnbounded
+	default:
+		expr, err := p.parseExpression(powLowest, p.kwCheck("PRECEDING", "FOLLOWING"))
+		if err != nil {
+			return nil, err
+		}
+		stmt.Right.Row = RowFollowing
+		stmt.Right.Expr = expr
+		if !p.IsKeyword("PRECEDING") && !p.IsKeyword("FOLLOWING") {
+			return nil, p.Unexpected("frame spec")
+		}
+	}
+	p.Next()
+	switch {
+	case p.IsKeyword("EXCLUDE NO OTHERS"):
+		stmt.Exclude = ExcludeNoOthers
+	case p.IsKeyword("EXCLUDE CURRENT ROW"):
+		stmt.Exclude = ExcludeCurrent
+	case p.IsKeyword("EXCLUDE GROUP"):
+		stmt.Exclude = ExcludeGroup
+	case p.IsKeyword("EXCLUDE TIES"):
+		stmt.Exclude = ExcludeTies
+	default:
+	}
+	if stmt.Exclude > 0 {
+		p.Next()
+	}
+	return stmt, nil
 }
 
 func (p *Parser) ParseOrderBy() ([]Statement, error) {
