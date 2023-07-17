@@ -1058,12 +1058,12 @@ func (p *Parser) parseFrameSpec() (Statement, error) {
 		return nil, nil
 	}
 	p.Next()
+	var stmt BetweenFrameSpec
 	if !p.IsKeyword("BETWEEN") {
-
+		stmt.Right.Row = RowCurrent
 	}
 	p.Next()
 
-	var stmt BetweenFrameSpec
 	switch {
 	case p.IsKeyword("CURRENT ROW"):
 		stmt.Left.Row = RowCurrent
@@ -1081,27 +1081,29 @@ func (p *Parser) parseFrameSpec() (Statement, error) {
 		}
 	}
 	p.Next()
-	if !p.IsKeyword("AND") {
-		return nil, p.Unexpected("frame spec")
-	}
-	p.Next()
-	switch {
-	case p.IsKeyword("CURRENT ROW"):
-		stmt.Right.Row = RowCurrent
-	case p.IsKeyword("UNBOUNDED FOLLOWING"):
-		stmt.Right.Row = RowFollowing | RowUnbounded
-	default:
-		expr, err := p.parseExpression(powLowest, p.kwCheck("PRECEDING", "FOLLOWING"))
-		if err != nil {
-			return nil, err
-		}
-		stmt.Right.Row = RowFollowing
-		stmt.Right.Expr = expr
-		if !p.IsKeyword("PRECEDING") && !p.IsKeyword("FOLLOWING") {
+	if stmt.Right.Row == 0 {
+		if !p.IsKeyword("AND") {
 			return nil, p.Unexpected("frame spec")
 		}
+		p.Next()
+		switch {
+		case p.IsKeyword("CURRENT ROW"):
+			stmt.Right.Row = RowCurrent
+		case p.IsKeyword("UNBOUNDED FOLLOWING"):
+			stmt.Right.Row = RowFollowing | RowUnbounded
+		default:
+			expr, err := p.parseExpression(powLowest, p.kwCheck("PRECEDING", "FOLLOWING"))
+			if err != nil {
+				return nil, err
+			}
+			stmt.Right.Row = RowFollowing
+			stmt.Right.Expr = expr
+			if !p.IsKeyword("PRECEDING") && !p.IsKeyword("FOLLOWING") {
+				return nil, p.Unexpected("frame spec")
+			}
+		}
+		p.Next()
 	}
-	p.Next()
 	switch {
 	case p.IsKeyword("EXCLUDE NO OTHERS"):
 		stmt.Exclude = ExcludeNoOthers
