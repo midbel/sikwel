@@ -68,3 +68,5 @@ select * from managers m join departments d on m.dept=d.id;
 -- declare f real;
 -- declare v varchar(32);
 -- declare c char(1);
+
+select cast(hired_date as int) from employees;

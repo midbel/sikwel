@@ -79,6 +79,22 @@ var keywords = KeywordSet{
 	{"returning"},
 	{"is"},
 	{"not"},
+	{"collate"},
+	{"cast"},
+	{"filter"},
+	{"over"},
+	{"partition", "by"},
+	{"range"},
+	{"groups"},
+	{"preceding"},
+	{"following"},
+	{"unbounded", "preceding"},
+	{"unbounded", "following"},
+	{"current", "row"},
+	{"exclude", "no", "others"},
+	{"exclude", "current", "row"},
+	{"exclude", "group"},
+	{"exclude", "ties"},
 }
 
 func GetKeywords() KeywordSet {

@@ -4,15 +4,24 @@ import (
 	"fmt"
 )
 
-type Statement interface{}
+type Statement interface {
+	// Keyword() (string, error)
+	// fmt.Stringer
+}
+
+type Expression interface {
+	// Operand() string
+	// fmt.Stringer
+}
 
 type Commit struct{}
 
 type Rollback struct{}
 
 type Type struct {
-	Name   string
-	Length int
+	Name      string
+	Length    int
+	Precision int
 }
 
 type Declare struct {
@@ -21,9 +30,34 @@ type Declare struct {
 	Value Statement
 }
 
-type Call struct {
+type Not struct {
+	Statement
+}
+
+type Collate struct {
+	Statement
+	Collation string
+}
+
+type Cast struct {
 	Ident Statement
-	Args  []Statement
+	Type  Type
+}
+
+type Exists struct {
+	Statement
+}
+
+type Call struct {
+	Distinct bool
+	Ident    Statement
+	Args     []Statement
+	Filter   Statement
+	Over     Statement
+}
+
+type Row struct {
+	Values []Statement
 }
 
 type Unary struct {
@@ -124,6 +158,43 @@ type Assignment struct {
 	Value Statement
 }
 
+type Window struct {
+	Ident      Statement
+	Partitions []Statement
+	Orders     []Statement
+	Spec       FrameSpec
+}
+
+type FrameRow int
+
+const (
+	RowCurrent FrameRow = 1 << iota
+	RowPreceding
+	RowFollowing
+	RowUnbound
+)
+
+type FrameExclude int
+
+const (
+	ExludeCurrent FrameExclude = 1 << (iota + 1)
+	ExcludeNoOthers
+	ExcludeGroup
+	ExcludeTies
+)
+
+type FrameSpec struct {
+	Row     FrameRow
+	Expr    Statement
+	Exclude FrameExclude
+}
+
+type BetweenFrameSpec struct {
+	Left    FrameSpec
+	Right   FrameSpec
+	Exclude FrameExclude
+}
+
 type CteStatement struct {
 	Ident   string
 	Columns []string
@@ -155,6 +226,7 @@ type SelectStatement struct {
 	Where    Statement
 	Groups   []Statement
 	Having   Statement
+	Windows  []Statement
 	Orders   []Statement
 	Limit    Statement
 }
