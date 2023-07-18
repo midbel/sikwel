@@ -390,16 +390,7 @@ func (w *Writer) FormatValues(stmt ValuesStatement) error {
 	w.WritePrefix()
 	w.WriteString("VALUES")
 	w.WriteBlank()
-	for i, v := range stmt.List {
-		if i > 0 {
-			w.WriteString(",")
-			w.WriteBlank()
-		}
-		if err := w.FormatExpr(v, false); err != nil {
-			return err
-		}
-	}
-	return nil
+	return w.formatStmtSlice(stmt.List)
 }
 
 func (w *Writer) FormatSelect(stmt SelectStatement) error {
@@ -683,16 +674,7 @@ func (w *Writer) FormatReturn(stmt Statement) error {
 	if !ok {
 		return w.FormatExpr(stmt, false)
 	}
-	for i, s := range list.Values {
-		if i > 0 {
-			w.WriteString(",")
-			w.WriteBlank()
-		}
-		if err := w.FormatExpr(s, false); err != nil {
-			return err
-		}
-	}
-	return nil
+	return w.formatStmtSlice(list.Values)
 }
 
 func (w *Writer) FormatWhere(stmt Statement) error {
