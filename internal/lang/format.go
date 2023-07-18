@@ -893,17 +893,8 @@ func (w *Writer) formatStmtSlice(values []Statement) error {
 
 func (w *Writer) formatList(stmt List) error {
 	w.WriteString("(")
-	for i, v := range stmt.Values {
-		if i > 0 {
-			w.WriteString(",")
-			w.WriteBlank()
-		}
-		if err := w.FormatExpr(v, false); err != nil {
-			return err
-		}
-	}
-	w.WriteString(")")
-	return nil
+	defer w.WriteString(")")
+	return w.formatStmtSlice(stmt.Values)
 }
 
 func (w *Writer) formatCall(call Call) error {
