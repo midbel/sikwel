@@ -70,3 +70,9 @@ select * from managers m join departments d on m.dept=d.id;
 -- declare c char(1);
 
 select cast(hired_date as int) from employees;
+
+select
+max(hired_date) filter(where hired_date > 0) 
+from employees;
+
+values ROW(1, 2, 3);

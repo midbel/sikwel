@@ -38,6 +38,11 @@ join (
 	where manager is null
 ) m on e.manager=m.id;
 
+-- different type of expression
+
+select cast(hired_date as int(32)) from employees;
+select max(hired_date) filter(where hired_date > 2023) from employees;
+
 -- insert statements
 insert into employees (id, firstname, lastname, manager) values
 	(default, 'john', 'smith', null),

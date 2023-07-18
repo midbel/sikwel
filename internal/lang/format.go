@@ -65,6 +65,8 @@ func (w *Writer) formatStatement(stmt Statement) error {
 	switch stmt := stmt.(type) {
 	case SelectStatement:
 		err = w.FormatSelect(stmt)
+	case ValuesStatement:
+		err = w.FormatValues(stmt)
 	case UnionStatement:
 		err = w.FormatUnion(stmt)
 	case IntersectStatement:
@@ -382,6 +384,22 @@ func (w *Writer) FormatUpsert(stmt Statement) error {
 		return err
 	}
 	return w.FormatWhere(upsert.Where)
+}
+
+func (w *Writer) FormatValues(stmt ValuesStatement) error {
+	w.WritePrefix()
+	w.WriteString("VALUES")
+	w.WriteBlank()
+	for i, v := range stmt.List {
+		if i > 0 {
+			w.WriteString(",")
+			w.WriteBlank()
+		}
+		if err := w.FormatExpr(v, false); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (w *Writer) FormatSelect(stmt SelectStatement) error {
@@ -779,6 +797,8 @@ func (w *Writer) FormatExpr(stmt Statement, nl bool) error {
 		w.FormatName(stmt)
 	case Value:
 		w.formatValue(stmt.Literal)
+	case Row:
+		err = w.formatRow(stmt, nl)
 	case Alias:
 		err = w.FormatAlias(stmt)
 	case Call:
@@ -791,6 +811,14 @@ func (w *Writer) FormatExpr(stmt Statement, nl bool) error {
 		err = w.formatUnary(stmt, nl)
 	case Between:
 		err = w.formatBetween(stmt, nl)
+	case Collate:
+		err = w.formatCollate(stmt, nl)
+	case Cast:
+		err = w.formatCast(stmt, nl)
+	case Exists:
+		err = w.formatExists(stmt, nl)
+	case Not:
+		err = w.formatNot(stmt, nl)
 	case CaseStatement:
 		err = w.formatCase(stmt)
 	case WhenStatement:
@@ -799,6 +827,73 @@ func (w *Writer) FormatExpr(stmt Statement, nl bool) error {
 		err = w.formatStatement(stmt)
 	}
 	return err
+}
+
+func (w *Writer) formatRow(stmt Row, nl bool) error {
+	w.WriteString("ROW")
+	w.WriteString("(")
+	for i, v := range stmt.Values {
+		if i > 0 {
+			w.WriteString(",")
+			w.WriteBlank()
+		}
+		if nl {
+			w.WriteNL()
+			w.WritePrefix()
+		}
+		if err := w.FormatExpr(v, false); err != nil {
+			return err
+		}
+	}
+	if nl {
+		w.WriteNL()
+	}
+	w.WriteString(")")
+	return nil
+}
+
+func (w *Writer) formatNot(stmt Not, _ bool) error {
+	return nil
+}
+
+func (w *Writer) formatExists(stmt Exists, _ bool) error {
+	return nil
+}
+
+func (w *Writer) formatCast(stmt Cast, _ bool) error {
+	w.WriteString("CAST")
+	w.WriteString("(")
+	if err := w.FormatExpr(stmt.Ident, false); err != nil {
+		return err
+	}
+	w.WriteBlank()
+	w.WriteString("AS")
+	w.WriteBlank()
+	if err := w.formatType(stmt.Type); err != nil {
+		return err
+	}
+	w.WriteString(")")
+	return nil
+}
+
+func (w *Writer) formatType(dt Type) error {
+	w.WriteString(dt.Name)
+	if dt.Length <= 0 {
+		return nil
+	}
+	w.WriteString("(")
+	w.WriteString(strconv.Itoa(dt.Length))
+	if dt.Precision > 0 {
+		w.WriteString(",")
+		w.WriteBlank()
+		w.WriteString(strconv.Itoa(dt.Precision))
+	}
+	w.WriteString(")")
+	return nil
+}
+
+func (w *Writer) formatCollate(stmt Collate, _ bool) error {
+	return nil
 }
 
 func (w *Writer) formatList(stmt List) error {
@@ -823,6 +918,10 @@ func (w *Writer) formatCall(call Call) error {
 	}
 	w.WriteString(n.Ident)
 	w.WriteString("(")
+	if call.Distinct {
+		w.WriteString("DISTINCT")
+		w.WriteBlank()
+	}
 	for i, s := range call.Args {
 		if i > 0 {
 			w.WriteString(",")
@@ -833,6 +932,64 @@ func (w *Writer) formatCall(call Call) error {
 		}
 	}
 	w.WriteString(")")
+	if call.Filter != nil {
+		w.WriteBlank()
+		w.WriteString("FILTER")
+		w.WriteString("(")
+		w.WriteString("WHERE")
+		w.WriteBlank()
+		if err := w.FormatExpr(call.Filter, false); err != nil {
+			return err
+		}
+		w.WriteString(")")
+	}
+	if call.Over != nil {
+		w.WriteBlank()
+		w.WriteString("OVER")
+		switch over := call.Over.(type) {
+		case Name:
+			w.WriteBlank()
+			return w.FormatExpr(over, false)
+		case Window:
+			w.WriteString("(")
+			if over.Ident != nil {
+				if err := w.FormatExpr(over.Ident, false); err != nil {
+					return err
+				}
+			}
+			if over.Ident == nil && len(over.Partitions) > 0 {
+				w.WriteBlank()
+				w.WriteString("PARTITION BY")
+				w.WriteBlank()
+				for i, v := range over.Partitions {
+					if i > 0 {
+						w.WriteString(",")
+						w.WriteBlank()
+					}
+					if err := w.FormatExpr(v, false); err != nil {
+						return err
+					}
+				}
+			}
+			if len(over.Orders) > 0 {
+				w.WriteBlank()
+				w.WriteString("ORDER BY")
+				w.WriteBlank()
+				for i, v := range over.Orders {
+					if i > 0 {
+						w.WriteString(",")
+						w.WriteBlank()
+					}
+					if err := w.FormatExpr(v, false); err != nil {
+						return err
+					}
+				}
+			}
+			w.WriteString(")")
+		default:
+			return fmt.Errorf("window: unsupported statement type %T", over)
+		}
+	}
 	return nil
 }
 

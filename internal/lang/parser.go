@@ -1471,6 +1471,7 @@ func (p *Parser) parseRow() (Statement, error) {
 	if !p.Is(Lparen) {
 		return nil, p.Unexpected("row")
 	}
+	p.Next()
 	var row Row
 	for !p.Done() && !p.Is(Rparen) {
 		expr, err := p.parseExpression(powLowest, p.tokCheck(Comma, Rparen))
@@ -1485,6 +1486,7 @@ func (p *Parser) parseRow() (Statement, error) {
 	if !p.Is(Rparen) {
 		return nil, p.Unexpected("row")
 	}
+	p.Next()
 	return row, nil
 }
 
@@ -1498,7 +1500,7 @@ func (p *Parser) parseCast() (Statement, error) {
 		cast Cast
 		err  error
 	)
-	cast.Ident, err = p.parseExpression(powLowest, p.kwCheck("AS"))
+	cast.Ident, err = p.parseIdentifier()
 	if err != nil {
 		return nil, err
 	}
@@ -1535,20 +1537,6 @@ func (p *Parser) parseIdentifier() (Statement, error) {
 }
 
 func (p *Parser) ParseIdent() (Statement, error) {
-	var name Name
-	if p.peekIs(Dot) {
-		name.Prefix = p.curr.Literal
-		p.Next()
-		p.Next()
-	}
-	if !p.Is(Ident) && !p.Is(Star) {
-		return nil, p.Unexpected("identifier")
-	}
-	name.Ident = p.curr.Literal
-	if p.Is(Star) {
-		name.Ident = "*"
-	}
-	p.Next()
 	stmt, err := p.parseIdentifier()
 	if err == nil {
 		stmt, err = p.ParseAlias(stmt)
