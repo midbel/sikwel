@@ -896,6 +896,19 @@ func (w *Writer) formatCollate(stmt Collate, _ bool) error {
 	return nil
 }
 
+func (w *Writer) formatStmtSlice(values []Statement) error {
+	for i, v := range values {
+		if i > 0 {
+			w.WriteString(",")
+			w.WriteBlank()
+		}
+		if err := w.FormatExpr(v, false); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (w *Writer) formatList(stmt List) error {
 	w.WriteString("(")
 	for i, v := range stmt.Values {
@@ -922,14 +935,8 @@ func (w *Writer) formatCall(call Call) error {
 		w.WriteString("DISTINCT")
 		w.WriteBlank()
 	}
-	for i, s := range call.Args {
-		if i > 0 {
-			w.WriteString(",")
-			w.WriteBlank()
-		}
-		if err := w.FormatExpr(s, false); err != nil {
-			return err
-		}
+	if err := w.formatStmtSlice(call.Args); err != nil {
+		return err
 	}
 	w.WriteString(")")
 	if call.Filter != nil {
@@ -961,28 +968,16 @@ func (w *Writer) formatCall(call Call) error {
 				w.WriteBlank()
 				w.WriteString("PARTITION BY")
 				w.WriteBlank()
-				for i, v := range over.Partitions {
-					if i > 0 {
-						w.WriteString(",")
-						w.WriteBlank()
-					}
-					if err := w.FormatExpr(v, false); err != nil {
-						return err
-					}
+				if err := w.formatStmtSlice(over.Partitions); err != nil {
+					return err
 				}
 			}
 			if len(over.Orders) > 0 {
 				w.WriteBlank()
 				w.WriteString("ORDER BY")
 				w.WriteBlank()
-				for i, v := range over.Orders {
-					if i > 0 {
-						w.WriteString(",")
-						w.WriteBlank()
-					}
-					if err := w.FormatExpr(v, false); err != nil {
-						return err
-					}
+				if err := w.formatStmtSlice(over.Orders); err != nil {
+					return err
 				}
 			}
 			w.WriteString(")")
