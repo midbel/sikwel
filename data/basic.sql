@@ -75,4 +75,9 @@ select
 max(hired_date) filter(where hired_date > 0) 
 from employees;
 
+select 
+name,
+row_number() over(partition by year(hired_date))
+from employees;
+
 values ROW(1, 2, 3);

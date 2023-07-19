@@ -839,6 +839,12 @@ func (w *Writer) formatNot(stmt Not, _ bool) error {
 }
 
 func (w *Writer) formatExists(stmt Exists, _ bool) error {
+	w.WriteString("EXISTS")
+	w.WriteString("(")
+	if err := w.FormatExpr(stmt.Statement, false); err != nil {
+		return err
+	}
+	w.WriteString(")")
 	return nil
 }
 
@@ -926,6 +932,7 @@ func (w *Writer) formatCall(call Call) error {
 	if call.Over != nil {
 		w.WriteBlank()
 		w.WriteString("OVER")
+		w.WriteBlank()
 		switch over := call.Over.(type) {
 		case Name:
 			w.WriteBlank()
@@ -938,7 +945,6 @@ func (w *Writer) formatCall(call Call) error {
 				}
 			}
 			if over.Ident == nil && len(over.Partitions) > 0 {
-				w.WriteBlank()
 				w.WriteString("PARTITION BY")
 				w.WriteBlank()
 				if err := w.formatStmtSlice(over.Partitions); err != nil {

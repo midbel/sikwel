@@ -1020,8 +1020,10 @@ func (p *Parser) ParseWindow() (Statement, error) {
 		stmt.Ident, err = p.parseIdentifier()
 	case p.IsKeyword("PARTITION BY"):
 		p.Next()
-		for !p.Done() && !p.IsKeyword("ORDER BY") {
-			expr, err := p.parseExpression(powLowest, nil)
+		for !p.Done() && !p.IsKeyword("ORDER BY") && !p.Is(Rparen) {
+			expr, err := p.parseExpression(powLowest, func() bool {
+				return p.IsKeyword("ORDER BY") || p.Is(Rparen)
+			})
 			if err != nil {
 				return nil, err
 			}
@@ -1029,10 +1031,11 @@ func (p *Parser) ParseWindow() (Statement, error) {
 			switch {
 			case p.Is(Comma):
 				p.Next()
-				if p.IsKeyword("ORDER BY") {
+				if p.IsKeyword("ORDER BY") || p.Is(Rparen) {
 					return nil, p.Unexpected("window")
 				}
 			case p.IsKeyword("ORDER BY"):
+			case p.Is(Rparen):
 			default:
 				return nil, p.Unexpected("window")
 			}
@@ -1046,6 +1049,10 @@ func (p *Parser) ParseWindow() (Statement, error) {
 	if stmt.Orders, err = p.ParseOrderBy(); err != nil {
 		return nil, err
 	}
+	if !p.Is(Rparen) {
+		return nil, p.Unexpected("window")
+	}
+	p.Next()
 	return stmt, err
 }
 
@@ -1409,6 +1416,8 @@ func (p *Parser) parseOver() (Statement, error) {
 	if !p.IsKeyword("OVER") {
 		return nil, nil
 	}
+	p.UnregisterInfix("AS", Keyword)
+	defer p.RegisterInfix("AS", Keyword, p.parseKeywordExpr)
 	p.Next()
 	if !p.Is(Lparen) {
 		return p.parseIdentifier()
