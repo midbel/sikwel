@@ -17,6 +17,7 @@ type SelectParser interface {
 	ParseGroupBy() ([]Statement, error)
 	ParseHaving() (Statement, error)
 	ParseOrderBy() ([]Statement, error)
+	ParseWindows() ([]Statement, error)
 	ParseLimit() (Statement, error)
 }
 
@@ -797,6 +798,9 @@ func (p *Parser) ParseSelectStatement(sp SelectParser) (Statement, error) {
 	if stmt.Having, err = sp.ParseHaving(); err != nil {
 		return nil, err
 	}
+	if stmt.Windows, err = sp.ParseWindows(); err != nil {
+		return nil, err
+	}
 	if stmt.Orders, err = sp.ParseOrderBy(); err != nil {
 		return nil, err
 	}
@@ -1004,6 +1008,35 @@ func (p *Parser) ParseHaving() (Statement, error) {
 	return p.parseExpression(powLowest, func() bool {
 		return p.Is(EOL) || done()
 	})
+}
+
+func (p *Parser) ParseWindows() ([]Statement, error) {
+	if !p.IsKeyword("WINDOW") {
+		return nil, nil
+	}
+	p.Next()
+	var (
+		list []Statement
+		err  error
+	)
+	for !p.Done() && !p.Is(Keyword) && !p.Is(EOL) {
+		var win WindowDefinition
+		if win.Ident, err = p.parseIdentifier(); err != nil {
+			return nil, err
+		}
+		if !p.IsKeyword("AS") {
+			return nil, p.Unexpected("windoow")
+		}
+		p.Next()
+		if win.Window, err = p.ParseWindow(); err != nil {
+			return nil, err
+		}
+		list = append(list, win)
+		if p.Is(Comma) {
+			p.Next()
+		}
+	}
+	return list, err
 }
 
 func (p *Parser) ParseWindow() (Statement, error) {

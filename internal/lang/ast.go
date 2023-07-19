@@ -158,6 +158,11 @@ type Assignment struct {
 	Value Statement
 }
 
+type WindowDefinition struct {
+	Ident  Statement
+	Window Statement
+}
+
 type Window struct {
 	Ident      Statement
 	Partitions []Statement

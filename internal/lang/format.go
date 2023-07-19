@@ -425,6 +425,12 @@ func (w *Writer) FormatSelect(stmt SelectStatement) error {
 			return err
 		}
 	}
+	if len(stmt.Windows) > 0 {
+		w.WriteNL()
+		if err := w.FormatWindows(stmt.Windows); err != nil {
+			return err
+		}
+	}
 	if len(stmt.Orders) > 0 {
 		w.WriteNL()
 		if err := w.FormatOrderBy(stmt.Orders); err != nil {
@@ -512,6 +518,77 @@ func (w *Writer) FormatGroupBy(groups []Statement) error {
 			return w.CanNotUse("group by", s)
 		}
 		w.FormatName(n)
+	}
+	return nil
+}
+
+func (w *Writer) FormatWindows(windows []Statement) error {
+	w.WritePrefix()
+	w.WriteString("WINDOW")
+
+	w.Enter()
+	defer w.Leave()
+
+	if len(windows) > 1 {
+		w.WriteNL()
+		w.WritePrefix()
+	} else {
+		w.WriteBlank()
+	}
+
+	for i, c := range windows {
+		def, ok := c.(WindowDefinition)
+		if !ok {
+			return fmt.Errorf("window: unexpected statement type %T", c)
+		}
+		if i > 0 {
+			w.WriteString(",")
+			w.WriteNL()
+			w.WritePrefix()
+		}
+		if err := w.FormatExpr(def.Ident, false); err != nil {
+			return err
+		}
+		w.WriteBlank()
+		w.WriteString("AS")
+		w.WriteBlank()
+		w.WriteString("(")
+		win, ok := def.Window.(Window)
+		if !ok {
+			return fmt.Errorf("window: unexpected statement type %T", def.Window)
+		}
+		if win.Ident != nil {
+			if err := w.FormatExpr(win.Ident, false); err != nil {
+				return err
+			}
+			w.WriteBlank()
+		}
+		if win.Ident == nil && len(win.Partitions) > 0 {
+			w.WriteString("PARTITION BY")
+			w.WriteBlank()
+			if err := w.formatStmtSlice(win.Partitions); err != nil {
+				return err
+			}
+		}
+		if len(win.Orders) > 0 {
+			w.WriteBlank()
+			w.WriteString("ORDER BY")
+			w.WriteBlank()
+			for i, s := range win.Orders {
+				if i > 0 {
+					w.WriteString(",")
+					w.WriteBlank()
+				}
+				order, ok := s.(Order)
+				if !ok {
+					return w.CanNotUse("order by", s)
+				}
+				if err := w.formatOrder(order); err != nil {
+					return err
+				}
+			}
+		}
+		w.WriteString(")")
 	}
 	return nil
 }

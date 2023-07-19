@@ -43,6 +43,10 @@ join (
 select cast(hired_date as int(32)) from employees;
 select max(hired_date) filter(where hired_date > 2023) from employees;
 
+-- window function
+
+select * from table window win as (partition by field order by other);
+
 -- insert statements
 insert into employees (id, firstname, lastname, manager) values
 	(default, 'john', 'smith', null),

@@ -82,6 +82,7 @@ var keywords = KeywordSet{
 	{"collate"},
 	{"cast"},
 	{"filter"},
+	{"window"},
 	{"over"},
 	{"partition", "by"},
 	{"range"},

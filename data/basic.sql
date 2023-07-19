@@ -80,4 +80,10 @@ name,
 row_number() over(partition by year(hired_date))
 from employees;
 
+select name 
+from employees 
+window
+	hired as (partition by dept, year order by dept desc),
+	salary as (partition by salary);
+
 values ROW(1, 2, 3);
