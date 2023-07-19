@@ -226,6 +226,12 @@ func (s *Scanner) scanPunct(tok *Token) {
 
 func (s *Scanner) scanOperator(tok *Token) {
 	switch s.char {
+	case percent:
+		tok.Type = Mod
+		if k := s.peek(); k == equal {
+			s.read()
+			tok.Type = ModAssign
+		}
 	case equal:
 		tok.Type = Eq
 	case langle:
@@ -236,12 +242,18 @@ func (s *Scanner) scanOperator(tok *Token) {
 		} else if k == equal {
 			s.read()
 			tok.Type = Le
+		} else if k == langle {
+			s.read()
+			tok.Type = Lshift
 		}
 	case rangle:
 		tok.Type = Gt
 		if k := s.peek(); k == equal {
 			s.read()
 			tok.Type = Ge
+		} else if k == rangle {
+			s.read()
+			tok.Type = Rshift
 		}
 	case bang:
 		tok.Type = Invalid
@@ -251,16 +263,32 @@ func (s *Scanner) scanOperator(tok *Token) {
 		}
 	case slash:
 		tok.Type = Slash
+		if k := s.peek(); k == equal {
+			s.read()
+			tok.Type = DivAssign
+		}
 	case plus:
 		tok.Type = Plus
+		if k := s.peek(); k == equal {
+			s.read()
+			tok.Type = AddAssign
+		}
 	case minus:
 		tok.Type = Minus
+		if k := s.peek(); k == equal {
+			s.read()
+			tok.Type = MinAssign
+		}
 	case pipe:
-		tok.Type = Invalid
+		tok.Type = BitOr
 		if k := s.peek(); k == pipe {
 			s.read()
 			tok.Type = Concat
 		}
+	case ampersand:
+		tok.Type = BitAnd
+	case tilde:
+		tok.Type = BitXor
 	default:
 	}
 	s.read()
@@ -355,9 +383,12 @@ const (
 	rangle     = '>'
 	bang       = '!'
 	pipe       = '|'
+	ampersand  = '&'
 	slash      = '/'
 	plus       = '+'
 	arobase    = '@'
+	percent    = '%'
+	tilde      = '~'
 )
 
 func isMacro(r rune) bool {
@@ -401,7 +432,7 @@ func isPunct(r rune) bool {
 }
 
 func isOperator(r rune) bool {
-	return r == equal || r == langle || r == rangle || r == bang || r == slash || r == plus || r == minus || r == pipe
+	return r == equal || r == langle || r == rangle || r == bang || r == slash || r == plus || r == minus || r == pipe || r == percent || r == ampersand || r == tilde
 }
 
 func isNL(r rune) bool {

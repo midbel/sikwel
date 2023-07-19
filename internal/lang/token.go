@@ -22,12 +22,23 @@ const (
 	Minus
 	Slash
 	Star
+	Mod
+	BitAnd
+	BitOr
+	BitXor
+	Lshift
+	Rshift
 	Eq
 	Ne
 	Lt
 	Le
 	Gt
 	Ge
+	AddAssign
+	MinAssign
+	MulAssign
+	DivAssign
+	ModAssign
 	Concat
 	Invalid
 )
@@ -90,6 +101,28 @@ func (t Token) String() string {
 		return "<slash>"
 	case Star:
 		return "<star>"
+	case Mod:
+		return "<modulo>"
+	case BitAnd:
+		return "<bit-and>"
+	case BitOr:
+		return "<bit-or>"
+	case BitXor:
+		return "<bit-xor>"
+	case Lshift:
+		return "<left-shift>"
+	case Rshift:
+		return "<right-shift>"
+	case AddAssign:
+		return "<add-assign>"
+	case MinAssign:
+		return "<min-assign>"
+	case MulAssign:
+		return "<mul-assign>"
+	case DivAssign:
+		return "<div-assign>"
+	case ModAssign:
+		return "<mod-assign>"
 	case Concat:
 		return "<concat>"
 	case Eq:

@@ -87,3 +87,7 @@ window
 	salary as (partition by salary);
 
 values ROW(1, 2, 3);
+
+commit;
+
+rollback;
