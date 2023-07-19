@@ -1,5 +1,6 @@
 -- all from employees
 select * from employees;
+select * from db.employees e;
 select * from employees limit 10;
 select * from employees limit 10 offset 5;
 select * from employees offset 5 rows fetch next 5 rows only;

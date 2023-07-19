@@ -44,7 +44,7 @@ func testFile(t *testing.T, file string) {
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			t.Errorf("error parsing statement: %s", err)
+			t.Errorf("error parsing statement in %s: %s", file, err)
 			continue
 		}
 	}

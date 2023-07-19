@@ -85,7 +85,7 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 
 	p.prefix = make(map[symbol]prefixFunc)
 	p.RegisterPrefix("", Ident, p.ParseIdent)
-	p.RegisterPrefix("", Star, p.ParseIdent)
+	p.RegisterPrefix("", Star, p.ParseIdentifier)
 	p.RegisterPrefix("", Literal, p.ParseLiteral)
 	p.RegisterPrefix("", Number, p.ParseLiteral)
 	p.RegisterPrefix("", Lparen, p.parseGroupExpr)
@@ -1036,7 +1036,7 @@ func (p *Parser) ParseWindows() ([]Statement, error) {
 	)
 	for !p.Done() && !p.Is(Keyword) && !p.Is(EOL) {
 		var win WindowDefinition
-		if win.Ident, err = p.parseIdentifier(); err != nil {
+		if win.Ident, err = p.ParseIdentifier(); err != nil {
 			return nil, err
 		}
 		if !p.IsKeyword("AS") {
@@ -1065,7 +1065,7 @@ func (p *Parser) ParseWindow() (Statement, error) {
 	p.Next()
 	switch {
 	case p.Is(Ident):
-		stmt.Ident, err = p.parseIdentifier()
+		stmt.Ident, err = p.ParseIdentifier()
 	case p.IsKeyword("PARTITION BY"):
 		p.Next()
 		for !p.Done() && !p.IsKeyword("ORDER BY") && !p.Is(Rparen) {
@@ -1322,7 +1322,7 @@ func (p *Parser) UnregisterInfix(literal string, kind rune) {
 	delete(p.infix, symbolFor(kind, literal))
 }
 
-func (p *Parser) getPrefixExpr() (Statement, error) {
+func (p *Parser) getPrefixExpr(end func() bool) (Statement, error) {
 	fn, ok := p.prefix[p.curr.asSymbol()]
 	if !ok {
 		return nil, p.Unexpected("prefix")
@@ -1339,7 +1339,7 @@ func (p *Parser) getInfixExpr(left Statement, end func() bool) (Statement, error
 }
 
 func (p *Parser) parseExpression(power int, end func() bool) (Statement, error) {
-	left, err := p.getPrefixExpr()
+	left, err := p.getPrefixExpr(end)
 	if err != nil {
 		return nil, err
 	}
@@ -1468,7 +1468,7 @@ func (p *Parser) parseOver() (Statement, error) {
 	defer p.RegisterInfix("AS", Keyword, p.parseKeywordExpr)
 	p.Next()
 	if !p.Is(Lparen) {
-		return p.parseIdentifier()
+		return p.ParseIdentifier()
 	}
 	return p.ParseWindow()
 }
@@ -1557,7 +1557,7 @@ func (p *Parser) parseCast() (Statement, error) {
 		cast Cast
 		err  error
 	)
-	cast.Ident, err = p.parseIdentifier()
+	cast.Ident, err = p.ParseIdentifier()
 	if err != nil {
 		return nil, err
 	}
@@ -1575,7 +1575,7 @@ func (p *Parser) parseCast() (Statement, error) {
 	return cast, nil
 }
 
-func (p *Parser) parseIdentifier() (Statement, error) {
+func (p *Parser) ParseIdentifier() (Statement, error) {
 	var name Name
 	if p.peekIs(Dot) {
 		name.Prefix = p.curr.Literal
@@ -1594,7 +1594,7 @@ func (p *Parser) parseIdentifier() (Statement, error) {
 }
 
 func (p *Parser) ParseIdent() (Statement, error) {
-	stmt, err := p.parseIdentifier()
+	stmt, err := p.ParseIdentifier()
 	if err == nil {
 		stmt, err = p.ParseAlias(stmt)
 	}
@@ -1668,10 +1668,7 @@ func (p *Parser) ParseStatementList(ctx string, fn func(Statement) (Statement, e
 		err  error
 	)
 	for !p.Done() && !p.Is(Keyword) && !p.Is(EOL) && !p.Is(Rparen) {
-		var (
-			name Name
-			stmt Statement
-		)
+		var stmt Statement
 		switch {
 		case p.Is(Lparen):
 			p.Next()
@@ -1684,14 +1681,7 @@ func (p *Parser) ParseStatementList(ctx string, fn func(Statement) (Statement, e
 			}
 			p.Next()
 		case p.Is(Ident):
-			if p.Is(Ident) && p.peekIs(Dot) {
-				name.Prefix = p.curr.Literal
-				p.Next()
-				p.Next()
-			}
-			name.Ident = p.curr.Literal
-			stmt = name
-			p.Next()
+			stmt, err = p.ParseIdentifier()
 		default:
 			return nil, p.Unexpected("list")
 		}

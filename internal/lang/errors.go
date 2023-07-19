@@ -5,7 +5,7 @@ import (
 )
 
 func unexpected(tok Token) error {
-	return fmt.Errorf("unexpected token %s", tok)
+	return fmt.Errorf("unexpected token %s at (%d:%d)", tok, tok.Line, tok.Column)
 }
 
 func wrapErrorWithDialect(dialect, ctx string, err error) error {
