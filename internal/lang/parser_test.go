@@ -4,19 +4,38 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/midbel/sweet/internal/lang"
 )
 
 func TestParser(t *testing.T) {
-	t.Run("select", testSelect)
+	files := []string{
+		"select.sql",
+		"delete.sql",
+		"update.sql",
+		"insert.sql",
+		"script.sql",
+	}
+	for _, f := range files {
+		testFile(t, f)
+	}
 }
 
-func testSelect(t *testing.T) {
-	p, err := createParser("testdata/queries.sql")
+func testFile(t *testing.T, file string) {
+	t.Helper()
+
+	r, err := os.Open(filepath.Join("testdata", file))
 	if err != nil {
-		t.Errorf("fail to create parser: %s", err)
+		t.Errorf("fail to open file %s (%s)", file, err)
+		return
+	}
+	defer r.Close()
+
+	p, err := lang.NewParser(r)
+	if err != nil {
+		t.Errorf("fail to create parser for file %s (%s)", file, err)
 		return
 	}
 	for {
@@ -29,12 +48,4 @@ func testSelect(t *testing.T) {
 			continue
 		}
 	}
-}
-
-func createParser(file string) (*lang.Parser, error) {
-	r, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	return lang.NewParser(r)
 }

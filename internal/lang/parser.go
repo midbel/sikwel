@@ -114,6 +114,21 @@ func (p *Parser) UnregisterParseFunc(kw string) {
 }
 
 func (p *Parser) Parse() (Statement, error) {
+	stmt, err := p.parse()
+	if err != nil {
+		p.restore()
+	}
+	return stmt, err
+}
+
+func (p *Parser) restore() {
+	defer p.Next()
+	for !p.Done() && !p.Is(EOL) {
+		p.Next()
+	}
+}
+
+func (p *Parser) parse() (Statement, error) {
 	for p.Is(Comment) {
 		p.Next()
 	}
