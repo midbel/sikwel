@@ -58,6 +58,7 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 	p.RegisterParseFunc("DECLARE", p.parseDeclare)
 	p.RegisterParseFunc("SET", p.parseSet)
 	p.RegisterParseFunc("RETURN", p.parseReturn)
+	p.RegisterParseFunc("BEGIN", p.parseBegin)
 
 	p.infix = make(map[symbol]infixFunc)
 	p.RegisterInfix("", Plus, p.parseInfixExpr)
@@ -83,22 +84,28 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 	p.RegisterInfix("IS", Keyword, p.parseKeywordExpr)
 	p.RegisterInfix("NOT", Keyword, p.parseNot)
 
+	wrap := func(fn func() (Statement, error)) prefixFunc {
+		return func(_ func() bool) (Statement, error) {
+			return fn()
+		}
+	}
+
 	p.prefix = make(map[symbol]prefixFunc)
-	p.RegisterPrefix("", Ident, p.ParseIdent)
-	p.RegisterPrefix("", Star, p.ParseIdentifier)
-	p.RegisterPrefix("", Literal, p.ParseLiteral)
-	p.RegisterPrefix("", Number, p.ParseLiteral)
-	p.RegisterPrefix("", Lparen, p.parseGroupExpr)
+	p.RegisterPrefix("", Ident, wrap(p.ParseIdent))
+	p.RegisterPrefix("", Star, wrap(p.ParseIdentifier))
+	p.RegisterPrefix("", Literal, wrap(p.ParseLiteral))
+	p.RegisterPrefix("", Number, wrap(p.ParseLiteral))
+	p.RegisterPrefix("", Lparen, wrap(p.parseGroupExpr))
 	p.RegisterPrefix("", Minus, p.parseUnary)
 	p.RegisterPrefix("", Keyword, p.parseUnary)
 	p.RegisterPrefix("NOT", Keyword, p.parseUnary)
 	p.RegisterPrefix("NULL", Keyword, p.parseUnary)
 	p.RegisterPrefix("DEFAULT", Keyword, p.parseUnary)
-	p.RegisterPrefix("CASE", Keyword, p.parseCase)
-	p.RegisterPrefix("SELECT", Keyword, p.ParseSelect)
+	p.RegisterPrefix("CASE", Keyword, wrap(p.parseCase))
+	p.RegisterPrefix("SELECT", Keyword, wrap(p.ParseSelect))
 	p.RegisterPrefix("EXISTS", Keyword, p.parseUnary)
-	p.RegisterPrefix("CAST", Keyword, p.parseCast)
-	p.RegisterPrefix("ROW", Keyword, p.parseRow)
+	p.RegisterPrefix("CAST", Keyword, wrap(p.parseCast))
+	p.RegisterPrefix("ROW", Keyword, wrap(p.parseRow))
 
 	return &p, nil
 }
@@ -398,7 +405,14 @@ func (p *Parser) parseRollback() (Statement, error) {
 }
 
 func (p *Parser) parseBegin() (Statement, error) {
-	return nil, nil
+	p.Next()
+	stmt, err := p.parseBody(func() bool {
+		return p.Done() || p.IsKeyword("END")
+	})
+	if err == nil {
+		p.Next()
+	}
+	return stmt, err
 }
 
 func (p *Parser) parseWith() (Statement, error) {
@@ -749,7 +763,7 @@ func (p *Parser) parseCase() (Statement, error) {
 			return nil, err
 		}
 		p.Next()
-		when.Body, err = p.parseExpression(powLowest, p.kwCheck("WHEN", "ELSE", "END"))
+		when.Body, err = p.parseBody(p.kwCheck("WHEN", "ELSE", "END"))
 		if err = wrapError("then", err); err != nil {
 			return nil, err
 		}
@@ -757,7 +771,7 @@ func (p *Parser) parseCase() (Statement, error) {
 	}
 	if p.IsKeyword("ELSE") {
 		p.Next()
-		stmt.Else, err = p.parseExpression(powLowest, p.kwCheck("END"))
+		stmt.Else, err = p.parseBody(p.kwCheck("END"))
 		if err = wrapError("else", err); err != nil {
 			return nil, err
 		}
@@ -1327,7 +1341,7 @@ func (p *Parser) getPrefixExpr(end func() bool) (Statement, error) {
 	if !ok {
 		return nil, p.Unexpected("prefix")
 	}
-	return fn()
+	return fn(end)
 }
 
 func (p *Parser) getInfixExpr(left Statement, end func() bool) (Statement, error) {
@@ -1473,7 +1487,7 @@ func (p *Parser) parseOver() (Statement, error) {
 	return p.ParseWindow()
 }
 
-func (p *Parser) parseUnary() (Statement, error) {
+func (p *Parser) parseUnary(end func() bool) (Statement, error) {
 	var (
 		stmt Statement
 		err  error
@@ -1481,7 +1495,7 @@ func (p *Parser) parseUnary() (Statement, error) {
 	switch {
 	case p.Is(Minus):
 		p.Next()
-		stmt, err = p.parseExpression(powLowest, nil)
+		stmt, err = p.parseExpression(powLowest, end)
 		if err = wrapError("reverse", err); err != nil {
 			return nil, err
 		}
@@ -1491,7 +1505,7 @@ func (p *Parser) parseUnary() (Statement, error) {
 		}
 	case p.IsKeyword("NOT"):
 		p.Next()
-		stmt, err = p.parseExpression(powLowest, nil)
+		stmt, err = p.parseExpression(powLowest, end)
 		if err = wrapError("not", err); err != nil {
 			return nil, err
 		}
@@ -1511,7 +1525,7 @@ func (p *Parser) parseUnary() (Statement, error) {
 		if !p.Is(Lparen) {
 			return nil, p.Unexpected("exists")
 		}
-		stmt, err = p.parseExpression(powLowest, nil)
+		stmt, err = p.parseExpression(powLowest, end)
 		if err == nil {
 			stmt = Exists{
 				Statement: stmt,
@@ -1802,7 +1816,7 @@ func (p *Parser) Done() bool {
 	return p.frame.Done()
 }
 
-type prefixFunc func() (Statement, error)
+type prefixFunc func(func() bool) (Statement, error)
 
 type infixFunc func(Statement, func() bool) (Statement, error)
 
