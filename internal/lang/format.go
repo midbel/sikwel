@@ -12,6 +12,7 @@ import (
 type Writer struct {
 	inner   *bufio.Writer
 	Compact bool
+	KwUpper bool
 	Indent  string
 
 	prefix int
@@ -22,6 +23,18 @@ func NewWriter(w io.Writer) *Writer {
 		inner:  bufio.NewWriter(w),
 		Indent: "  ",
 	}
+}
+
+func (w *Writer) SetIndent(indent string) {
+	w.Indent = indent
+}
+
+func (w *Writer) SetCompact(compact bool) {
+	w.Compact = compact
+}
+
+func (w *Writer) SetKeywordUppercase(upper bool) {
+	w.KwUpper = upper
 }
 
 func (w *Writer) Format(r io.Reader) error {
@@ -166,6 +179,9 @@ func (w *Writer) FormatSetTransaction(stmt SetTransaction) error {
 }
 
 func (w *Writer) FormatSavepoint(stmt Savepoint) error {
+	w.Enter()
+	defer w.Leave()
+
 	kw, _ := stmt.Keyword()
 	w.WriteKeyword(kw)
 	if stmt.Name != "" {
@@ -176,6 +192,9 @@ func (w *Writer) FormatSavepoint(stmt Savepoint) error {
 }
 
 func (w *Writer) FormatReleaseSavepoint(stmt ReleaseSavepoint) error {
+	w.Enter()
+	defer w.Leave()
+
 	kw, _ := stmt.Keyword()
 	w.WriteKeyword(kw)
 	if stmt.Name != "" {
@@ -186,6 +205,9 @@ func (w *Writer) FormatReleaseSavepoint(stmt ReleaseSavepoint) error {
 }
 
 func (w *Writer) FormatRollbackSavepoint(stmt RollbackSavepoint) error {
+	w.Enter()
+	defer w.Leave()
+
 	kw, _ := stmt.Keyword()
 	w.WriteKeyword(kw)
 	if stmt.Name != "" {
@@ -489,8 +511,8 @@ func (w *Writer) FormatUpsert(stmt Statement) error {
 }
 
 func (w *Writer) FormatValues(stmt ValuesStatement) error {
-	w.WritePrefix()
-	w.WriteString("VALUES")
+	kw, _ := stmt.Keyword()
+	w.WriteKeyword(kw)
 	w.WriteBlank()
 	return w.formatStmtSlice(stmt.List)
 }
@@ -1294,6 +1316,9 @@ func (w *Writer) WriteBlank() {
 
 func (w *Writer) WriteKeyword(kw string) {
 	w.WritePrefix()
+	if !w.KwUpper {
+		kw = strings.ToLower(kw)
+	}
 	w.WriteString(kw)
 }
 
