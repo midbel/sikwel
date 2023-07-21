@@ -7,12 +7,18 @@ select * from employees offset 5 rows fetch next 5 rows only;
 
 select * from employees where not exists(select 1 from employees where dept='it');
 select dept, count(*) as total from employees group by dept having total != 0;
-select name, case when age > 40 then 'senior' else 'junior' end seniority from employees;
+select 
+name, case when age > 40 then 'senior' else 'junior' end seniority 
+from employees;
 
 select "first" || ' ' || "last" as "full" from employees;
 select  name from employees order by salary desc;
-select concat_ws(' ', firstname, lastname) from employees  where salary >= 1000 and dept='it';
-select e.dept, count(e.id) from employees e where e.salary >= 1000 and e.manager is null group by e.dept;
+select concat_ws(' ', firstname, lastname) 
+from employees  
+where salary >= 1000 and dept='it';
+select e.dept, count(e.id) 
+from employees e 
+where e.salary >= 1000 and e.manager is null group by e.dept;
 -- test with CTE
 with managers as (
 	select

@@ -77,7 +77,7 @@ var keywords = KeywordSet{
 	{"rollback", "to", "savepoint"},
 	{"commit"},
 	{"rollback"},
-	{"conflict"},
+	{"on", "conflict"},
 	{"nothing"},
 	{"while"},
 	{"end", "while"},

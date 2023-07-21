@@ -14,6 +14,12 @@ type Expression interface {
 	// fmt.Stringer
 }
 
+type Commented struct {
+	Before []string
+	After  string
+	Statement
+}
+
 type TransactionMode int
 
 const (
@@ -392,6 +398,15 @@ type DeleteStatement struct {
 
 func (s DeleteStatement) Keyword() (string, error) {
 	return "DELETE FROM", nil
+}
+
+type CallStatement struct {
+	Ident Statement
+	Args  []Statement
+}
+
+func (_ CallStatement) Keyword() (string, error) {
+	return "CALL", nil
 }
 
 type WhileStatement struct {

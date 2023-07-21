@@ -24,6 +24,8 @@ func NewParser(r io.Reader) (*Parser, error) {
 	if local.Parser, err = lang.NewParserWithKeywords(r, base.Merge(keywords)); err != nil {
 		return nil, err
 	}
+	local.UnregisterParseFunc("CALL")
+
 	local.RegisterParseFunc("SELECT", local.ParseSelect)
 	local.RegisterParseFunc("REPLACE INTO", local.ParseInsert)
 	local.RegisterParseFunc("INSERT OR ABORT INTO", local.ParseInsert)
@@ -228,7 +230,7 @@ func (p *Parser) ParseOrderBy() ([]lang.Statement, error) {
 }
 
 func (p *Parser) Unexpected(ctx string) error {
-	return p.UnexpectedDialect(ctx, Vendor)	
+	return p.UnexpectedDialect(ctx, Vendor)
 }
 
 func isValidCollate(str string) bool {

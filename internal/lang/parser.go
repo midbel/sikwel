@@ -58,6 +58,7 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 	p.RegisterParseFunc("RETURN", p.parseReturn)
 	p.RegisterParseFunc("BEGIN", p.parseBegin)
 	p.RegisterParseFunc("START TRANSACTION", p.parseStartTransaction)
+	p.RegisterParseFunc("CALL", p.ParseCall)
 
 	p.infix = make(map[symbol]infixFunc)
 	p.RegisterInfix("", Plus, p.parseInfixExpr)
@@ -129,7 +130,12 @@ func (p *Parser) restore() {
 }
 
 func (p *Parser) parse() (Statement, error) {
+	var (
+		com Commented
+		err error
+	)
 	for p.Is(Comment) {
+		com.Before = append(com.Before, p.GetCurrLiteral())
 		p.Next()
 	}
 	if p.Is(Macro) {
@@ -138,15 +144,19 @@ func (p *Parser) parse() (Statement, error) {
 		}
 		return p.Parse()
 	}
-	stmt, err := p.parseStatement()
-	if err != nil {
+	if com.Statement, err = p.parseStatement(); err != nil {
 		return nil, err
 	}
 	if !p.Is(EOL) {
 		return nil, p.wantError("statement", ";")
 	}
+	eol := p.curr
 	p.Next()
-	return stmt, nil
+	if p.Is(Comment) && eol.Line == p.curr.Line {
+		com.After = p.GetCurrLiteral()
+		p.Next()
+	}
+	return com, nil
 }
 
 func (p *Parser) ParseMacro() error {
@@ -242,6 +252,32 @@ func (p *Parser) parseDeclare() (Statement, error) {
 		}
 	}
 	return stmt, nil
+}
+
+func (p *Parser) ParseCall() (Statement, error) {
+	p.Next()
+	var (
+		stmt CallStatement
+		err  error
+	)
+	stmt.Ident, err = p.ParseIdent()
+	if err != nil {
+		return nil, err
+	}
+	for !p.Done() && !p.Is(Rparen) {
+		arg, err := p.startExpression()
+		if err = wrapError("call", err); err != nil {
+			return nil, err
+		}
+		if err := p.EnsureEnd("call", Comma, Rparen); err != nil {
+			return nil, err
+		}
+		stmt.Args = append(stmt.Args, arg)
+	}
+	if !p.Is(Rparen) {
+		return nil, p.Unexpected("call")
+	}
+	return stmt, err
 }
 
 func (p *Parser) parseReturn() (Statement, error) {
@@ -753,7 +789,7 @@ func (p *Parser) ParseInsert() (Statement, error) {
 	case p.IsKeyword("VALUES"):
 		p.Next()
 		var all List
-		for !p.Done() && !p.IsKeyword("RETURNING") && !p.IsKeyword("ON") && !p.Is(EOL) {
+		for !p.Done() && !p.IsKeyword("RETURNING") && !p.IsKeyword("ON CONFLICT") && !p.Is(EOL) {
 			if !p.Is(Lparen) {
 				return nil, p.Unexpected("values")
 			}
@@ -789,12 +825,8 @@ func (p *Parser) ParseInsert() (Statement, error) {
 }
 
 func (p *Parser) ParseUpsert() (Statement, error) {
-	if !p.IsKeyword("ON") {
+	if !p.IsKeyword("ON CONFLICT") {
 		return nil, nil
-	}
-	p.Next()
-	if !p.IsKeyword("CONFLICT") {
-		return nil, p.Unexpected("upsert")
 	}
 	p.Next()
 
@@ -1382,7 +1414,7 @@ func (p *Parser) ParseOrderBy() ([]Statement, error) {
 			order.Nulls = p.curr.Literal
 			p.Next()
 		}
-		list = append(list, stmt)
+		list = append(list, order)
 		switch {
 		case p.Is(Comma):
 			p.Next()

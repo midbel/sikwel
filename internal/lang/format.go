@@ -10,11 +10,12 @@ import (
 )
 
 type Writer struct {
-	inner   *bufio.Writer
-	Compact bool
-	KwUpper bool
-	FnUpper bool
-	Indent  string
+	inner       *bufio.Writer
+	Compact     bool
+	KwUpper     bool
+	FnUpper     bool
+	KeepComment bool
+	Indent      string
 
 	prefix int
 }
@@ -32,6 +33,10 @@ func (w *Writer) SetIndent(indent string) {
 
 func (w *Writer) SetCompact(compact bool) {
 	w.Compact = compact
+}
+
+func (w *Writer) SetKeepComments(keep bool) {
+	w.KeepComment = keep
 }
 
 func (w *Writer) SetKeywordUppercase(upper bool) {
@@ -62,14 +67,19 @@ func (w *Writer) Format(r io.Reader) error {
 	return nil
 }
 
-// func (w *Writer) FormatStatement(stmt Statement) error {
-// 	return w.format(stmt)
-// }
-
 func (w *Writer) startStatement(stmt Statement) error {
 	defer w.Flush()
 
 	w.Reset()
+	com, ok := stmt.(Commented)
+	if ok {
+		if w.KeepComment {
+			for _, s := range com.Before {
+				w.WriteComment(s)
+			}
+		}
+		stmt = com.Statement
+	}
 	err := w.FormatStatement(stmt)
 	if err == nil {
 		w.WriteEOL()
@@ -100,6 +110,8 @@ func (w *Writer) FormatStatement(stmt Statement) error {
 		err = w.FormatWith(stmt)
 	case CteStatement:
 		err = w.FormatCte(stmt)
+	case CallStatement:
+		err = w.FormatCall(stmt)
 	case Commit:
 		err = w.FormatCommit(stmt)
 	case Rollback:
@@ -231,6 +243,23 @@ func (w *Writer) FormatCommit(stmt Commit) error {
 func (w *Writer) FormatRollback(stmt Rollback) error {
 	kw, _ := stmt.Keyword()
 	w.WriteStatement(kw)
+	return nil
+}
+
+func (w *Writer) FormatCall(stmt CallStatement) error {
+	kw, _ := stmt.Keyword()
+	w.WriteStatement(kw)
+	w.WriteString("(")
+	for i, a := range stmt.Args {
+		if i > 0 {
+			w.WriteString(",")
+			w.WriteBlank()
+		}
+		if err := w.FormatExpr(a, false); err != nil {
+			return err
+		}
+	}
+	w.WriteString(")")
 	return nil
 }
 
@@ -619,6 +648,8 @@ func (w *Writer) FormatFrom(list []Statement) error {
 				w.WriteString(")")
 				w.WriteNL()
 			}
+		case Row:
+			err = w.formatRow(s, true)
 		default:
 			err = w.CanNotUse("from", s)
 		}
@@ -1288,6 +1319,17 @@ func (w *Writer) WriteString(str string) {
 		str = " "
 	}
 	w.inner.WriteString(str)
+}
+
+func (w *Writer) WriteComment(str string) {
+	if w.Compact {
+		return
+	}
+	w.WritePrefix()
+	w.WriteString("--")
+	w.WriteBlank()
+	w.WriteString(str)
+	w.WriteNL()
 }
 
 func (w *Writer) WriteEOL() {
