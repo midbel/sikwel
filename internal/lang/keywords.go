@@ -108,6 +108,7 @@ var keywords = KeywordSet{
 	{"exclude", "current", "row"},
 	{"exclude", "group"},
 	{"exclude", "ties"},
+	{"call"},
 }
 
 func GetKeywords() KeywordSet {
