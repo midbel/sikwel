@@ -108,7 +108,7 @@ func (w *Writer) FormatInsert(stmt InsertStatement) error {
 	if err != nil {
 		return err
 	}
-	w.WriteSatement(kw)
+	w.WriteStatement(kw)
 	w.WriteBlank()
 	return w.formatInsertStatement(stmt.Statement)
 }

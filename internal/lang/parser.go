@@ -940,6 +940,30 @@ func (p *Parser) ParseSelect() (Statement, error) {
 	return p.ParseSelectStatement(p)
 }
 
+var joins = []string{
+	"JOIN",
+	"INNER JOIN",
+	"LEFT JOIN",
+	"RIGHT JOIN",
+	"FULL JOIN",
+	"LEFT OUTER JOIN",
+	"FULL OUTER JOIN",
+}
+
+var kwselect = []string{
+	"WHERE",
+	"GROUP BY",
+	"HAVING",
+	"WINDOW",
+	"ORDER BY",
+	"LIMIT",
+	"OFFSET",
+	"FETCH",
+	"UNION",
+	"INTERSECT",
+	"EXCEPT",
+}
+
 func (p *Parser) ParseSelectStatement(sp SelectParser) (Statement, error) {
 	p.Next()
 	var (
@@ -1044,40 +1068,43 @@ func (p *Parser) ParseFrom() ([]Statement, error) {
 	}
 	p.Next()
 
-	list, err := p.ParseStatementList("FROM", p.ParseAlias)
-	if err != nil {
-		return nil, err
+	var (
+		list []Statement
+		err  error
+		done = p.kwCheck(append(joins, kwselect...)...)
+	)
+	for !p.Done() && !p.Is(EOL) && !done() {
+		var stmt Statement
+		stmt, err = p.parseExpression(powLowest, func() bool {
+			return p.Is(EOL) || done()
+		})
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, stmt)
+		switch {
+		case p.Is(Comma):
+			p.Next()
+			if done() || p.Is(EOL) {
+				return nil, p.Unexpected("from")
+			}
+		case done():
+		case p.Is(EOL):
+		default:
+			return nil, p.Unexpected("from")
+		}
 	}
 	if p.Is(EOL) {
 		return list, nil
 	}
-	for !p.Done() && p.curr.isJoin() {
+	done = p.kwCheck(kwselect...)
+	for !p.Done() && !p.Is(EOL) && !done() {
 		j := Join{
-			Type: p.curr.Literal,
+			Type: p.GetCurrLiteral(),
 		}
 		p.Next()
-		switch {
-		case p.Is(Ident):
-			j.Table, err = p.ParseIdent()
-		case p.Is(Lparen):
-			p.Next()
-			j.Table, err = p.ParseSelect()
-			if err != nil {
-				break
-			}
-			if !p.Is(Rparen) {
-				err = p.Unexpected("join")
-				break
-			}
-			p.Next()
-			j.Table, err = p.ParseAlias(j.Table)
-			if err != nil {
-				return nil, err
-			}
-		default:
-			return nil, p.Unexpected("join")
-		}
-		if err = wrapError("join", err); err != nil {
+		j.Table, err = p.parseExpression(powLowest, p.kwCheck("ON", "USING"))
+		if err != nil {
 			return nil, err
 		}
 		switch {
@@ -1101,7 +1128,7 @@ func (p *Parser) ParseJoinOn() (Statement, error) {
 	p.UnregisterInfix("AS", Keyword)
 	defer p.RegisterInfix("AS", Keyword, p.parseKeywordExpr)
 
-	done := p.kwCheck("WHERE", "GROUP BY", "HAVING", "ORDER BY", "LIMIT", "UNION", "INTERSECT", "EXCEPT")
+	done := p.kwCheck(kwselect...)
 
 	return p.parseExpression(powLowest, func() bool {
 		return p.Is(EOL) || done()
@@ -1143,7 +1170,7 @@ func (p *Parser) ParseWhere() (Statement, error) {
 	p.UnregisterInfix("AS", Keyword)
 	defer p.RegisterInfix("AS", Keyword, p.parseKeywordExpr)
 
-	done := p.kwCheck("GROUP BY", "HAVING", "ORDER BY", "LIMIT", "UNION", "INTERSECT", "EXCEPT")
+	done := p.kwCheck(kwselect[1:]...)
 
 	return p.parseExpression(powLowest, func() bool {
 		return p.Is(EOL) || done()
@@ -1155,7 +1182,27 @@ func (p *Parser) ParseGroupBy() ([]Statement, error) {
 		return nil, nil
 	}
 	p.Next()
-	return p.ParseStatementList("group by", nil)
+	var (
+		list []Statement
+		err  error
+		done = p.kwCheck(kwselect[2:]...)
+	)
+	for !p.Done() && !p.Is(EOL) && !done() {
+		var stmt Statement
+		stmt, err = p.parseExpression(powLowest, done)
+		if err != nil {
+			return nil, err
+		}
+		switch {
+		case p.Is(Comma):
+		case p.Is(EOL):
+		case done():
+		default:
+			return nil, p.Unexpected("group by")
+		}
+		list = append(list, stmt)
+	}
+	return list, err
 }
 
 func (p *Parser) ParseHaving() (Statement, error) {
@@ -1166,7 +1213,7 @@ func (p *Parser) ParseHaving() (Statement, error) {
 	p.UnregisterInfix("AS", Keyword)
 	defer p.RegisterInfix("AS", Keyword, p.parseKeywordExpr)
 
-	done := p.kwCheck("ORDER BY", "LIMIT", "UNION", "INTERSECT", "EXCEPT")
+	done := p.kwCheck(kwselect[4:]...)
 
 	return p.parseExpression(powLowest, func() bool {
 		return p.Is(EOL) || done()
@@ -1195,8 +1242,16 @@ func (p *Parser) ParseWindows() ([]Statement, error) {
 			return nil, err
 		}
 		list = append(list, win)
-		if p.Is(Comma) {
+		switch {
+		case p.Is(Comma):
 			p.Next()
+			if p.Is(Keyword) || p.Is(EOL) {
+				return nil, p.Unexpected("window")
+			}
+		case p.Is(Keyword):
+		case p.Is(EOL):
+		default:
+			return nil, p.Unexpected("window")
 		}
 	}
 	return list, err
@@ -1329,7 +1384,17 @@ func (p *Parser) ParseOrderBy() ([]Statement, error) {
 		return nil, nil
 	}
 	p.Next()
-	do := func(stmt Statement) (Statement, error) {
+	var (
+		list []Statement
+		err  error
+		done = p.kwCheck(append([]string{"ASC", "DESC", "NULLS"}, kwselect[5:]...)...)
+	)
+	for !p.Done() && !p.Is(EOL) && !p.Is(Rparen) && !done() {
+		var stmt Statement
+		stmt, err = p.parseExpression(powLowest, done)
+		if err != nil {
+			return nil, err
+		}
 		order := Order{
 			Statement: stmt,
 		}
@@ -1345,9 +1410,21 @@ func (p *Parser) ParseOrderBy() ([]Statement, error) {
 			order.Nulls = p.curr.Literal
 			p.Next()
 		}
-		return order, nil
+		list = append(list, stmt)
+		switch {
+		case p.Is(Comma):
+			p.Next()
+			if p.Is(EOL) || done() || p.Is(Rparen) {
+				return nil, p.Unexpected("order by")
+			}
+		case p.Is(EOL):
+		case p.Is(Rparen):
+		case done():
+		default:
+			return nil, p.Unexpected("order by")
+		}
 	}
-	return p.ParseStatementList("order by", do)
+	return list, err
 }
 
 func (p *Parser) ParseLimit() (Statement, error) {

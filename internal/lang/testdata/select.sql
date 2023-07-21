@@ -33,7 +33,6 @@ join (
 	from employees
 	where manager is null
 ) m on e.manager=m.id;
-
 select cast(hired_date as int(32)) from employees;
 select max(hired_date) filter(where hired_date > 2023) from employees;
 
