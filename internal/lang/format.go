@@ -1074,6 +1074,13 @@ func (w *Writer) formatType(dt Type) error {
 }
 
 func (w *Writer) formatCollate(stmt Collate, _ bool) error {
+	if err := w.FormatExpr(stmt.Statement, false); err != nil {
+		return err
+	}
+	w.WriteBlank()
+	w.WriteKeyword("COLLATE")
+	w.WriteBlank()
+	w.WriteString(stmt.Collation)
 	return nil
 }
 

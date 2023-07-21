@@ -93,7 +93,7 @@ func (w *Writer) FormatVacuum(stmt VacuumStatement) error {
 		w.WriteBlank()
 	}
 	if stmt.File != "" {
-		w.WriteString("INTO")
+		w.WriteKeyword("INTO")
 		w.WriteBlank()
 		w.WriteString(stmt.File)
 	}
@@ -108,7 +108,7 @@ func (w *Writer) FormatInsert(stmt InsertStatement) error {
 	if err != nil {
 		return err
 	}
-	w.WriteString(kw)
+	w.WriteSatement(kw)
 	w.WriteBlank()
 	return w.formatInsertStatement(stmt.Statement)
 }
@@ -159,8 +159,7 @@ func (w *Writer) FormatUpdate(stmt UpdateStatement) error {
 	if err != nil {
 		return err
 	}
-	w.WritePrefix()
-	w.WriteString(kw)
+	w.WriteStatement(kw)
 	w.WriteBlank()
 
 	return w.formatUpdateStatement(stmt.Statement)
@@ -184,7 +183,7 @@ func (w *Writer) formatUpdateStatement(stmt lang.Statement) error {
 	}
 
 	w.WriteBlank()
-	w.WriteString("SET")
+	w.WriteKeyword("SET")
 	w.WriteNL()
 
 	if len(up.Tables) > 0 {
@@ -212,8 +211,8 @@ func (w *Writer) FormatSelect(stmt lang.SelectStatement) error {
 	w.Enter()
 	defer w.Leave()
 
-	w.WritePrefix()
-	w.WriteString("SELECT")
+	kw, _ := stmt.Keyword()
+	w.WriteStatement(kw)
 	w.WriteNL()
 	if err := w.FormatSelectColumns(stmt.Columns); err != nil {
 		return err
@@ -259,8 +258,7 @@ func (w *Writer) FormatOrderBy(orders []lang.Statement) error {
 	if len(orders) == 0 {
 		return nil
 	}
-	w.WritePrefix()
-	w.WriteString("ORDER BY")
+	w.WriteStatement("ORDER BY")
 	w.WriteBlank()
 	for i, s := range orders {
 		if i > 0 {
@@ -286,7 +284,7 @@ func (w *Writer) formatOrder(order Order) error {
 	w.FormatName(n)
 	if order.Collate != "" {
 		w.WriteBlank()
-		w.WriteString("COLLATE")
+		w.WriteKeyword("COLLATE")
 		w.WriteBlank()
 		w.WriteString(order.Collate)
 	}
@@ -296,7 +294,7 @@ func (w *Writer) formatOrder(order Order) error {
 	}
 	if order.Nulls != "" {
 		w.WriteBlank()
-		w.WriteString("NULLS")
+		w.WriteKeyword("NULLS")
 		w.WriteBlank()
 		w.WriteString(order.Nulls)
 	}
