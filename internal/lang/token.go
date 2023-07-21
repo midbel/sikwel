@@ -40,6 +40,7 @@ const (
 	DivAssign
 	ModAssign
 	Concat
+	Arrow
 	Invalid
 )
 
@@ -125,6 +126,8 @@ func (t Token) String() string {
 		return "<mod-assign>"
 	case Concat:
 		return "<concat>"
+	case Arrow:
+		return "<arrow>"
 	case Eq:
 		return "<equal>"
 	case Ne:

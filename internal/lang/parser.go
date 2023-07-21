@@ -265,6 +265,11 @@ func (p *Parser) ParseCall() (Statement, error) {
 		return nil, err
 	}
 	for !p.Done() && !p.Is(Rparen) {
+		if p.peekIs(Arrow) && p.Is(Ident) {
+			stmt.Names = append(stmt.Names, p.GetCurrLiteral())
+			p.Next()
+			p.Next()
+		}
 		arg, err := p.startExpression()
 		if err = wrapError("call", err); err != nil {
 			return nil, err

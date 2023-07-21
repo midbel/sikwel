@@ -220,6 +220,10 @@ func (s *Scanner) scanOperator(tok *Token) {
 		}
 	case equal:
 		tok.Type = Eq
+		if k := s.peek(); k == rangle {
+			s.read()
+			tok.Type = Arrow
+		}
 	case langle:
 		tok.Type = Lt
 		if k := s.peek(); k == rangle {

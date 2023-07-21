@@ -402,6 +402,7 @@ func (s DeleteStatement) Keyword() (string, error) {
 
 type CallStatement struct {
 	Ident Statement
+	Names []string
 	Args  []Statement
 }
 
