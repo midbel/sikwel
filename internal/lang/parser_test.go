@@ -5,10 +5,28 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/midbel/sweet/internal/lang"
 )
+
+func TestParserShouldFail(t *testing.T) {
+	queries := []string{
+		"select e.dept count(e.id) from employees e where e.salary >= 1000 and e.manager is null group by e.dept;",
+	}
+	for _, q := range queries {
+		p, err := lang.NewParser(strings.NewReader(q))
+		if err != nil {
+			t.Errorf("fail to create parser for query: %s", q)
+			continue
+		}
+		_, err = p.Parse()
+		if err == nil {
+			t.Errorf("error expected but query parse properly: %s", q)
+		}
+	}
+}
 
 func TestParser(t *testing.T) {
 	files := []string{
@@ -16,6 +34,7 @@ func TestParser(t *testing.T) {
 		"delete.sql",
 		"update.sql",
 		"insert.sql",
+		"transactions.sql",
 		"script.sql",
 	}
 	for _, f := range files {

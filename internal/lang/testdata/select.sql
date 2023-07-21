@@ -12,7 +12,7 @@ select name, case when age > 40 then 'senior' else 'junior' end seniority from e
 select "first" || ' ' || "last" as "full" from employees;
 select  name from employees order by salary desc;
 select concat_ws(' ', firstname, lastname) from employees  where salary >= 1000 and dept='it';
-select e.dept count(e.id) from employees e where e.salary >= 1000 and e.manager is null group by e.dept;
+select e.dept, count(e.id) from employees e where e.salary >= 1000 and e.manager is null group by e.dept;
 -- test with CTE
 with managers as (
 	select
