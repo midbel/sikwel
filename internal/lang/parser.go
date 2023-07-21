@@ -1075,9 +1075,7 @@ func (p *Parser) ParseFrom() ([]Statement, error) {
 	)
 	for !p.Done() && !p.Is(EOL) && !done() {
 		var stmt Statement
-		stmt, err = p.parseExpression(powLowest, func() bool {
-			return p.Is(EOL) || done()
-		})
+		stmt, err = p.parseExpression(powLowest, done)
 		if err != nil {
 			return nil, err
 		}
@@ -1130,9 +1128,7 @@ func (p *Parser) ParseJoinOn() (Statement, error) {
 
 	done := p.kwCheck(kwselect...)
 
-	return p.parseExpression(powLowest, func() bool {
-		return p.Is(EOL) || done()
-	})
+	return p.parseExpression(powLowest, done)
 }
 
 func (p *Parser) ParseJoinUsing() (Statement, error) {
@@ -1144,9 +1140,12 @@ func (p *Parser) ParseJoinUsing() (Statement, error) {
 	p.UnregisterInfix("AS", Keyword)
 	defer p.RegisterInfix("AS", Keyword, p.parseKeywordExpr)
 
-	var list List
+	var (
+		list List
+		done = p.tokCheck(Comma, Rparen)
+	)
 	for !p.Done() && !p.Is(Rparen) {
-		stmt, err := p.parseExpression(powLowest, p.tokCheck(Comma, Rparen))
+		stmt, err := p.parseExpression(powLowest, done)
 		if err = wrapError("using", err); err != nil {
 			return nil, err
 		}
@@ -1172,9 +1171,7 @@ func (p *Parser) ParseWhere() (Statement, error) {
 
 	done := p.kwCheck(kwselect[1:]...)
 
-	return p.parseExpression(powLowest, func() bool {
-		return p.Is(EOL) || done()
-	})
+	return p.parseExpression(powLowest, done)
 }
 
 func (p *Parser) ParseGroupBy() ([]Statement, error) {
@@ -1215,9 +1212,7 @@ func (p *Parser) ParseHaving() (Statement, error) {
 
 	done := p.kwCheck(kwselect[4:]...)
 
-	return p.parseExpression(powLowest, func() bool {
-		return p.Is(EOL) || done()
-	})
+	return p.parseExpression(powLowest, done)
 }
 
 func (p *Parser) ParseWindows() ([]Statement, error) {
@@ -1517,9 +1512,12 @@ func (p *Parser) ParseReturning() (Statement, error) {
 		}
 		return stmt, nil
 	}
-	var list List
+	var (
+		list List
+		done = p.tokCheck(EOL, Comma)
+	)
 	for !p.Done() && !p.Is(EOL) {
-		stmt, err := p.parseExpression(powLowest, p.tokCheck(EOL, Comma))
+		stmt, err := p.parseExpression(powLowest, done)
 		if err != nil {
 			return nil, err
 		}
@@ -1568,7 +1566,7 @@ func (p *Parser) parseExpression(power int, end func() bool) (Statement, error) 
 	if err != nil {
 		return nil, err
 	}
-	for !p.Is(EOL) && !p.Done() && !end() && power < p.currBinding() {
+	for !p.Is(EOL) && !p.Is(Comma) && !p.Done() && power < p.currBinding() {
 		left, err = p.getInfixExpr(left, end)
 		if err != nil {
 			return nil, err
