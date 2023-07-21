@@ -75,7 +75,15 @@ func (_ RollbackSavepoint) Keyword() (string, error) {
 
 type Commit struct{}
 
+func (_ Commit) Keyword() (string, error) {
+	return "COMMIT", nil
+}
+
 type Rollback struct{}
+
+func (_ Rollback) Keyword() (string, error) {
+	return "ROLLBACK", nil
+}
 
 type Type struct {
 	Name      string

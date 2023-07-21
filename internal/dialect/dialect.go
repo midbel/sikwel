@@ -25,6 +25,7 @@ type Writer interface {
 	SetIndent(string)
 	SetCompact(bool)
 	SetKeywordUppercase(bool)
+	SetFunctionUppercase(bool)
 }
 
 func ParseAnsi(r io.Reader) (Parser, error) {
