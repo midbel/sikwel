@@ -1,6 +1,7 @@
 package sqlite
 
 import (
+	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -55,6 +56,21 @@ func (p *Parser) ParseVacuum() (lang.Statement, error) {
 		p.Next()
 	}
 	return stmt, err
+}
+
+func (p *Parser) ParseType() (lang.Type, error) {
+	t, err := p.Parser.ParseType()
+	if err == nil {
+		switch t.Name {
+		case TypeInteger:
+		case TypeReal:
+		case TypeText:
+		case TypeBlob:
+		default:
+			return t, fmt.Errorf("%s not a sqlite type", t.Name)
+		}
+	}
+	return t, err
 }
 
 func (p *Parser) ParseUpdate() (lang.Statement, error) {

@@ -10,6 +10,13 @@ const (
 	CollateTrim   = "RTRIM"
 )
 
+const (
+	TypeInteger = "INTEGER"
+	TypeText    = "TEXT"
+	TypeReal    = "REAL"
+	TypeBlob    = "BLOB"
+)
+
 var keywords = lang.KeywordSet{
 	{"collate"},
 	{"replace", "into"},
