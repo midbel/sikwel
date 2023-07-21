@@ -31,22 +31,18 @@ func (w *Writer) Format(r io.Reader) error {
 			}
 			return err
 		}
-		if err = w.format(stmt); err != nil {
+		if err = w.startStatement(stmt); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (w *Writer) FormatStatement(stmt lang.Statement) error {
-	return w.format(stmt)
-}
-
-func (w *Writer) format(stmt lang.Statement) error {
+func (w *Writer) startStatement(stmt lang.Statement) error {
 	defer w.Flush()
 
 	w.Reset()
-	err := w.formatStatement(stmt)
+	err := w.FormatStatement(stmt)
 	if err == nil {
 		w.WriteString(";")
 		w.WriteNL()
@@ -54,39 +50,37 @@ func (w *Writer) format(stmt lang.Statement) error {
 	return err
 }
 
-func (w *Writer) formatStatement(stmt lang.Statement) error {
+func (w *Writer) FormatStatement(stmt lang.Statement) error {
 	var err error
 	switch stmt := stmt.(type) {
-	case lang.SelectStatement:
-		err = w.FormatSelect(stmt)
-	case lang.UnionStatement:
-		err = w.FormatUnion(stmt)
-	case lang.IntersectStatement:
-		err = w.FormatIntersect(stmt)
-	case lang.ExceptStatement:
-		err = w.FormatExcept(stmt)
 	case InsertStatement:
 		err = w.FormatInsert(stmt)
 	case UpdateStatement:
 		err = w.FormatUpdate(stmt)
 	case VacuumStatement:
 		err = w.FormatVacuum(stmt)
-	case lang.DeleteStatement:
-		err = w.FormatDelete(stmt)
-	case lang.WithStatement:
-		err = w.FormatWith(stmt)
-	case lang.CteStatement:
-		err = w.FormatCte(stmt)
+	case BeginStatement:
+		err = w.FormatBegin(stmt)
+	case lang.SelectStatement:
+		err = w.FormatSelect(stmt)
 	default:
-		err = fmt.Errorf("unsupported statement type %T", stmt)
+		err = w.Writer.FormatStatement(stmt)
 	}
 	return err
 }
 
+func (w *Writer) FormatBegin(stmt BeginStatement) error {
+	kw, err := stmt.Keyword()
+	if err != nil {
+		return err
+	}
+	w.WriteStatement(kw)
+	return nil
+}
+
 func (w *Writer) FormatVacuum(stmt VacuumStatement) error {
 	kw, _ := stmt.Keyword()
-	w.WritePrefix()
-	w.WriteString(kw)
+	w.WriteStatement(kw)
 	w.WriteBlank()
 	if stmt.Schema != "" {
 		w.WriteString(stmt.Schema)

@@ -6,6 +6,25 @@ import (
 	"github.com/midbel/sweet/internal/lang"
 )
 
+type BeginStatement struct {
+	Action string
+	Body   lang.Statement
+	End    lang.Statement
+}
+
+func (s BeginStatement) Keyword() (string, error) {
+	switch s.Action {
+	case "":
+		return "BEGIN TRANSACTION", nil
+	case "DEFERRED":
+	case "IMMEDIATE":
+	case "EXCLUSIVE":
+	default:
+		return "", fmt.Errorf("invalid begin type")
+	}
+	return fmt.Sprintf("BEGIN %s TRANSACTION", s.Action), nil
+}
+
 type Order struct {
 	lang.Order
 	Collate string

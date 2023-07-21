@@ -318,14 +318,14 @@ func (p *Parser) parseIf() (Statement, error) {
 		return nil, p.Unexpected("if")
 	}
 	p.Next()
-	stmt.Csq, err = p.parseBody(p.kwCheck("ELSE", "ELSIF", "END IF"))
+	stmt.Csq, err = p.ParseBody(p.KwCheck("ELSE", "ELSIF", "END IF"))
 	if err != nil {
 		return nil, err
 	}
 	switch {
 	case p.IsKeyword("ELSE"):
 		p.Next()
-		stmt.Alt, err = p.parseBody(p.kwCheck("END IF"))
+		stmt.Alt, err = p.ParseBody(p.KwCheck("END IF"))
 	case p.IsKeyword("ELSIF"):
 		return p.parseIf()
 	case p.IsKeyword("END IF"):
@@ -357,7 +357,7 @@ func (p *Parser) parseWhile() (Statement, error) {
 		return nil, p.Unexpected("while")
 	}
 	p.Next()
-	stmt.Body, err = p.parseBody(p.kwCheck("END WHILE"))
+	stmt.Body, err = p.ParseBody(p.KwCheck("END WHILE"))
 	if err != nil {
 		return nil, err
 	}
@@ -368,7 +368,7 @@ func (p *Parser) parseWhile() (Statement, error) {
 	return stmt, nil
 }
 
-func (p *Parser) parseBody(done func() bool) (Statement, error) {
+func (p *Parser) ParseBody(done func() bool) (Statement, error) {
 	var list List
 	for !p.Done() && !done() {
 		stmt, err := p.parseStatement()
@@ -463,9 +463,7 @@ func (p *Parser) parseStartTransaction() (Statement, error) {
 	p.RegisterParseFunc("ROLLBACK", p.parseRollback)
 	p.RegisterParseFunc("SET TRANSACTION", p.parseSetTransaction)
 
-	stmt.Body, err = p.parseBody(func() bool {
-		return p.IsKeyword("END") || p.IsKeyword("COMMIT") || p.IsKeyword("ROLLBACK")
-	})
+	stmt.Body, err = p.ParseBody(p.KwCheck("END", "COMMIT", "ROLLBACK"))
 	if err != nil {
 		return nil, err
 	}
@@ -534,7 +532,7 @@ func (p *Parser) parseRollback() (Statement, error) {
 
 func (p *Parser) parseBegin() (Statement, error) {
 	p.Next()
-	stmt, err := p.parseBody(func() bool {
+	stmt, err := p.ParseBody(func() bool {
 		return p.Done() || p.IsKeyword("END")
 	})
 	if err == nil {
@@ -1060,7 +1058,7 @@ func (p *Parser) ParseFrom() ([]Statement, error) {
 	var (
 		list []Statement
 		err  error
-		done = p.kwCheck(append(joins, kwselect...)...)
+		done = p.KwCheck(append(joins, kwselect...)...)
 	)
 	for !p.Done() && !p.Is(EOL) && !done() {
 		var stmt Statement
@@ -1084,7 +1082,7 @@ func (p *Parser) ParseFrom() ([]Statement, error) {
 	if p.Is(EOL) {
 		return list, nil
 	}
-	done = p.kwCheck(kwselect...)
+	done = p.KwCheck(kwselect...)
 	for !p.Done() && !p.Is(EOL) && !done() {
 		j := Join{
 			Type: p.GetCurrLiteral(),
@@ -1162,7 +1160,7 @@ func (p *Parser) ParseGroupBy() ([]Statement, error) {
 	var (
 		list []Statement
 		err  error
-		done = p.kwCheck(kwselect[2:]...)
+		done = p.KwCheck(kwselect[2:]...)
 	)
 	for !p.Done() && !p.Is(EOL) && !done() {
 		var stmt Statement
@@ -1361,7 +1359,7 @@ func (p *Parser) ParseOrderBy() ([]Statement, error) {
 	var (
 		list []Statement
 		err  error
-		done = p.kwCheck(kwselect[5:]...)
+		done = p.KwCheck(kwselect[5:]...)
 	)
 	for !p.Done() && !p.Is(EOL) && !p.Is(Rparen) && !done() {
 		var stmt Statement
@@ -1981,7 +1979,7 @@ func (p *Parser) tokCheck(kind ...rune) func() bool {
 	}
 }
 
-func (p *Parser) kwCheck(str ...string) func() bool {
+func (p *Parser) KwCheck(str ...string) func() bool {
 	sort.Strings(str)
 	return func() bool {
 		if !p.Is(Keyword) {

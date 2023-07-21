@@ -55,29 +55,29 @@ func (w *Writer) Format(r io.Reader) error {
 			}
 			return err
 		}
-		if err = w.format(stmt); err != nil {
+		if err = w.startStatement(stmt); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (w *Writer) FormatStatement(stmt Statement) error {
-	return w.format(stmt)
-}
+// func (w *Writer) FormatStatement(stmt Statement) error {
+// 	return w.format(stmt)
+// }
 
-func (w *Writer) format(stmt Statement) error {
+func (w *Writer) startStatement(stmt Statement) error {
 	defer w.Flush()
 
 	w.Reset()
-	err := w.formatStatement(stmt)
+	err := w.FormatStatement(stmt)
 	if err == nil {
 		w.WriteEOL()
 	}
 	return err
 }
 
-func (w *Writer) formatStatement(stmt Statement) error {
+func (w *Writer) FormatStatement(stmt Statement) error {
 	var err error
 	switch stmt := stmt.(type) {
 	case SelectStatement:
@@ -138,21 +138,21 @@ func (w *Writer) FormatStartTransaction(stmt StartTransaction) error {
 	}
 	if stmt.Body != nil {
 		w.WriteNL()
-		if err := w.formatStatement(stmt.Body); err != nil {
+		if err := w.FormatStatement(stmt.Body); err != nil {
 			return err
 		}
 	}
 	if stmt.End == nil {
 		return nil
 	}
-	return w.formatStatement(stmt.End)
+	return w.FormatStatement(stmt.End)
 }
 
 func (w *Writer) FormatBody(list List) error {
 	w.Enter()
 	defer w.Leave()
 	for _, v := range list.Values {
-		if err := w.formatStatement(v); err != nil {
+		if err := w.FormatStatement(v); err != nil {
 			return err
 		}
 		w.WriteEOL()
@@ -247,12 +247,12 @@ func (w *Writer) FormatWith(stmt WithStatement) error {
 			w.WriteString(",")
 			w.WriteNL()
 		}
-		if err := w.formatStatement(q); err != nil {
+		if err := w.FormatStatement(q); err != nil {
 			return err
 		}
 	}
 	w.WriteNL()
-	return w.formatStatement(stmt.Statement)
+	return w.FormatStatement(stmt.Statement)
 }
 
 func (w *Writer) FormatCte(stmt CteStatement) error {
@@ -277,7 +277,7 @@ func (w *Writer) FormatCte(stmt CteStatement) error {
 	w.WriteBlank()
 	w.WriteString("(")
 	w.WriteNL()
-	if err := w.formatStatement(stmt.Statement); err != nil {
+	if err := w.FormatStatement(stmt.Statement); err != nil {
 		return err
 	}
 	w.WriteNL()
@@ -286,7 +286,7 @@ func (w *Writer) FormatCte(stmt CteStatement) error {
 }
 
 func (w *Writer) FormatUnion(stmt UnionStatement) error {
-	if err := w.formatStatement(stmt.Left); err != nil {
+	if err := w.FormatStatement(stmt.Left); err != nil {
 		return err
 	}
 	w.WriteNL()
@@ -300,11 +300,11 @@ func (w *Writer) FormatUnion(stmt UnionStatement) error {
 		w.WriteKeyword("DISTINCT")
 	}
 	w.WriteNL()
-	return w.formatStatement(stmt.Right)
+	return w.FormatStatement(stmt.Right)
 }
 
 func (w *Writer) FormatExcept(stmt ExceptStatement) error {
-	if err := w.formatStatement(stmt.Left); err != nil {
+	if err := w.FormatStatement(stmt.Left); err != nil {
 		return err
 	}
 	w.WriteNL()
@@ -318,11 +318,11 @@ func (w *Writer) FormatExcept(stmt ExceptStatement) error {
 		w.WriteKeyword("DISTINCT")
 	}
 	w.WriteNL()
-	return w.formatStatement(stmt.Right)
+	return w.FormatStatement(stmt.Right)
 }
 
 func (w *Writer) FormatIntersect(stmt IntersectStatement) error {
-	if err := w.formatStatement(stmt.Left); err != nil {
+	if err := w.FormatStatement(stmt.Left); err != nil {
 		return err
 	}
 	w.WriteNL()
@@ -336,7 +336,7 @@ func (w *Writer) FormatIntersect(stmt IntersectStatement) error {
 		w.WriteKeyword("DISTINCT")
 	}
 	w.WriteNL()
-	return w.formatStatement(stmt.Right)
+	return w.FormatStatement(stmt.Right)
 }
 
 func (w *Writer) FormatDelete(stmt DeleteStatement) error {
@@ -613,7 +613,7 @@ func (w *Writer) FormatFrom(list []Statement) error {
 			err = w.formatFromJoin(s)
 		case SelectStatement:
 			w.WriteString("(")
-			err = w.formatStatement(s)
+			err = w.FormatStatement(s)
 			if err == nil {
 				w.WriteNL()
 				w.WriteString(")")
@@ -999,7 +999,7 @@ func (w *Writer) FormatExpr(stmt Statement, nl bool) error {
 	case WhenStatement:
 		err = w.formatWhen(stmt)
 	default:
-		err = w.formatStatement(stmt)
+		err = w.FormatStatement(stmt)
 	}
 	return err
 }

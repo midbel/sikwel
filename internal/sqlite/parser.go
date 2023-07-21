@@ -37,6 +37,8 @@ func NewParser(r io.Reader) (*Parser, error) {
 	local.RegisterParseFunc("UPDATE OR REPLACE", local.ParseUpdate)
 	local.RegisterParseFunc("UPDATE OR ROLLBACK", local.ParseUpdate)
 	local.RegisterParseFunc("VACUUM", local.ParseVacuum)
+	local.RegisterParseFunc("BEGIN", local.ParseBegin)
+	local.RegisterParseFunc("BEGIN TRANSACTION", local.ParseBegin)
 	return &local, nil
 }
 
@@ -55,6 +57,43 @@ func (p *Parser) ParseVacuum() (lang.Statement, error) {
 		stmt.File = p.GetCurrLiteral()
 		p.Next()
 	}
+	return stmt, err
+}
+
+func (p *Parser) ParseBegin() (lang.Statement, error) {
+	var (
+		stmt BeginStatement
+		err  error
+	)
+	if p.IsKeyword("BEGIN") {
+		p.Next()
+		switch {
+		case p.IsKeyword("IMMEDIATE"):
+		case p.IsKeyword("EXCLUSIVE"):
+		case p.IsKeyword("DEFERRED"):
+		default:
+			return nil, p.Unexpected("begin")
+		}
+		stmt.Action = p.GetCurrLiteral()
+		p.Next()
+		if !p.IsKeyword("TRANSACTION") {
+			return nil, p.Unexpected("begin")
+		}
+	}
+	p.Next()
+	// stmt.Body, err = p.ParseBody(p.KwCheck("END", "COMMIT", "ROLLBACK"))
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// switch {
+	// case p.IsKeyword("END") || p.IsKeyword("COMMIT"):
+	// 	stmt.End = lang.Commit{}
+	// case p.IsKeyword("ROLLBACK"):
+	// 	stmt.End = lang.Rollback{}
+	// default:
+	// 	return nil, p.Unexpected("begin")
+	// }
+	// p.Next()
 	return stmt, err
 }
 
@@ -91,7 +130,7 @@ func (p *Parser) ParseUpdate() (lang.Statement, error) {
 	case p.IsKeyword("UPDATE OR ROLLBACK"):
 		stmt.Action = "ROLLBACK"
 	default:
-		return nil, p.UnexpectedDialect("update", Vendor)
+		return nil, p.Unexpected("update")
 	}
 	stmt.Statement, err = p.Parser.ParseUpdate()
 	return stmt, err
@@ -115,7 +154,7 @@ func (p *Parser) ParseInsert() (lang.Statement, error) {
 	case p.IsKeyword("INSERT OR ROLLBACK INTO"):
 		stmt.Action = "ROLLBACK"
 	default:
-		return nil, p.UnexpectedDialect("insert", Vendor)
+		return nil, p.Unexpected("insert")
 	}
 	stmt.Statement, err = p.Parser.ParseInsert()
 	return stmt, err
@@ -167,7 +206,7 @@ func (p *Parser) ParseOrderBy() ([]lang.Statement, error) {
 			p.Next()
 			order.Collate = p.GetCurrLiteral()
 			if !isValidCollate(order.Collate) {
-				return nil, p.UnexpectedDialect("order by", Vendor)
+				return nil, p.Unexpected("order by")
 			}
 			p.Next()
 		}
@@ -178,7 +217,7 @@ func (p *Parser) ParseOrderBy() ([]lang.Statement, error) {
 		if p.IsKeyword("NULLS") {
 			p.Next()
 			if !p.IsKeyword("FIRST") && !p.IsKeyword("LAST") {
-				return nil, p.UnexpectedDialect("order by", Vendor)
+				return nil, p.Unexpected("order by")
 			}
 			order.Nulls = p.GetCurrLiteral()
 			p.Next()
@@ -186,6 +225,10 @@ func (p *Parser) ParseOrderBy() ([]lang.Statement, error) {
 		return order, nil
 	}
 	return p.ParseStatementList("order by", do)
+}
+
+func (p *Parser) Unexpected(ctx string) error {
+	return p.UnexpectedDialect(ctx, Vendor)	
 }
 
 func isValidCollate(str string) bool {

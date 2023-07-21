@@ -32,4 +32,10 @@ var keywords = lang.KeywordSet{
 	{"update", "or", "rollback"},
 	{"vacuum"},
 	{"into"},
+	{"begin"},
+	{"begin", "transaction"},
+	{"deferred"},
+	{"immediate"},
+	{"exclusive"},
+	{"transaction"},
 }
