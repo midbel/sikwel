@@ -33,20 +33,6 @@ func Scan(r io.Reader, keywords KeywordSet) (*Scanner, error) {
 	return &s, nil
 }
 
-func (s *Scanner) Take(beg, end int) []byte {
-	if beg > end || beg > len(s.input) || end > len(s.input) {
-		return nil
-	}
-	buf := make([]byte, end-beg)
-	copy(buf, s.input[beg:end])
-	return buf
-}
-
-func (s *Scanner) TakeString(beg, end int) string {
-	buf := s.Take(beg, end)
-	return string(buf)
-}
-
 func (s *Scanner) Scan() Token {
 	defer s.reset()
 	s.skip(isBlank)
@@ -325,10 +311,10 @@ func (s *Scanner) read() {
 	s.char, s.curr, s.next = r, s.next, s.next+n
 }
 
-func (s *Scanner) unread() {
-	c, z := utf8.DecodeRune(s.input[s.curr:])
-	s.char, s.curr, s.next = c, s.curr-z, s.curr
-}
+// func (s *Scanner) unread() {
+// 	c, z := utf8.DecodeRune(s.input[s.curr:])
+// 	s.char, s.curr, s.next = c, s.curr-z, s.curr
+// }
 
 func (s *Scanner) peek() rune {
 	r, _ := utf8.DecodeRune(s.input[s.next:])
@@ -411,9 +397,9 @@ func isDigit(r rune) bool {
 	return r >= '0' && r <= '9'
 }
 
-func isAlpha(r rune) bool {
-	return isLetter(r) || isDigit(r) || r == underscore
-}
+// func isAlpha(r rune) bool {
+// 	return isLetter(r) || isDigit(r) || r == underscore
+// }
 
 func isSpace(r rune) bool {
 	return r == space || r == tab

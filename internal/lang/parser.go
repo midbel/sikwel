@@ -1889,7 +1889,7 @@ func (p *Parser) peekBinding() int {
 }
 
 func (p *Parser) wantError(ctx, str string) error {
-	return fmt.Errorf("%s: expected %q! got %s", ctx, str, p.curr.Literal)
+	return fmt.Errorf("%s: expected %q at %d:%d! got %s", ctx, str, p.curr.Line, p.curr.Column, p.curr.Literal)
 }
 
 func (p *Parser) Unexpected(ctx string) error {
