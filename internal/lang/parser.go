@@ -333,7 +333,7 @@ func (p *Parser) parseIf() (Statement, error) {
 		p.Next()
 		stmt.Alt, err = p.parseBody(p.kwCheck("END IF"))
 	case p.IsKeyword("ELSIF"):
-		stmt.Alt, err = p.parseIf()
+		return p.parseIf()
 	case p.IsKeyword("END IF"):
 	default:
 		return nil, p.Unexpected("if")
@@ -897,7 +897,7 @@ func (p *Parser) parseCase() (Statement, error) {
 			return nil, err
 		}
 		p.Next()
-		when.Body, err = p.parseBody(p.kwCheck("WHEN", "ELSE", "END"))
+		when.Body, err = p.parseExpression(powLowest, p.kwCheck("WHEN", "ELSE", "END"))
 		if err = wrapError("then", err); err != nil {
 			return nil, err
 		}
@@ -905,7 +905,7 @@ func (p *Parser) parseCase() (Statement, error) {
 	}
 	if p.IsKeyword("ELSE") {
 		p.Next()
-		stmt.Else, err = p.parseBody(p.kwCheck("END"))
+		stmt.Else, err = p.parseExpression(powLowest, p.kwCheck("END"))
 		if err = wrapError("else", err); err != nil {
 			return nil, err
 		}

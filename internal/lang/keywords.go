@@ -85,7 +85,7 @@ var keywords = KeywordSet{
 	{"if"},
 	{"end", "if"},
 	{"else"},
-	{"else", "if"},
+	{"elsif"},
 	{"with"},
 	{"return"},
 	{"returning"},
