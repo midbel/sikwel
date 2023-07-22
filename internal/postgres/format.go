@@ -58,13 +58,28 @@ func (w *Writer) FormatStatement(stmt lang.Statement) error {
 	switch stmt := stmt.(type) {
 	case TruncateStatement:
 		err = w.FormatTruncate(stmt)
+	case CopyStatement:
+		err = w.FormatCopy(stmt)
 	default:
 		err = w.Writer.FormatStatement(stmt)
 	}
 	return err
 }
 
+func (w *Writer) FormatCopy(stmt CopyStatement) error {
+	w.Enter()
+	defer w.Leave()
+	
+	kw, _ := stmt.Keyword()
+	w.WriteStatement(kw)
+	
+	return nil
+}
+
 func (w *Writer) FormatTruncate(stmt TruncateStatement) error {
+	w.Enter()
+	defer w.Leave()
+
 	kw, _ := stmt.Keyword()
 	w.WriteStatement(kw)
 	if stmt.Only {
