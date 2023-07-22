@@ -197,12 +197,20 @@ func (p *Parser) ParseOrderBy() ([]lang.Statement, error) {
 		return nil, nil
 	}
 	p.Next()
-	do := func(stmt lang.Statement) (lang.Statement, error) {
-		base := lang.Order{
-			Statement: stmt,
+	var (
+		list []lang.Statement
+		err  error
+	)
+	for !p.Done() && !p.Is(lang.EOL) && !p.Is(lang.Rparen) && !p.Is(lang.Keyword) {
+		var stmt lang.Statement
+		stmt, err = p.ParseIdentifier()
+		if err != nil {
+			return nil, err
 		}
 		order := Order{
-			Order: base,
+			Order: lang.Order{
+				Statement: stmt,
+			},
 		}
 		if p.IsKeyword("COLLATE") {
 			p.Next()
@@ -224,9 +232,21 @@ func (p *Parser) ParseOrderBy() ([]lang.Statement, error) {
 			order.Nulls = p.GetCurrLiteral()
 			p.Next()
 		}
-		return order, nil
+		list = append(list, order)
+		switch {
+		case p.Is(lang.Comma):
+			p.Next()
+			if p.Is(lang.EOL) || p.Is(lang.Rparen) || p.Is(lang.Keyword) {
+				return nil, p.Unexpected("order by")
+			}
+		case p.Is(lang.Keyword):
+		case p.Is(lang.EOL):
+		case p.Is(lang.Rparen):
+		default:
+			return nil, p.Unexpected("order by")
+		}
 	}
-	return p.ParseStatementList("order by", do)
+	return list, err
 }
 
 func (p *Parser) Unexpected(ctx string) error {

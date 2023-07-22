@@ -100,8 +100,17 @@ func (p *Parser) ParseOrderBy() ([]lang.Statement, error) {
 		return nil, nil
 	}
 	p.Next()
-	do := func(stmt lang.Statement) (lang.Statement, error) {
-		order := Order{
+	var (
+		list []lang.Statement
+		err  error
+	)
+	for !p.Done() && !p.Is(lang.EOL) && !p.Is(lang.Rparen) && !p.Is(lang.Keyword) {
+		var stmt lang.Statement
+		stmt, err = p.StartExpression()
+		if err != nil {
+			return nil, err
+		}
+		order := lang.Order{
 			Statement: stmt,
 		}
 		if p.IsKeyword("ASC") || p.IsKeyword("DESC") {
@@ -121,19 +130,31 @@ func (p *Parser) ParseOrderBy() ([]lang.Statement, error) {
 			default:
 				return nil, fmt.Errorf("invalid operator in using")
 			}
-			p.Next()
+			p.Next()			
 		}
 		if p.IsKeyword("NULLS") {
 			p.Next()
 			if !p.IsKeyword("FIRST") && !p.IsKeyword("LAST") {
-				return nil, p.UnexpectedDialect("order by", Vendor)
+				return nil, p.Unexpected("order by")
 			}
 			order.Nulls = p.GetCurrLiteral()
 			p.Next()
 		}
-		return order, nil
+		list = append(list, order)
+		switch {
+		case p.Is(lang.Comma):
+			p.Next()
+			if p.Is(lang.EOL) || p.Is(lang.Rparen) || p.Is(lang.Keyword) {
+				return nil, p.Unexpected("order by")
+			}
+		case p.Is(lang.Keyword):
+		case p.Is(lang.EOL):
+		case p.Is(lang.Rparen):
+		default:
+			return nil, p.Unexpected("order by")
+		}
 	}
-	return p.ParseStatementList("order by", do)
+	return list, err
 }
 
 func (p *Parser) Unexpected(ctx string) error {

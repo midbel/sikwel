@@ -1401,9 +1401,8 @@ func (p *Parser) ParseOrderBy() ([]Statement, error) {
 	var (
 		list []Statement
 		err  error
-		done = p.KwCheck(kwselect[5:]...)
 	)
-	for !p.Done() && !p.Is(EOL) && !p.Is(Rparen) && !done() {
+	for !p.Done() && !p.Is(EOL) && !p.Is(Rparen) && !p.Is(Keyword) {
 		var stmt Statement
 		stmt, err = p.StartExpression()
 		if err != nil {
@@ -1413,7 +1412,7 @@ func (p *Parser) ParseOrderBy() ([]Statement, error) {
 			Statement: stmt,
 		}
 		if p.IsKeyword("ASC") || p.IsKeyword("DESC") {
-			order.Orient = p.curr.Literal
+			order.Orient = p.GetCurrLiteral()
 			p.Next()
 		}
 		if p.IsKeyword("NULLS") {
@@ -1421,19 +1420,19 @@ func (p *Parser) ParseOrderBy() ([]Statement, error) {
 			if !p.IsKeyword("FIRST") && !p.IsKeyword("LAST") {
 				return nil, p.Unexpected("order by")
 			}
-			order.Nulls = p.curr.Literal
+			order.Nulls = p.GetCurrLiteral()
 			p.Next()
 		}
 		list = append(list, order)
 		switch {
 		case p.Is(Comma):
 			p.Next()
-			if p.Is(EOL) || done() || p.Is(Rparen) {
+			if p.Is(EOL) || p.Is(Rparen) || p.Is(Keyword) {
 				return nil, p.Unexpected("order by")
 			}
+		case p.Is(Keyword):
 		case p.Is(EOL):
 		case p.Is(Rparen):
-		case done():
 		default:
 			return nil, p.Unexpected("order by")
 		}
@@ -1903,52 +1902,6 @@ func (p *Parser) parseColumnsList() ([]string, error) {
 	p.Next()
 
 	return list, err
-}
-
-func (p *Parser) ParseStatementList(ctx string, fn func(Statement) (Statement, error)) ([]Statement, error) {
-	var (
-		list []Statement
-		err  error
-	)
-	for !p.Done() && !p.Is(Keyword) && !p.Is(EOL) && !p.Is(Rparen) {
-		var stmt Statement
-		switch {
-		case p.Is(Lparen):
-			p.Next()
-			stmt, err = p.ParseSelect()
-			if err != nil {
-				return nil, err
-			}
-			if !p.Is(Rparen) {
-				return nil, p.Unexpected("list")
-			}
-			p.Next()
-		case p.Is(Ident):
-			stmt, err = p.ParseIdentifier()
-		default:
-			return nil, p.Unexpected("list")
-		}
-		if fn != nil {
-			if stmt, err = fn(stmt); err != nil {
-				return nil, err
-			}
-		}
-		list = append(list, stmt)
-
-		switch {
-		case p.Is(Comma):
-			p.Next()
-			if p.Is(Keyword) || p.Is(EOL) || p.Is(Rparen) || p.Done() {
-				return nil, p.Unexpected(ctx)
-			}
-		case p.Is(Keyword):
-		case p.Is(EOL):
-		case p.Is(Rparen):
-		default:
-			return nil, p.Unexpected(ctx)
-		}
-	}
-	return list, nil
 }
 
 func (p *Parser) ParseAlias(stmt Statement) (Statement, error) {
