@@ -25,6 +25,8 @@ type Parser struct {
 	*frame
 	stack []*frame
 
+	level int
+
 	keywords map[string]func() (Statement, error)
 	infix    map[symbol]infixFunc
 	prefix   map[symbol]prefixFunc
@@ -45,7 +47,7 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 	p.keywords = make(map[string]func() (Statement, error))
 
 	p.RegisterParseFunc("SELECT", p.ParseSelect)
-	p.RegisterParseFunc("VALUES", p.parseValues)
+	p.RegisterParseFunc("VALUES", p.ParseValues)
 	p.RegisterParseFunc("DELETE FROM", p.parseDelete)
 	p.RegisterParseFunc("UPDATE", p.ParseUpdate)
 	p.RegisterParseFunc("INSERT INTO", p.ParseInsert)
@@ -104,6 +106,18 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 	return &p, nil
 }
 
+func (p *Parser) Enter() {
+	p.level++
+}
+
+func (p *Parser) Leave() {
+	p.level--
+}
+
+func (p *Parser) Nested() bool {
+	return p.level > 0
+}
+
 func (p *Parser) RegisterParseFunc(kw string, fn func() (Statement, error)) {
 	kw = strings.ToUpper(kw)
 	p.keywords[kw] = fn
@@ -144,7 +158,7 @@ func (p *Parser) parse() (Statement, error) {
 		}
 		return p.Parse()
 	}
-	if com.Statement, err = p.parseStatement(); err != nil {
+	if com.Statement, err = p.ParseStatement(); err != nil {
 		return nil, err
 	}
 	if !p.Is(EOL) {
@@ -212,7 +226,7 @@ func (p *Parser) ParseUseMacro() error {
 	return nil
 }
 
-func (p *Parser) parseStatement() (Statement, error) {
+func (p *Parser) ParseStatement() (Statement, error) {
 	if p.Done() {
 		return nil, io.EOF
 	}
@@ -417,7 +431,7 @@ func (p *Parser) parseWhile() (Statement, error) {
 func (p *Parser) ParseBody(done func() bool) (Statement, error) {
 	var list List
 	for !p.Done() && !done() {
-		stmt, err := p.parseStatement()
+		stmt, err := p.ParseStatement()
 		if err != nil {
 			return nil, err
 		}
@@ -603,7 +617,7 @@ func (p *Parser) parseWith() (Statement, error) {
 			return nil, err
 		}
 	}
-	stmt.Statement, err = p.parseStatement()
+	stmt.Statement, err = p.ParseStatement()
 	return stmt, wrapError("with", err)
 }
 
@@ -632,7 +646,7 @@ func (p *Parser) parseSubquery() (Statement, error) {
 	}
 	p.Next()
 
-	cte.Statement, err = p.parseStatement()
+	cte.Statement, err = p.ParseStatement()
 	if err = wrapError("subquery", err); err != nil {
 		return nil, err
 	}
@@ -951,7 +965,7 @@ func (p *Parser) parseCase() (Statement, error) {
 	return p.ParseAlias(stmt)
 }
 
-func (p *Parser) parseValues() (Statement, error) {
+func (p *Parser) ParseValues() (Statement, error) {
 	p.Next()
 	var (
 		stmt ValuesStatement

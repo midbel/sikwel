@@ -3,6 +3,7 @@ package postgres
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/midbel/sweet/internal/lang"
 )
@@ -31,11 +32,134 @@ func NewParser(r io.Reader) (*Parser, error) {
 }
 
 func (p *Parser) ParseMerge() (lang.Statement, error) {
-	return nil, nil
+	var (
+		stmt MergeStatement
+		err  error
+	)
+	return stmt, err
 }
 
 func (p *Parser) ParseCopy() (lang.Statement, error) {
-	return nil, nil
+	var (
+		stmt CopyStatement
+		err  error
+	)
+	p.Next()
+	if !p.Is(lang.Lparen) {
+		stmt.Table, err = p.ParseIdent()
+		if err != nil {
+			return nil, err
+		}
+	}
+	if p.Is(lang.Lparen) {
+		p.Next()
+		if p.Is(lang.Keyword) {
+			stmt.Query, err = p.ParseStatement()
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			for !p.Done() && !p.Is(lang.Rparen) {
+				stmt.Columns = append(stmt.Columns, p.GetCurrLiteral())
+				p.Next()
+				if err := p.EnsureEnd("copy", lang.Comma, lang.Rparen); err != nil {
+					return nil, err
+				}
+			}
+		}
+		if !p.Is(lang.Rparen) {
+			return nil, p.Unexpected("copy")
+		}
+		p.Next()
+	}
+	switch {
+	case p.IsKeyword("FROM"):
+		stmt.Import = true
+		if stmt.Query != nil {
+			return nil, fmt.Errorf("query not legal for copy from")
+		}
+	case p.IsKeyword("TO"):
+	default:
+		return nil, p.Unexpected("copy")
+	}
+	p.Next()
+	switch {
+	case p.IsKeyword("PROGRAM"):
+		p.Next()
+		stmt.Program = true
+		stmt.File = p.GetCurrLiteral()
+	case p.IsKeyword("STDIN"):
+		stmt.Stdio = true
+		stmt.File = "STDIN"
+	case p.IsKeyword("STDOUT"):
+		stmt.Stdio = true
+		stmt.File = "STDOUT"
+	case p.Is(lang.Literal):
+		stmt.File = p.GetCurrLiteral()
+	default:
+		return nil, p.Unexpected("copy")
+	}
+	p.Next()
+	if p.IsKeyword("WITH") || p.Is(lang.Lparen) {
+		if p.IsKeyword("WITH") {
+			p.Next()
+			if !p.Is(lang.Lparen) {
+				return nil, p.Unexpected("copy")
+			}
+		}
+		p.Next()
+		for !p.Done() && !p.Is(lang.Rparen) {
+			option := p.GetCurrLiteral()
+			p.Next()
+			if !p.Is(lang.Literal) && !p.Is(lang.Number) {
+				return nil, p.Unexpected("copy")
+			}
+			switch val := p.GetCurrLiteral(); strings.ToUpper(option) {
+			case "FORMAT":
+				stmt.Header = val
+			case "DELIMITER":
+				stmt.Delimiter = val
+			case "FREEZE":
+				stmt.Freeze = val
+			case "NULL":
+				stmt.Null = val
+			case "HEADER":
+				stmt.Header = val
+			case "QUOTE":
+				stmt.Quote = val
+			case "ESCAPE":
+				stmt.Escape = val
+			case "FORCE_QUOTE":
+				stmt.ForceQuote = val
+			case "FORCE_NOT_NULL":
+				stmt.ForceNotNull = val
+			case "FORCE_NULL":
+				stmt.ForceNull = val
+			case "FORCE_ENCODING":
+				stmt.Encoding = val
+			default:
+				return nil, p.Unexpected("copy")
+			}
+			p.Next()
+			if err := p.EnsureEnd("copy", lang.Comma, lang.Rparen); err != nil {
+				return nil, err
+			}
+		}
+		if !p.Is(lang.Rparen) {
+			return nil, p.Unexpected("copy")
+		}
+		p.Next()
+	}
+	if p.IsKeyword("WHERE") {
+		if stmt.Import {
+			return nil, fmt.Errorf("where not legal for copy to")
+		}
+		stmt.Where, err = p.ParseWhere()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return stmt, nil
 }
 
 func (p *Parser) ParseTruncate() (lang.Statement, error) {
@@ -130,7 +254,7 @@ func (p *Parser) ParseOrderBy() ([]lang.Statement, error) {
 			default:
 				return nil, fmt.Errorf("invalid operator in using")
 			}
-			p.Next()			
+			p.Next()
 		}
 		if p.IsKeyword("NULLS") {
 			p.Next()

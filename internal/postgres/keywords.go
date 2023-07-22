@@ -13,4 +13,9 @@ var keywords = lang.KeywordSet{
 	{"restrict"},
 	{"copy"},
 	{"merge"},
+	{"from"},
+	{"to"},
+	{"program"},
+	{"stdout"},
+	{"stdin"},
 }
