@@ -111,6 +111,11 @@ var keywords = KeywordSet{
 	{"call"},
 }
 
+func isJoin(tok Token) bool {
+	kw := strings.ToUpper(tok.Literal)
+	return tok.Type == Keyword && strings.HasSuffix(kw, "JOIN")
+}
+
 func GetKeywords() KeywordSet {
 	return keywords
 }

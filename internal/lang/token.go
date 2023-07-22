@@ -2,7 +2,6 @@ package lang
 
 import (
 	"fmt"
-	"strings"
 )
 
 const (
@@ -53,10 +52,6 @@ type Token struct {
 
 func (t Token) isValue() bool {
 	return t.Type == Ident || t.Type == Literal || t.Type == Number
-}
-
-func (t Token) isJoin() bool {
-	return t.Type == Keyword && strings.HasSuffix(t.Literal, "JOIN")
 }
 
 func (t Token) asSymbol() symbol {

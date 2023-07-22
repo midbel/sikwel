@@ -115,7 +115,14 @@ func (p *Parser) Leave() {
 }
 
 func (p *Parser) Nested() bool {
-	return p.level > 0
+	return p.level > 1
+}
+
+func (p *Parser) QueryEnds() bool {
+	if p.Nested() {
+		return p.Is(Rparen)
+	}
+	return p.Is(EOL)
 }
 
 func (p *Parser) RegisterParseFunc(kw string, fn func() (Statement, error)) {
@@ -227,6 +234,9 @@ func (p *Parser) ParseUseMacro() error {
 }
 
 func (p *Parser) ParseStatement() (Statement, error) {
+	p.Enter()
+	defer p.Leave()
+
 	if p.Done() {
 		return nil, io.EOF
 	}
@@ -988,30 +998,6 @@ func (p *Parser) ParseSelect() (Statement, error) {
 	return p.ParseSelectStatement(p)
 }
 
-var joins = []string{
-	"JOIN",
-	"INNER JOIN",
-	"LEFT JOIN",
-	"RIGHT JOIN",
-	"FULL JOIN",
-	"LEFT OUTER JOIN",
-	"FULL OUTER JOIN",
-}
-
-var kwselect = []string{
-	"WHERE",
-	"GROUP BY",
-	"HAVING",
-	"WINDOW",
-	"ORDER BY",
-	"LIMIT",
-	"OFFSET",
-	"FETCH",
-	"UNION",
-	"INTERSECT",
-	"EXCEPT",
-}
-
 func (p *Parser) ParseSelectStatement(sp SelectParser) (Statement, error) {
 	p.Next()
 	var (
@@ -1114,32 +1100,23 @@ func (p *Parser) ParseFrom() ([]Statement, error) {
 	var (
 		list []Statement
 		err  error
-		done = p.KwCheck(append(joins, kwselect...)...)
 	)
-	for !p.Done() && !p.Is(EOL) && !done() {
+	for !p.Done() && !p.QueryEnds() {
 		var stmt Statement
 		stmt, err = p.StartExpression()
 		if err != nil {
 			return nil, err
 		}
 		list = append(list, stmt)
-		switch {
-		case p.Is(Comma):
-			p.Next()
-			if done() || p.Is(EOL) {
-				return nil, p.Unexpected("from")
-			}
-		case done():
-		case p.Is(EOL):
-		default:
+		if !p.Is(Comma) {
+			break
+		}
+		p.Next()
+		if p.QueryEnds() || p.Is(Keyword) {
 			return nil, p.Unexpected("from")
 		}
 	}
-	if p.Is(EOL) {
-		return list, nil
-	}
-	done = p.KwCheck(kwselect...)
-	for !p.Done() && !p.Is(EOL) && !done() {
+	for !p.Done() && !p.QueryEnds() && isJoin(p.curr) {
 		j := Join{
 			Type: p.GetCurrLiteral(),
 		}
@@ -1216,9 +1193,8 @@ func (p *Parser) ParseGroupBy() ([]Statement, error) {
 	var (
 		list []Statement
 		err  error
-		done = p.KwCheck(kwselect[2:]...)
 	)
-	for !p.Done() && !p.Is(EOL) && !done() {
+	for !p.Done() && !p.QueryEnds() && !p.Is(Keyword) {
 		var stmt Statement
 		stmt, err = p.StartExpression()
 		if err != nil {
@@ -1227,11 +1203,11 @@ func (p *Parser) ParseGroupBy() ([]Statement, error) {
 		switch {
 		case p.Is(Comma):
 			p.Next()
-			if p.Is(EOL) || done() {
+			if p.QueryEnds() && !p.Is(Keyword) {
 				return nil, p.Unexpected("group by")
 			}
 		case p.Is(EOL):
-		case done():
+		case p.Is(Keyword):
 		default:
 			return nil, p.Unexpected("group by")
 		}
@@ -1259,7 +1235,7 @@ func (p *Parser) ParseWindows() ([]Statement, error) {
 		list []Statement
 		err  error
 	)
-	for !p.Done() && !p.Is(Keyword) && !p.Is(EOL) {
+	for !p.Done() && !p.QueryEnds() && !p.Is(Keyword) {
 		var win WindowDefinition
 		if win.Ident, err = p.ParseIdentifier(); err != nil {
 			return nil, err
@@ -1275,11 +1251,11 @@ func (p *Parser) ParseWindows() ([]Statement, error) {
 		switch {
 		case p.Is(Comma):
 			p.Next()
-			if p.Is(Keyword) || p.Is(EOL) {
+			if p.Is(Keyword) || p.QueryEnds() {
 				return nil, p.Unexpected("window")
 			}
 		case p.Is(Keyword):
-		case p.Is(EOL):
+		case p.QueryEnds():
 		default:
 			return nil, p.Unexpected("window")
 		}
@@ -1416,7 +1392,7 @@ func (p *Parser) ParseOrderBy() ([]Statement, error) {
 		list []Statement
 		err  error
 	)
-	for !p.Done() && !p.Is(EOL) && !p.Is(Rparen) && !p.Is(Keyword) {
+	for !p.Done() && !p.QueryEnds() && !p.Is(Rparen) && !p.Is(Keyword) {
 		var stmt Statement
 		stmt, err = p.StartExpression()
 		if err != nil {
@@ -1441,11 +1417,11 @@ func (p *Parser) ParseOrderBy() ([]Statement, error) {
 		switch {
 		case p.Is(Comma):
 			p.Next()
-			if p.Is(EOL) || p.Is(Rparen) || p.Is(Keyword) {
+			if p.QueryEnds() || p.Is(Rparen) || p.Is(Keyword) {
 				return nil, p.Unexpected("order by")
 			}
 		case p.Is(Keyword):
-		case p.Is(EOL):
+		case p.QueryEnds():
 		case p.Is(Rparen):
 		default:
 			return nil, p.Unexpected("order by")
@@ -1599,7 +1575,7 @@ func (p *Parser) parseExpression(power int) (Statement, error) {
 	if err != nil {
 		return nil, err
 	}
-	for !p.Is(EOL) && !p.Is(Comma) && !p.Done() && power < p.currBinding() {
+	for !p.QueryEnds() && !p.Is(Comma) && !p.Done() && power < p.currBinding() {
 		left, err = p.getInfixExpr(left)
 		if err != nil {
 			return nil, err

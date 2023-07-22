@@ -69,10 +69,10 @@ func (w *Writer) FormatStatement(stmt lang.Statement) error {
 func (w *Writer) FormatCopy(stmt CopyStatement) error {
 	w.Enter()
 	defer w.Leave()
-	
+
 	kw, _ := stmt.Keyword()
 	w.WriteStatement(kw)
-	
+
 	return nil
 }
 
