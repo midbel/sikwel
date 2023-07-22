@@ -9,7 +9,8 @@ var keywords = lang.KeywordSet{
 	{"truncate", "table"},
 	{"restart", "identity"},
 	{"continue", "identity"},
-	{"only", "identity"},
 	{"cascade"},
 	{"restrict"},
+	{"copy"},
+	{"merge"},
 }

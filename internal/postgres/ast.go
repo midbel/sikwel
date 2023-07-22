@@ -13,7 +13,7 @@ type TruncateStatement struct {
 }
 
 func (s TruncateStatement) Keyword() (string, error) {
-	return "TRUNCATE", nil
+	return "TRUNCATE TABLE", nil
 }
 
 type Order struct {

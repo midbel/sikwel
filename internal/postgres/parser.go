@@ -23,9 +23,19 @@ func NewParser(r io.Reader) (*Parser, error) {
 		return nil, err
 	}
 	local.RegisterParseFunc("SELECT", local.ParseSelect)
+	local.RegisterParseFunc("MERGE", local.ParseMerge)
+	local.RegisterParseFunc("COPY", local.ParseCopy)
 	local.RegisterParseFunc("TRUNCATE", local.ParseTruncate)
 	local.RegisterParseFunc("TRUNCATE TABLE", local.ParseTruncate)
 	return &local, nil
+}
+
+func (p *Parser) ParseMerge() (lang.Statement, error) {
+	return nil, nil
+}
+
+func (p *Parser) ParseCopy() (lang.Statement, error) {
+	return nil, nil
 }
 
 func (p *Parser) ParseTruncate() (lang.Statement, error) {
@@ -39,9 +49,26 @@ func (p *Parser) ParseTruncate() (lang.Statement, error) {
 		stmt.Only = true
 	}
 
-	stmt.Tables, err = p.ParseStatementList("truncate", p.ParseAlias)
-	if err != nil {
-		return nil, err
+	for !p.Done() && !p.Is(lang.EOL) && !p.Is(lang.Keyword) {
+		ident, err := p.ParseIdent()
+		if err != nil {
+			return nil, err
+		}
+		if p.Is(lang.Star) {
+			p.Next()
+		}
+		stmt.Tables = append(stmt.Tables, ident)
+		switch {
+		case p.Is(lang.Comma):
+			p.Next()
+			if p.Is(lang.Keyword) || p.Is(lang.EOL) {
+				return nil, p.Unexpected("truncate")
+			}
+		case p.Is(lang.Keyword):
+		case p.Is(lang.EOL):
+		default:
+			return nil, p.Unexpected("truncate")
+		}
 	}
 	switch {
 	case p.IsKeyword("RESTART IDENTITY"):
@@ -107,4 +134,8 @@ func (p *Parser) ParseOrderBy() ([]lang.Statement, error) {
 		return order, nil
 	}
 	return p.ParseStatementList("order by", do)
+}
+
+func (p *Parser) Unexpected(ctx string) error {
+	return p.UnexpectedDialect(ctx, Vendor)
 }

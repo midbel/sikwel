@@ -33,6 +33,10 @@ func ParseAnsi(r io.Reader) (Parser, error) {
 	return lang.NewParser(r)
 }
 
+func ParseSqlite(r io.Reader) (Parser, error) {
+	return sqlite.NewParser(r)
+}
+
 func ParsePostgres(r io.Reader) (Parser, error) {
 	return postgres.NewParser(r)
 }
@@ -41,12 +45,12 @@ func FormatAnsi(w io.Writer) Writer {
 	return lang.NewWriter(w)
 }
 
-func ParseSqlite(r io.Reader) (Parser, error) {
-	return sqlite.NewParser(r)
-}
-
 func FormatSqlite(w io.Writer) Writer {
 	return sqlite.NewWriter(w)
+}
+
+func FormatPostgres(w io.Writer) Writer {
+	return postgres.NewWriter(w)
 }
 
 func NewParser(r io.Reader, dialect string) (Parser, error) {
@@ -73,6 +77,7 @@ func NewWriter(w io.Writer, dialect string) (Writer, error) {
 	case sqlite.Vendor:
 		return FormatSqlite(w), nil
 	case postgres.Vendor:
+		return FormatPostgres(w), nil
 	case Mysql:
 	case Maria:
 	case Db2:
