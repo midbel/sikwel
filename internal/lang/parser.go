@@ -98,7 +98,7 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 	p.RegisterPrefix("NULL", Keyword, p.parseUnary)
 	p.RegisterPrefix("DEFAULT", Keyword, p.parseUnary)
 	p.RegisterPrefix("CASE", Keyword, p.parseCase)
-	p.RegisterPrefix("SELECT", Keyword, p.ParseSelect)
+	p.RegisterPrefix("SELECT", Keyword, p.ParseStatement)
 	p.RegisterPrefix("EXISTS", Keyword, p.parseUnary)
 	p.RegisterPrefix("CAST", Keyword, p.parseCast)
 	p.RegisterPrefix("ROW", Keyword, p.parseRow)
@@ -115,7 +115,7 @@ func (p *Parser) Leave() {
 }
 
 func (p *Parser) Nested() bool {
-	return p.level > 1
+	return p.level >= 1
 }
 
 func (p *Parser) QueryEnds() bool {
@@ -819,7 +819,7 @@ func (p *Parser) ParseInsert() (Statement, error) {
 
 	switch {
 	case p.IsKeyword("SELECT"):
-		stmt.Values, err = p.ParseSelect()
+		stmt.Values, err = p.ParseStatement()
 	case p.IsKeyword("VALUES"):
 		p.Next()
 		var all List
@@ -1194,24 +1194,20 @@ func (p *Parser) ParseGroupBy() ([]Statement, error) {
 		list []Statement
 		err  error
 	)
-	for !p.Done() && !p.QueryEnds() && !p.Is(Keyword) {
+	for !p.Done() && !p.QueryEnds() {
 		var stmt Statement
 		stmt, err = p.StartExpression()
 		if err != nil {
 			return nil, err
 		}
-		switch {
-		case p.Is(Comma):
-			p.Next()
-			if p.QueryEnds() && !p.Is(Keyword) {
-				return nil, p.Unexpected("group by")
-			}
-		case p.Is(EOL):
-		case p.Is(Keyword):
-		default:
+		list = append(list, stmt)
+		if !p.Is(Comma) {
+			break
+		}
+		p.Next()
+		if p.QueryEnds() && !p.Is(Keyword) {
 			return nil, p.Unexpected("group by")
 		}
-		list = append(list, stmt)
 	}
 	return list, err
 }
@@ -1235,7 +1231,7 @@ func (p *Parser) ParseWindows() ([]Statement, error) {
 		list []Statement
 		err  error
 	)
-	for !p.Done() && !p.QueryEnds() && !p.Is(Keyword) {
+	for !p.Done() && !p.QueryEnds() {
 		var win WindowDefinition
 		if win.Ident, err = p.ParseIdentifier(); err != nil {
 			return nil, err
@@ -1248,15 +1244,11 @@ func (p *Parser) ParseWindows() ([]Statement, error) {
 			return nil, err
 		}
 		list = append(list, win)
-		switch {
-		case p.Is(Comma):
-			p.Next()
-			if p.Is(Keyword) || p.QueryEnds() {
-				return nil, p.Unexpected("window")
-			}
-		case p.Is(Keyword):
-		case p.QueryEnds():
-		default:
+		if !p.Is(Comma) {
+			break
+		}
+		p.Next()
+		if p.Is(Keyword) || p.QueryEnds() {
 			return nil, p.Unexpected("window")
 		}
 	}
@@ -1392,7 +1384,7 @@ func (p *Parser) ParseOrderBy() ([]Statement, error) {
 		list []Statement
 		err  error
 	)
-	for !p.Done() && !p.QueryEnds() && !p.Is(Rparen) && !p.Is(Keyword) {
+	for !p.Done() && !p.QueryEnds() {
 		var stmt Statement
 		stmt, err = p.StartExpression()
 		if err != nil {
@@ -1414,16 +1406,11 @@ func (p *Parser) ParseOrderBy() ([]Statement, error) {
 			p.Next()
 		}
 		list = append(list, order)
-		switch {
-		case p.Is(Comma):
-			p.Next()
-			if p.QueryEnds() || p.Is(Rparen) || p.Is(Keyword) {
-				return nil, p.Unexpected("order by")
-			}
-		case p.Is(Keyword):
-		case p.QueryEnds():
-		case p.Is(Rparen):
-		default:
+		if !p.Is(Comma) {
+			break
+		}
+		p.Next()
+		if p.QueryEnds() || p.Is(Rparen) || p.Is(Keyword) {
 			return nil, p.Unexpected("order by")
 		}
 	}
@@ -1844,7 +1831,7 @@ func (p *Parser) ParseLiteral() (Statement, error) {
 func (p *Parser) parseGroupExpr() (Statement, error) {
 	p.Next()
 	if p.IsKeyword("SELECT") {
-		stmt, err := p.ParseSelect()
+		stmt, err := p.ParseStatement()
 		if err != nil {
 			return nil, err
 		}
