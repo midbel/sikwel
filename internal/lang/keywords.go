@@ -120,7 +120,6 @@ var keywords = KeywordSet{
 	{"check"},
 	{"generated", "always"},
 	{"stored"},
-	{"virtual"},
 }
 
 func isJoin(tok Token) bool {

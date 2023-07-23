@@ -449,25 +449,26 @@ type ForeignKeyConstraint struct {
 }
 
 type NotNullConstraint struct {
-	Conflict Statement
+	Column string
 }
 
 type UniqueConstraint struct {
-	Conflict Statement
+	Column string
 }
 
 type CheckConstraint struct {
+	Column string
 	Expr Statement
 }
 
 type DefaultConstraint struct {
+	Column string
 	Expr Statement
 }
 
 type GeneratedConstraint struct {
 	Expr    Statement
 	Stored  bool
-	Virtual bool
 }
 
 type Constraint struct {
