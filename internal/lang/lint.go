@@ -31,6 +31,8 @@ func (i *Linter) Lint() ([]error, error) {
 func (i *Linter) LintStatement(stmt Statement) ([]error, error) {
 	var errs []error
 	switch s := stmt.(type) {
+	case Commented:
+		return i.LintStatement(s.Statement)
 	case SelectStatement:
 		errs = i.lintSelect(s)
 	case InsertStatement:
