@@ -10,6 +10,9 @@ type KeywordSet [][]string
 var keywords = KeywordSet{
 	{"create", "procedure"},
 	{"create", "or", "replace", "procedure"},
+	{"create", "table"},
+	{"create", "temp", "table"},
+	{"create", "temporary", "table"},
 	{"declare"},
 	{"default"},
 	{"null"},
@@ -109,6 +112,15 @@ var keywords = KeywordSet{
 	{"exclude", "group"},
 	{"exclude", "ties"},
 	{"call"},
+	{"constraint"},
+	{"primary", "key"},
+	{"autoincrement"},
+	{"not", "null"},
+	{"unique"},
+	{"check"},
+	{"generated", "always"},
+	{"stored"},
+	{"virtual"},
 }
 
 func isJoin(tok Token) bool {

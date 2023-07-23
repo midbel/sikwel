@@ -436,3 +436,61 @@ type SetStatement struct {
 	Ident string
 	Expr  Statement
 }
+
+type PrimaryKeyConstraint struct {
+	Orient   string
+	AutoIncr bool
+	Conflict Statement
+}
+
+type ForeignKeyConstraint struct {
+	Table   Statement
+	Columns []Statement
+}
+
+type NotNullConstraint struct {
+	Conflict Statement
+}
+
+type UniqueConstraint struct {
+	Conflict Statement
+}
+
+type CheckConstraint struct {
+	Expr Statement
+}
+
+type DefaultConstraint struct {
+	Expr Statement
+}
+
+type GeneratedConstraint struct {
+	Expr    Statement
+	Stored  bool
+	Virtual bool
+}
+
+type Constraint struct {
+	Name string
+	Statement
+}
+
+type ColumnDef struct {
+	Name       string
+	Type       Type
+	Constraint Statement
+}
+
+type CreateTableStatement struct {
+	Temp        bool
+	Name        Statement
+	Columns     []Statement
+	Constraints []Statement
+}
+
+func (s CreateTableStatement) Keyword() (string, error) {
+	if s.Temp {
+		return "CREATE TEMPORARY TABLE", nil
+	}
+	return "CREATE TABLE", nil
+}
