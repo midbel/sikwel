@@ -99,7 +99,7 @@ func (p *Parser) ParseConstraint(column bool) (Statement, error) {
 		cst.Statement, err = p.ParseForeignKeyConstraint(column)
 	case p.IsKeyword("UNIQUE"):
 		cst.Statement, err = p.ParseUniqueConstraint(column)
-	case p.IsKeyword("NOT NULL"):
+	case p.IsKeyword("NOT"):
 		if !column {
 			return nil, p.Unexpected("constraint")
 		}
@@ -212,6 +212,10 @@ func (p *Parser) ParseUniqueConstraint(short bool) (Statement, error) {
 func (p *Parser) ParseNotNullConstraint() (Statement, error) {
 	p.Next()
 	var cst NotNullConstraint
+	if !p.IsKeyword("NULL") {
+		return nil, p.Unexpected("not null")
+	}
+	p.Next()
 	return cst, nil
 }
 

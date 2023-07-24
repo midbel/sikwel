@@ -117,7 +117,7 @@ var keywords = KeywordSet{
 	{"foreign", "key"},
 	{"references"},
 	{"autoincrement"},
-	{"not", "null"},
+	// {"not", "null"},
 	{"unique"},
 	{"check"},
 	{"generated", "always"},
