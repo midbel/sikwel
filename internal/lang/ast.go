@@ -438,14 +438,13 @@ type SetStatement struct {
 }
 
 type PrimaryKeyConstraint struct {
-	Orient   string
-	AutoIncr bool
-	Conflict Statement
+	Columns []string
 }
 
 type ForeignKeyConstraint struct {
-	Table   Statement
-	Columns []Statement
+	Locals  []string
+	Remotes []string
+	Table   string
 }
 
 type NotNullConstraint struct {
@@ -453,22 +452,19 @@ type NotNullConstraint struct {
 }
 
 type UniqueConstraint struct {
-	Column string
+	Columns []string
 }
 
 type CheckConstraint struct {
-	Column string
 	Expr Statement
 }
 
 type DefaultConstraint struct {
-	Column string
 	Expr Statement
 }
 
 type GeneratedConstraint struct {
-	Expr    Statement
-	Stored  bool
+	Expr Statement
 }
 
 type Constraint struct {
@@ -477,9 +473,9 @@ type Constraint struct {
 }
 
 type ColumnDef struct {
-	Name       string
-	Type       Type
-	Constraint Statement
+	Name        string
+	Type        Type
+	Constraints []Statement
 }
 
 type CreateTableStatement struct {

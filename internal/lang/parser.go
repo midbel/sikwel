@@ -790,6 +790,14 @@ func (p *Parser) Done() bool {
 	return p.frame.Done()
 }
 
+func (p *Parser) Expect(ctx string, r rune) error {
+	if !p.Is(r) {
+		return p.Unexpected(ctx)
+	}
+	p.Next()
+	return nil
+}
+
 type prefixFunc func() (Statement, error)
 
 type infixFunc func(Statement) (Statement, error)

@@ -114,6 +114,8 @@ var keywords = KeywordSet{
 	{"call"},
 	{"constraint"},
 	{"primary", "key"},
+	{"foreign", "key"},
+	{"references"},
 	{"autoincrement"},
 	{"not", "null"},
 	{"unique"},
