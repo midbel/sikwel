@@ -2,6 +2,7 @@ package lang
 
 import (
 	"fmt"
+	"strings"
 )
 
 // type ConstraintParser interface {
@@ -276,12 +277,22 @@ func (w *Writer) FormatCreateTable(stmt CreateTableStatement) error {
 
 	w.Enter()
 	defer w.Leave()
+	var longest int
+	for _, c := range stmt.Columns {
+		d, ok := c.(ColumnDef)
+		if !ok {
+			continue
+		}
+		if z := len(d.Name); z > longest {
+			longest = z
+		}
+	}
 	for i, c := range stmt.Columns {
 		if i > 0 {
 			w.WriteString(",")
 			w.WriteNL()
 		}
-		if err := w.FormatColumnDef(c); err != nil {
+		if err := w.FormatColumnDef(c, longest); err != nil {
 			return err
 		}
 	}
@@ -298,13 +309,16 @@ func (w *Writer) FormatCreateTable(stmt CreateTableStatement) error {
 	return nil
 }
 
-func (w *Writer) FormatColumnDef(stmt Statement) error {
+func (w *Writer) FormatColumnDef(stmt Statement, size int) error {
 	def, ok := stmt.(ColumnDef)
 	if !ok {
 		return fmt.Errorf("%T can not be used as column definition", stmt)
 	}
 	w.WritePrefix()
 	w.WriteString(def.Name)
+	if z := len(def.Name); z < size {
+		w.WriteString(strings.Repeat(" ", size-z))
+	}
 	w.WriteBlank()
 	if err := w.formatType(def.Type); err != nil {
 		return err
