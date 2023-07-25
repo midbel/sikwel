@@ -1,5 +1,9 @@
 package lang
 
+import (
+	"fmt"
+)
+
 func (p *Parser) parseDelete() (Statement, error) {
 	p.Next()
 	var (
@@ -266,4 +270,234 @@ func (p *Parser) parseListValues() (Statement, error) {
 	}
 	p.Next()
 	return list, nil
+}
+
+func (w *Writer) FormatDelete(stmt DeleteStatement) error {
+	w.Enter()
+	defer w.Leave()
+
+	kw, _ := stmt.Keyword()
+	w.WriteStatement(kw)
+	w.WriteBlank()
+	w.WriteString(stmt.Table)
+	if stmt.Where != nil {
+		w.WriteNL()
+		if err := w.FormatWhere(stmt.Where); err != nil {
+			return err
+		}
+	}
+	if stmt.Return != nil {
+		w.WriteNL()
+		if err := w.FormatReturn(stmt.Return); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (w *Writer) FormatUpdate(stmt UpdateStatement) error {
+	w.Enter()
+	defer w.Leave()
+
+	kw, _ := stmt.Keyword()
+	w.WriteStatement(kw)
+	w.WriteBlank()
+	switch stmt := stmt.Table.(type) {
+	case Name:
+		w.FormatName(stmt)
+	case Alias:
+		if err := w.FormatAlias(stmt); err != nil {
+			return err
+		}
+	default:
+		return w.CanNotUse("update", stmt)
+	}
+	w.WriteBlank()
+	w.WriteKeyword("SET")
+	w.WriteNL()
+
+	if err := w.FormatAssignment(stmt.List); err != nil {
+		return err
+	}
+
+	if len(stmt.Tables) > 0 {
+		w.WriteNL()
+		if err := w.FormatFrom(stmt.Tables); err != nil {
+			return err
+		}
+	}
+	if stmt.Where != nil {
+		w.WriteNL()
+		if err := w.FormatWhere(stmt.Where); err != nil {
+			return err
+		}
+	}
+	if stmt.Return != nil {
+		w.WriteNL()
+		if err := w.FormatReturn(stmt.Return); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (w *Writer) FormatInsert(stmt InsertStatement) error {
+	w.Enter()
+	defer w.Leave()
+
+	kw, _ := stmt.Keyword()
+	w.WriteStatement(kw)
+	w.WriteBlank()
+	if err := w.FormatExpr(stmt.Table, false); err != nil {
+		return err
+	}
+	if len(stmt.Columns) > 0 {
+		w.WriteBlank()
+		w.WriteString("(")
+		for i, c := range stmt.Columns {
+			if i > 0 {
+				w.WriteString(",")
+				w.WriteBlank()
+			}
+			w.WriteString(c)
+		}
+		w.WriteString(")")
+	}
+	w.WriteBlank()
+	if err := w.FormatInsertValues(stmt.Values); err != nil {
+		return err
+	}
+	if stmt.Upsert != nil {
+		w.WriteNL()
+		if err := w.FormatUpsert(stmt.Upsert); err != nil {
+			return err
+		}
+	}
+	if stmt.Return != nil {
+		w.WriteNL()
+		if err := w.FormatReturn(stmt.Return); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (w *Writer) FormatInsertValues(values Statement) error {
+	if values == nil {
+		return nil
+	}
+	var err error
+	switch stmt := values.(type) {
+	case List:
+		w.WriteKeyword("VALUES")
+		w.WriteNL()
+
+		w.Enter()
+		defer w.Leave()
+		for i, v := range stmt.Values {
+			if i > 0 {
+				w.WriteString(",")
+				w.WriteNL()
+			}
+			w.WritePrefix()
+			if err = w.FormatExpr(v, false); err != nil {
+				break
+			}
+		}
+	case SelectStatement:
+		w.WriteNL()
+		err = w.FormatSelect(stmt)
+	default:
+		err = fmt.Errorf("values: unexpected statement type(%T)", values)
+	}
+	return err
+}
+
+func (w *Writer) FormatUpsert(stmt Statement) error {
+	if stmt == nil {
+		return nil
+	}
+	upsert, ok := stmt.(UpsertStatement)
+	if !ok {
+		return w.CanNotUse("insert(upsert)", stmt)
+	}
+	w.WriteStatement("ON CONFLICT")
+	w.WriteBlank()
+
+	if len(upsert.Columns) > 0 {
+		w.WriteString("(")
+		for i, s := range upsert.Columns {
+			if i > 0 {
+				w.WriteString(",")
+				w.WriteBlank()
+			}
+			w.WriteString(s)
+		}
+		w.WriteString(")")
+	}
+	w.WriteBlank()
+	if len(upsert.List) == 0 {
+		w.WriteKeyword("DO NOTHING")
+		return nil
+	}
+	w.WriteKeyword("UPDATE SET")
+	w.WriteNL()
+	if err := w.FormatAssignment(upsert.List); err != nil {
+		return err
+	}
+	return w.FormatWhere(upsert.Where)
+}
+
+func (w *Writer) FormatAssignment(list []Statement) error {
+	w.Enter()
+	defer w.Leave()
+
+	var err error
+	for i, s := range list {
+		if i > 0 {
+			w.WriteString(",")
+			w.WriteBlank()
+		}
+		ass, ok := s.(Assignment)
+		if !ok {
+			return w.CanNotUse("assignment", s)
+		}
+		w.WritePrefix()
+		switch field := ass.Field.(type) {
+		case Name:
+			w.FormatName(field)
+		case List:
+			err = w.formatList(field)
+		default:
+			return w.CanNotUse("assignment", s)
+		}
+		if err != nil {
+			return err
+		}
+		w.WriteString("=")
+		switch value := ass.Value.(type) {
+		case List:
+			err = w.formatList(value)
+		default:
+			err = w.FormatExpr(value, false)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return err
+}
+
+func (w *Writer) FormatReturn(stmt Statement) error {
+	if stmt == nil {
+		return nil
+	}
+	w.WriteStatement("RETURNING")
+	w.WriteBlank()
+
+	list, ok := stmt.(List)
+	if !ok {
+		return w.FormatExpr(stmt, false)
+	}
+	return w.formatStmtSlice(list.Values)
 }

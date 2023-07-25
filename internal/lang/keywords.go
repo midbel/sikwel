@@ -120,7 +120,7 @@ var keywords = KeywordSet{
 	// {"not", "null"},
 	{"unique"},
 	{"check"},
-	{"generated", "always"},
+	{"generated", "always", "as"},
 	{"stored"},
 }
 

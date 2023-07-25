@@ -111,7 +111,7 @@ func (p *Parser) ParseConstraint(column bool) (Statement, error) {
 			return nil, p.Unexpected("constraint")
 		}
 		cst.Statement, err = p.ParseDefaultConstraint()
-	case p.IsKeyword("GENERATED ALWAYS"):
+	case p.IsKeyword("GENERATED ALWAYS AS"):
 		cst.Statement, err = p.ParseGeneratedAlwaysConstraint()
 	default:
 		return nil, p.Unexpected("constraint")
@@ -240,6 +240,7 @@ func (p *Parser) ParseDefaultConstraint() (Statement, error) {
 }
 
 func (p *Parser) ParseGeneratedAlwaysConstraint() (Statement, error) {
+	p.Next()
 	var (
 		cst GeneratedConstraint
 		err error
@@ -253,4 +254,8 @@ func (p *Parser) ParseGeneratedAlwaysConstraint() (Statement, error) {
 	}
 	p.Next()
 	return cst, nil
+}
+
+func (w *Writer) FormatCreateTable(stmt CreateTableStatement) error {
+	return nil
 }
