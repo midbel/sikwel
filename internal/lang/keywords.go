@@ -31,6 +31,8 @@ var keywords = KeywordSet{
 	{"order", "by"},
 	{"as"},
 	{"in"},
+	{"inout"},
+	{"out"},
 	{"join"},
 	{"on"},
 	{"full", "join"},

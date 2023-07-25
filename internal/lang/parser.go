@@ -52,6 +52,8 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 	p.RegisterParseFunc("CREATE TABLE", p.ParseCreateTable)
 	p.RegisterParseFunc("CREATE TEMP TABLE", p.ParseCreateTable)
 	p.RegisterParseFunc("CREATE TEMPORARY TABLE", p.ParseCreateTable)
+	p.RegisterParseFunc("CREATE PROCEDURE", p.ParseCreateProcedure)
+	p.RegisterParseFunc("CREATE OR REPLACE PROCEDURE", p.ParseCreateProcedure)
 
 	p.infix = make(map[symbol]infixFunc)
 	p.RegisterInfix("", Plus, p.parseInfixExpr)
