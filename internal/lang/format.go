@@ -506,6 +506,10 @@ func (w *Writer) formatValue(literal string) {
 		w.WriteString(literal)
 		return
 	}
+	if _, err := strconv.ParseFloat(literal, 64); err == nil {
+		w.WriteString(literal)
+		return
+	}
 	w.WriteQuoted(literal)
 }
 

@@ -1,5 +1,9 @@
 package lang
 
+import (
+	"fmt"
+)
+
 // type ConstraintParser interface {
 // 	ParsePrimaryKey() (Statement, error)
 // 	ParseForeignKey() (Statement, error)
@@ -257,5 +261,209 @@ func (p *Parser) ParseGeneratedAlwaysConstraint() (Statement, error) {
 }
 
 func (w *Writer) FormatCreateTable(stmt CreateTableStatement) error {
+	w.Enter()
+	defer w.Leave()
+
+	kw, _ := stmt.Keyword()
+	w.WriteStatement(kw)
+	w.WriteBlank()
+	if err := w.FormatExpr(stmt.Name, false); err != nil {
+		return err
+	}
+	w.WriteBlank()
+	w.WriteString("(")
+	w.WriteNL()
+
+	w.Enter()
+	defer w.Leave()
+	for i, c := range stmt.Columns {
+		if i > 0 {
+			w.WriteString(",")
+			w.WriteNL()
+		}
+		if err := w.FormatColumnDef(c); err != nil {
+			return err
+		}
+	}
+	for _, c := range stmt.Constraints {
+		w.WriteString(",")
+		w.WriteNL()
+		w.WritePrefix()
+		if err := w.FormatConstraint(c); err != nil {
+			return err
+		}
+	}
+	w.WriteNL()
+	w.WriteString(")")
+	return nil
+}
+
+func (w *Writer) FormatColumnDef(stmt Statement) error {
+	def, ok := stmt.(ColumnDef)
+	if !ok {
+		return fmt.Errorf("%T can not be used as column definition", stmt)
+	}
+	w.WritePrefix()
+	w.WriteString(def.Name)
+	w.WriteBlank()
+	if err := w.formatType(def.Type); err != nil {
+		return err
+	}
+	for _, c := range def.Constraints {
+		w.WriteBlank()
+		if err := w.FormatConstraint(c); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (w *Writer) FormatConstraint(stmt Statement) error {
+	cst, ok := stmt.(Constraint)
+	if !ok {
+		return fmt.Errorf("%T can not be used as constraint", stmt)
+	}
+	if cst.Name != "" {
+		w.WriteKeyword("CONSTRAINT")
+		w.WriteBlank()
+		w.WriteString(cst.Name)
+		w.WriteBlank()
+	}
+	switch stmt := cst.Statement.(type) {
+	case PrimaryKeyConstraint:
+		return w.FormatPrimaryKeyConstraint(stmt)
+	case ForeignKeyConstraint:
+		return w.FormatForeignKeyConstraint(stmt)
+	case NotNullConstraint:
+		return w.FormatNotNullConstraint(stmt)
+	case UniqueConstraint:
+		return w.FormatUniqueConstraint(stmt)
+	case CheckConstraint:
+		return w.FormatCheckConstraint(stmt)
+	case DefaultConstraint:
+		return w.FormatDefaultConstraint(stmt)
+	case GeneratedConstraint:
+		return w.FormatGeneratedConstraint(stmt)
+	default:
+		return fmt.Errorf("%T: unsupported constraint type", cst.Statement)
+	}
+}
+
+func (w *Writer) FormatPrimaryKeyConstraint(cst PrimaryKeyConstraint) error {
+	kw, _ := cst.Keyword()
+	w.WriteKeyword(kw)
+	if len(cst.Columns) == 0 {
+		return nil
+	}
+	w.WriteBlank()
+	w.WriteString("(")
+	for i, c := range cst.Columns {
+		if i > 0 {
+			w.WriteString(",")
+			w.WriteBlank()
+		}
+		w.WriteString(c)
+	}
+	w.WriteString(")")
+	return nil
+}
+
+func (w *Writer) FormatForeignKeyConstraint(cst ForeignKeyConstraint) error {
+	if len(cst.Locals) > 0 {
+		w.WriteKeyword("FOREIGN KEY")
+		w.WriteBlank()
+		w.WriteString("(")
+		for i, c := range cst.Locals {
+			if i > 0 {
+				w.WriteString(",")
+				w.WriteBlank()
+			}
+			w.WriteString(c)
+		}
+		w.WriteString(")")
+		w.WriteBlank()
+	}
+	if len(cst.Remotes) > 0 {
+		w.WriteKeyword("REFERENCES")
+		w.WriteBlank()
+		w.WriteString(cst.Table)
+		w.WriteString("(")
+		for i, c := range cst.Remotes {
+			if i > 0 {
+				w.WriteString(",")
+				w.WriteBlank()
+			}
+			w.WriteString(c)
+		}
+		w.WriteString(")")
+	}
+	return nil
+}
+
+func (w *Writer) FormatNotNullConstraint(cst NotNullConstraint) error {
+	kw, _ := cst.Keyword()
+	w.WriteKeyword(kw)
+	return nil
+}
+
+func (w *Writer) FormatUniqueConstraint(cst UniqueConstraint) error {
+	kw, _ := cst.Keyword()
+	w.WriteKeyword(kw)
+	if len(cst.Columns) == 0 {
+		return nil
+	}
+	w.WriteBlank()
+	w.WriteString("(")
+	for i, c := range cst.Columns {
+		if i > 0 {
+			w.WriteString(",")
+			w.WriteBlank()
+		}
+		w.WriteString(c)
+	}
+	w.WriteString(")")
+	return nil
+}
+
+func (w *Writer) FormatDefaultConstraint(cst DefaultConstraint) error {
+	kw, _ := cst.Keyword()
+	w.WriteKeyword(kw)
+	w.WriteBlank()
+	_, ok := cst.Expr.(Value)
+	if !ok {
+		w.WriteString("(")
+	}
+	if err := w.FormatExpr(cst.Expr, false); err != nil {
+		return err
+	}
+	if !ok {
+		w.WriteString(")")
+	}
+	return nil
+}
+
+func (w *Writer) FormatCheckConstraint(cst CheckConstraint) error {
+	kw, _ := cst.Keyword()
+	w.WriteKeyword(kw)
+	w.WriteBlank()
+	w.WriteString("(")
+	if err := w.FormatExpr(cst.Expr, false); err != nil {
+		return err
+	}
+	w.WriteString(")")
+	return nil
+}
+
+func (w *Writer) FormatGeneratedConstraint(cst GeneratedConstraint) error {
+	kw, _ := cst.Keyword()
+	w.WriteKeyword(kw)
+	w.WriteBlank()
+	w.WriteString("(")
+	if err := w.FormatExpr(cst.Expr, false); err != nil {
+		return err
+	}
+	w.WriteString(")")
+	w.WriteBlank()
+	w.WriteKeyword("STORED")
 	return nil
 }
