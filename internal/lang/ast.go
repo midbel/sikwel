@@ -449,6 +449,8 @@ type ForeignKeyConstraint struct {
 	Locals  []string
 	Remotes []string
 	Table   string
+	OnDelete Statement
+	OnUpdate Statement
 }
 
 func (c ForeignKeyConstraint) Keyword() (string, error) {

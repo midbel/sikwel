@@ -8,3 +8,10 @@ create table employees (
 	foreign key (dept) references departments(id),
 	constraint uniq_name_mail unique(name, email)
 );
+
+create table departments (
+	id serial not null,
+	name varchar(12) not null,
+	primary key (id),
+	constraint unique_name unique(name)
+);
