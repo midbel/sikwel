@@ -11,13 +11,13 @@ import (
 )
 
 var (
-	vendor  = flag.String("d", "", "dialect")
-	compact = flag.Bool("c", false, "compact statement")
-	upper   = flag.Bool("u", false, "uppercase keyword")
-	tab     = flag.Bool("t", false, "use tab as indent character")
-	count   = flag.Int("n", 1, "number of space for indent")
-	file    = flag.String("f", "", "write sql to file")
-	keep    = flag.Bool("k", false, "keep comment in output")
+	vendor   = flag.String("d", "", "dialect")
+	compact  = flag.Bool("c", false, "compact statement")
+	upper    = flag.Bool("u", false, "uppercase keyword")
+	tab      = flag.Bool("t", false, "use tab as indent character")
+	count    = flag.Int("n", 1, "number of space for indent")
+	file     = flag.String("f", "", "write sql to file")
+	keep     = flag.Bool("k", false, "keep comment in output")
 	colorize = flag.Bool("C", false, "colorize output")
 )
 

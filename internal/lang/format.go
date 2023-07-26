@@ -20,7 +20,7 @@ type Writer struct {
 	Indent      string
 
 	noColor bool
-	prefix int
+	prefix  int
 }
 
 func NewWriter(w io.Writer) *Writer {
@@ -361,7 +361,7 @@ func (w *Writer) formatCall(call Call) error {
 	if !ok {
 		return w.CanNotUse("call", call.Ident)
 	}
-	w.WriteKeyword(n.Ident)
+	w.WriteCall(n.Ident)
 	w.WriteString("(")
 	if call.Distinct {
 		w.WriteKeyword("DISTINCT")
@@ -610,6 +610,16 @@ func (w *Writer) WriteStatement(kw string) {
 	w.WriteKeyword(kw)
 }
 
+func (w *Writer) WriteCall(call string) {
+	if w.withColor() {
+		w.WriteString(callColor)
+	}
+	w.WriteString(call)
+	if w.withColor() {
+		w.WriteString(resetCode)
+	}
+}
+
 func (w *Writer) WriteKeyword(kw string) {
 	if !isAlpha(kw) {
 		w.WriteString(kw)
@@ -667,7 +677,8 @@ func isAlpha(str string) bool {
 
 const (
 	keywordColor = "\033[38;2;173;216;230m"
-	numberColor  = "\033[38;2;80;200;120m"
+	numberColor  = "\033[38;2;234;72;72m"
 	stringColor  = "\033[38;2;252;245;95m"
+	callColor    = "\033[38;2;80;200;120m"
 	resetCode    = "\033[0m"
 )

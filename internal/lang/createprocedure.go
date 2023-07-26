@@ -1,8 +1,8 @@
 package lang
 
-// import (
-// 	"fmt"
-// )
+import (
+	"fmt"
+)
 
 func (p *Parser) ParseCreateProcedure() (Statement, error) {
 	var (
@@ -107,5 +107,58 @@ func (p *Parser) ParseProcedureParameter() (Statement, error) {
 }
 
 func (w *Writer) FormatCreateProcedure(stmt CreateProcedureStatement) error {
+	w.Enter()
+	defer w.Leave()
+
+	kw, _ := stmt.Keyword()
+	w.WriteStatement(kw)
+	w.WriteBlank()
+	w.WriteString(stmt.Name)
+	w.WriteString("(")
+	for i, s := range stmt.Parameters {
+		p, ok := s.(ProcedureParameter)
+		if !ok {
+			return fmt.Errorf("%T can not be used as procedure parameter", s)
+		}
+		if i > 0 {
+			w.WriteString(",")
+			w.WriteBlank()
+		}
+		switch p.Mode {
+		case ModeIn:
+			w.WriteKeyword("IN")
+		case ModeOut:
+			w.WriteKeyword("OUT")
+		case ModeInOut:
+			w.WriteKeyword("IN")
+		}
+		if p.Mode != 0 {
+			w.WriteBlank()
+		}
+		w.WriteString(p.Name)
+		w.WriteBlank()
+		if err := w.formatType(p.Type); err != nil {
+			return err
+		}
+		if p.Default != nil {
+			w.WriteBlank()
+			w.WriteKeyword("DEFAULT")
+			w.WriteBlank()
+			if err := w.FormatExpr(p.Default, false); err != nil {
+				return err
+			}
+		}
+	}
+	w.WriteString(")")
+	w.WriteNL()
+	if stmt.Language != "" {
+		w.WriteKeyword("LANGUAGE")
+		w.WriteBlank()
+		w.WriteString(stmt.Language)
+		w.WriteNL()
+	}
+	w.WriteKeyword("BEGIN")
+	w.WriteNL()
+	w.WriteKeyword("END")
 	return nil
 }
