@@ -34,6 +34,10 @@ func (p *Parser) ParseCreateTableStatement() (Statement, error) {
 	if stmt.Name, err = p.ParseTableName(); err != nil {
 		return nil, err
 	}
+	if p.IsKeyword("IF NOT EXISTS") {
+		p.Next()
+		stmt.NotExists = true
+	}
 	if err := p.Expect("create table", Lparen); err != nil {
 		return nil, err
 	}
@@ -272,6 +276,10 @@ func (w *Writer) FormatCreateTable(stmt CreateTableStatement) error {
 		return err
 	}
 	w.WriteBlank()
+	if stmt.NotExists {
+		w.WriteKeyword("IF NOT EXISTS")
+		w.WriteBlank()
+	}
 	w.WriteString("(")
 	w.WriteNL()
 

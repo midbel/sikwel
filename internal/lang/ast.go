@@ -514,6 +514,7 @@ type ColumnDef struct {
 type CreateTableStatement struct {
 	Temp        bool
 	Name        Statement
+	NotExists   bool
 	Columns     []Statement
 	Constraints []Statement
 }

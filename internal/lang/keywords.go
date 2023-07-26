@@ -13,6 +13,7 @@ var keywords = KeywordSet{
 	{"create", "table"},
 	{"create", "temp", "table"},
 	{"create", "temporary", "table"},
+	{"if", "not", "exists"},
 	{"declare"},
 	{"default"},
 	{"null"},

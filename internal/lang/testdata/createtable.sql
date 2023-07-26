@@ -9,7 +9,7 @@ create table employees (
 	constraint uniq_name_mail unique(name, email)
 );
 
-create table departments (
+create table departments if not exists (
 	id serial not null,
 	name varchar(12) not null,
 	primary key (id),
