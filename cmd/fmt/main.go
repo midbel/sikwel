@@ -18,6 +18,7 @@ var (
 	count   = flag.Int("n", 1, "number of space for indent")
 	file    = flag.String("f", "", "write sql to file")
 	keep    = flag.Bool("k", false, "keep comment in output")
+	colorize = flag.Bool("C", false, "colorize output")
 )
 
 func main() {
@@ -55,6 +56,7 @@ func prepareWriter(ws io.Writer, vendor string) (dialect.Writer, error) {
 	w.SetFunctionUppercase(*upper)
 	w.SetKeepComments(*keep)
 	w.SetCompact(*compact)
+	w.ColorizeOutput(*colorize)
 	if *tab {
 		w.SetIndent("\t")
 	} else if *count > 0 {

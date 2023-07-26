@@ -27,6 +27,7 @@ type Writer interface {
 	SetKeywordUppercase(bool)
 	SetFunctionUppercase(bool)
 	SetKeepComments(bool)
+	ColorizeOutput(bool)
 }
 
 func ParseAnsi(r io.Reader) (Parser, error) {

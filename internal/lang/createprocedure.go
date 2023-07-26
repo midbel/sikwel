@@ -27,6 +27,22 @@ func (p *Parser) ParseCreateProcedure() (Statement, error) {
 		return nil, p.Unexpected("procedure")
 	}
 	p.Next()
+
+	// p.RegisterParseFunc("CASE", p.parseCase)
+	// p.RegisterParseFunc("IF", p.parseIf)
+	// p.RegisterParseFunc("WHILE", p.parseWhile)
+	// p.RegisterParseFunc("DECLARE", p.parseDeclare)
+	// p.RegisterParseFunc("SET", p.parseSet)
+	// p.RegisterParseFunc("RETURN", p.parseReturn)
+
+	// defer func() {
+	// 	p.UnregisterParseFunc("CASE")
+	// 	p.UnregisterParseFunc("IF")
+	// 	p.UnregisterParseFunc("WHILE")
+	// 	p.UnregisterParseFunc("DECLARE")
+	// 	p.UnregisterParseFunc("RETURN")
+	// }()
+
 	stmt.Body, err = p.ParseBody(func() bool {
 		return p.IsKeyword("END")
 	})
@@ -88,4 +104,8 @@ func (p *Parser) ParseProcedureParameter() (Statement, error) {
 		}
 	}
 	return param, nil
+}
+
+func (w *Writer) FormatCreateProcedure(stmt CreateProcedureStatement) error {
+	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -15,16 +16,22 @@ type Writer struct {
 	KwUpper     bool
 	FnUpper     bool
 	KeepComment bool
+	Colorize    bool
 	Indent      string
 
+	noColor bool
 	prefix int
 }
 
 func NewWriter(w io.Writer) *Writer {
-	return &Writer{
+	ws := Writer{
 		inner:  bufio.NewWriter(w),
 		Indent: "  ",
 	}
+	if w != os.Stdout {
+		ws.noColor = true
+	}
+	return &ws
 }
 
 func (w *Writer) SetIndent(indent string) {
@@ -45,6 +52,10 @@ func (w *Writer) SetKeywordUppercase(upper bool) {
 
 func (w *Writer) SetFunctionUppercase(upper bool) {
 	w.FnUpper = upper
+}
+
+func (w *Writer) ColorizeOutput(colorize bool) {
+	w.Colorize = colorize
 }
 
 func (w *Writer) Format(r io.Reader) error {
@@ -92,6 +103,8 @@ func (w *Writer) FormatStatement(stmt Statement) error {
 	switch stmt := stmt.(type) {
 	case CreateTableStatement:
 		err = w.FormatCreateTable(stmt)
+	case CreateProcedureStatement:
+		err = w.FormatCreateProcedure(stmt)
 	case SelectStatement:
 		err = w.FormatSelect(stmt)
 	case ValuesStatement:
@@ -499,15 +512,33 @@ func (w *Writer) FormatAlias(alias Alias) error {
 
 func (w *Writer) formatValue(literal string) {
 	if literal == "NULL" || literal == "DEFAULT" || literal == "*" {
+		if w.withColor() {
+			w.WriteString(keywordColor)
+		}
 		w.WriteKeyword(literal)
+		if w.withColor() {
+			w.WriteString(resetCode)
+		}
 		return
 	}
 	if _, err := strconv.Atoi(literal); err == nil {
+		if w.withColor() {
+			w.WriteString(numberColor)
+		}
 		w.WriteString(literal)
+		if w.withColor() {
+			w.WriteString(resetCode)
+		}
 		return
 	}
 	if _, err := strconv.ParseFloat(literal, 64); err == nil {
+		if w.withColor() {
+			w.WriteString(numberColor)
+		}
 		w.WriteString(literal)
+		if w.withColor() {
+			w.WriteString(resetCode)
+		}
 		return
 	}
 	w.WriteQuoted(literal)
@@ -551,9 +582,15 @@ func (w *Writer) WriteEOL() {
 }
 
 func (w *Writer) WriteQuoted(str string) {
+	if w.withColor() {
+		w.WriteString(stringColor)
+	}
 	w.inner.WriteRune('\'')
 	w.WriteString(str)
 	w.inner.WriteRune('\'')
+	if w.withColor() {
+		w.WriteString(resetCode)
+	}
 }
 
 func (w *Writer) WriteNL() {
@@ -574,12 +611,22 @@ func (w *Writer) WriteStatement(kw string) {
 }
 
 func (w *Writer) WriteKeyword(kw string) {
+	if !isAlpha(kw) {
+		w.WriteString(kw)
+		return
+	}
 	if !w.KwUpper {
 		kw = strings.ToLower(kw)
 	} else {
 		kw = strings.ToUpper(kw)
 	}
+	if w.withColor() {
+		w.WriteString(keywordColor)
+	}
 	w.WriteString(kw)
+	if w.withColor() {
+		w.WriteString(resetCode)
+	}
 }
 
 func (w *Writer) WritePrefix() {
@@ -600,3 +647,27 @@ func (w *Writer) Reset() {
 func (w *Writer) CanNotUse(ctx string, stmt Statement) error {
 	return fmt.Errorf("%T can not be used as statement in %s", stmt, ctx)
 }
+
+func (w *Writer) withColor() bool {
+	if w.noColor {
+		return false
+	}
+	return w.Colorize
+}
+
+func isAlpha(str string) bool {
+	other := strings.Map(func(r rune) rune {
+		if isLetter(r) || isBlank(r) {
+			return r
+		}
+		return -1
+	}, str)
+	return other == str
+}
+
+const (
+	keywordColor = "\033[38;2;173;216;230m"
+	numberColor  = "\033[38;2;240;128;128m"
+	stringColor  = "\033[38;2;255;215;0m"
+	resetCode    = "\033[0m"
+)
