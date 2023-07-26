@@ -140,6 +140,8 @@ func (p *Parser) parseReturn() (Statement, error) {
 }
 
 func (w *Writer) FormatIf(stmt IfStatement) error {
+	w.Enter()
+	defer w.Leave()
 	if err := w.formatIf(stmt, "IF"); err != nil {
 		return err
 	}

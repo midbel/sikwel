@@ -31,12 +31,12 @@ func (p *Parser) ParseCreateTableStatement() (Statement, error) {
 		stmt CreateTableStatement
 		err  error
 	)
-	if stmt.Name, err = p.ParseTableName(); err != nil {
-		return nil, err
-	}
 	if p.IsKeyword("IF NOT EXISTS") {
 		p.Next()
 		stmt.NotExists = true
+	}
+	if stmt.Name, err = p.ParseTableName(); err != nil {
+		return nil, err
 	}
 	if err := p.Expect("create table", Lparen); err != nil {
 		return nil, err
