@@ -138,7 +138,7 @@ func (w *Writer) formatInsertStatement(stmt lang.Statement) error {
 	}
 	if ins.Return != nil {
 		w.WriteNL()
-		if err := w.FormatReturn(ins.Return); err != nil {
+		if err := w.FormatReturning(ins.Return); err != nil {
 			return err
 		}
 	}
@@ -194,7 +194,7 @@ func (w *Writer) formatUpdateStatement(stmt lang.Statement) error {
 	}
 	if up.Return != nil {
 		w.WriteNL()
-		if err := w.FormatReturn(up.Return); err != nil {
+		if err := w.FormatReturning(up.Return); err != nil {
 			return err
 		}
 	}

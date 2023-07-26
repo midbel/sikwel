@@ -143,6 +143,16 @@ func (w *Writer) FormatStatement(stmt Statement) error {
 		err = w.FormatRollbackSavepoint(stmt)
 	case List:
 		err = w.FormatBody(stmt)
+	case Declare:
+		err = w.FormatDeclare(stmt)
+	case Return:
+		err = w.FormatReturn(stmt)
+	case SetStatement:
+		err = w.FormatSet(stmt)
+	case IfStatement:
+		err = w.FormatIf(stmt)
+	case WhileStatement:
+		err = w.FormatWhile(stmt)
 	default:
 		err = fmt.Errorf("unsupported statement type %T", stmt)
 	}

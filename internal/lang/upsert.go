@@ -288,7 +288,7 @@ func (w *Writer) FormatDelete(stmt DeleteStatement) error {
 	}
 	if stmt.Return != nil {
 		w.WriteNL()
-		if err := w.FormatReturn(stmt.Return); err != nil {
+		if err := w.FormatReturning(stmt.Return); err != nil {
 			return err
 		}
 	}
@@ -334,7 +334,7 @@ func (w *Writer) FormatUpdate(stmt UpdateStatement) error {
 	}
 	if stmt.Return != nil {
 		w.WriteNL()
-		if err := w.FormatReturn(stmt.Return); err != nil {
+		if err := w.FormatReturning(stmt.Return); err != nil {
 			return err
 		}
 	}
@@ -375,7 +375,7 @@ func (w *Writer) FormatInsert(stmt InsertStatement) error {
 	}
 	if stmt.Return != nil {
 		w.WriteNL()
-		if err := w.FormatReturn(stmt.Return); err != nil {
+		if err := w.FormatReturning(stmt.Return); err != nil {
 			return err
 		}
 	}
@@ -488,7 +488,7 @@ func (w *Writer) FormatAssignment(list []Statement) error {
 	return err
 }
 
-func (w *Writer) FormatReturn(stmt Statement) error {
+func (w *Writer) FormatReturning(stmt Statement) error {
 	if stmt == nil {
 		return nil
 	}

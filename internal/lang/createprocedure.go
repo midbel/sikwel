@@ -115,22 +115,25 @@ func (w *Writer) FormatCreateProcedure(stmt CreateProcedureStatement) error {
 	w.WriteBlank()
 	w.WriteString(stmt.Name)
 	w.WriteString("(")
+
+	w.Enter()
 	for i, s := range stmt.Parameters {
+		if i > 0 {
+			w.WriteString(",")
+		}
 		p, ok := s.(ProcedureParameter)
 		if !ok {
 			return fmt.Errorf("%T can not be used as procedure parameter", s)
 		}
-		if i > 0 {
-			w.WriteString(",")
-			w.WriteBlank()
-		}
+		w.WriteNL()
+		w.WritePrefix()
 		switch p.Mode {
 		case ModeIn:
 			w.WriteKeyword("IN")
 		case ModeOut:
 			w.WriteKeyword("OUT")
 		case ModeInOut:
-			w.WriteKeyword("IN")
+			w.WriteKeyword("INOUT")
 		}
 		if p.Mode != 0 {
 			w.WriteBlank()
@@ -149,6 +152,8 @@ func (w *Writer) FormatCreateProcedure(stmt CreateProcedureStatement) error {
 			}
 		}
 	}
+	w.Leave()
+	w.WriteNL()
 	w.WriteString(")")
 	w.WriteNL()
 	if stmt.Language != "" {
@@ -159,6 +164,11 @@ func (w *Writer) FormatCreateProcedure(stmt CreateProcedureStatement) error {
 	}
 	w.WriteKeyword("BEGIN")
 	w.WriteNL()
+	w.Enter()
+	if err := w.FormatStatement(stmt.Body); err != nil {
+		return err
+	}
+	w.Leave()
 	w.WriteKeyword("END")
 	return nil
 }

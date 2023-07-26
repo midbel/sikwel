@@ -1,20 +1,23 @@
 package lang
 
+import (
+	"fmt"
+)
+
 func (p *Parser) parseSet() (Statement, error) {
 	p.Next()
 	var (
-		stmt Assignment
+		stmt SetStatement
 		err  error
 	)
-	if stmt.Field, err = p.ParseIdent(); err != nil {
-		return nil, wrapError("set", err)
-	}
+	stmt.Ident = p.GetCurrLiteral()
+	p.Next()
 	if !p.Is(Eq) {
 		return nil, p.Unexpected("set")
 	}
 	p.Next()
 
-	stmt.Value, err = p.StartExpression()
+	stmt.Expr, err = p.StartExpression()
 	return stmt, err
 }
 
@@ -69,7 +72,9 @@ func (p *Parser) parseIf() (Statement, error) {
 		p.Next()
 		stmt.Alt, err = p.ParseBody(p.KwCheck("END IF"))
 	case p.IsKeyword("ELSIF"):
-		return p.parseIf()
+		fmt.Println("parse else if")
+		stmt.Alt, err = p.parseIf()
+		return stmt, err
 	case p.IsKeyword("END IF"):
 	default:
 		return nil, p.Unexpected("if")
@@ -137,4 +142,93 @@ func (p *Parser) parseReturn() (Statement, error) {
 	)
 	ret.Statement, err = p.StartExpression()
 	return ret, err
+}
+
+func (w *Writer) FormatIf(stmt IfStatement) error {
+	if err := w.formatIf(stmt, "IF"); err != nil {
+		return err
+	}
+	w.WriteStatement("END IF")
+	return nil
+}
+
+func (w *Writer) formatIf(stmt IfStatement, kw string) error {
+	w.WriteStatement(kw)
+	w.WriteBlank()
+	if err := w.FormatExpr(stmt.Cdt, false); err != nil {
+		return err
+	}
+	w.WriteBlank()
+	w.WriteKeyword("THEN")
+	w.WriteNL()
+	if err := w.FormatStatement(stmt.Csq); err != nil {
+		return err
+	}
+	var err error
+	if stmt.Alt != nil {
+		if s, ok := stmt.Alt.(IfStatement); ok {
+			err = w.formatIf(s, "ELSIF")
+		} else {
+			w.WriteStatement("ELSE")
+			w.WriteNL()
+			err = w.FormatStatement(stmt.Alt)
+		}
+	}
+	return err
+}
+
+func (w *Writer) FormatWhile(stmt WhileStatement) error {
+	w.WriteStatement("WHILE")
+	w.WriteBlank()
+	if err := w.FormatExpr(stmt.Cdt, false); err != nil {
+		return err
+	}
+	w.WriteBlank()
+	w.WriteKeyword("DO")
+	w.WriteNL()
+	if err := w.FormatStatement(stmt.Body); err != nil {
+		return err
+	}
+	w.WriteStatement("END WHILE")
+	return nil
+}
+
+func (w *Writer) FormatSet(stmt SetStatement) error {
+	w.WriteStatement("SET")
+	w.WriteBlank()
+	w.WriteString(stmt.Ident)
+	w.WriteBlank()
+	w.WriteString("=")
+	w.WriteBlank()
+	return w.FormatExpr(stmt.Expr, false)
+}
+
+func (w *Writer) FormatReturn(stmt Return) error {
+	w.WriteStatement("RETURN")
+	if stmt.Statement != nil {
+		w.WriteBlank()
+		if err := w.FormatExpr(stmt.Statement, false); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (w *Writer) FormatDeclare(stmt Declare) error {
+	w.WriteStatement("DECLARE")
+	w.WriteBlank()
+	w.WriteString(stmt.Ident)
+	w.WriteBlank()
+	if err := w.formatType(stmt.Type); err != nil {
+		return err
+	}
+	if stmt.Value != nil {
+		w.WriteBlank()
+		w.WriteKeyword("DEFAULT")
+		w.WriteBlank()
+		if err := w.FormatExpr(stmt.Value, false); err != nil {
+			return err
+		}
+	}
+	return nil
 }
