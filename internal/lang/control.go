@@ -1,9 +1,5 @@
 package lang
 
-import (
-	"fmt"
-)
-
 func (p *Parser) parseSet() (Statement, error) {
 	p.Next()
 	var (
@@ -72,7 +68,6 @@ func (p *Parser) parseIf() (Statement, error) {
 		p.Next()
 		stmt.Alt, err = p.ParseBody(p.KwCheck("END IF"))
 	case p.IsKeyword("ELSIF"):
-		fmt.Println("parse else if")
 		stmt.Alt, err = p.parseIf()
 		return stmt, err
 	case p.IsKeyword("END IF"):
