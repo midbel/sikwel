@@ -504,7 +504,7 @@ func (w *Writer) FormatAlias(alias Alias) error {
 		return err
 	}
 	w.WriteBlank()
-	w.WriteString("AS")
+	w.WriteKeyword("AS")
 	w.WriteBlank()
 	w.WriteString(alias.Alias)
 	return nil
@@ -667,7 +667,7 @@ func isAlpha(str string) bool {
 
 const (
 	keywordColor = "\033[38;2;173;216;230m"
-	numberColor  = "\033[38;2;240;128;128m"
-	stringColor  = "\033[38;2;255;215;0m"
+	numberColor  = "\033[38;2;80;200;120m"
+	stringColor  = "\033[38;2;252;245;95m"
 	resetCode    = "\033[0m"
 )
