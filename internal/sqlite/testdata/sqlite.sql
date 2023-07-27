@@ -1,6 +1,12 @@
 begin transaction;
+	select * from employees;
+end;
 begin immediate transaction;
+	select * from employees;
+rollback;
 begin exclusive transaction;
+	select * from employees;
+commit;
 
 delete from table where true;
 delete from table where id=10;

@@ -170,7 +170,7 @@ func (p *Parser) parse() (Statement, error) {
 		com.After = p.GetCurrLiteral()
 		p.Next()
 	}
-	return com, nil
+	return com.Statement, nil
 }
 
 func (p *Parser) ParseStatement() (Statement, error) {

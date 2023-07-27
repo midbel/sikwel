@@ -1,7 +1,7 @@
 package sqlite
 
 import (
-	"fmt"
+	// "fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -40,8 +40,18 @@ func NewParser(r io.Reader) (*Parser, error) {
 	local.RegisterParseFunc("UPDATE OR ROLLBACK", local.ParseUpdate)
 	local.RegisterParseFunc("VACUUM", local.ParseVacuum)
 	local.RegisterParseFunc("BEGIN", local.ParseBegin)
-	local.RegisterParseFunc("BEGIN TRANSACTION", local.ParseBegin)
+	local.RegisterParseFunc("CREATE TABLE", local.ParseCreateTable)
+	local.RegisterParseFunc("CREATE TEMP TABLE", local.ParseCreateTable)
+	local.RegisterParseFunc("CREATE TEMPORARY TABLE", local.ParseCreateTable)
 	return &local, nil
+}
+
+func (p *Parser) ParseCreateTable() (lang.Statement, error) {
+	return p.ParseCreateTableStatement()
+}
+
+func (p *Parser) ParseCreateTableStatement() (lang.Statement, error) {
+	return nil, nil
 }
 
 func (p *Parser) ParseVacuum() (lang.Statement, error) {
@@ -67,51 +77,32 @@ func (p *Parser) ParseBegin() (lang.Statement, error) {
 		stmt BeginStatement
 		err  error
 	)
-	if p.IsKeyword("BEGIN") {
-		p.Next()
-		switch {
-		case p.IsKeyword("IMMEDIATE"):
-		case p.IsKeyword("EXCLUSIVE"):
-		case p.IsKeyword("DEFERRED"):
-		default:
-			return nil, p.Unexpected("begin")
-		}
+	p.Next()
+	if p.IsKeyword("DEFERRED") || p.IsKeyword("EXCLUSIVE") || p.IsKeyword("IMMEDIATE") {
 		stmt.Action = p.GetCurrLiteral()
 		p.Next()
-		if !p.IsKeyword("TRANSACTION") {
-			return nil, p.Unexpected("begin")
-		}
+	}
+	if p.IsKeyword("TRANSACTION") {
+		p.Next()
+	}
+	if !p.Is(lang.EOL) {
+		return nil, p.Unexpected("begin")
 	}
 	p.Next()
-	// stmt.Body, err = p.ParseBody(p.KwCheck("END", "COMMIT", "ROLLBACK"))
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// switch {
-	// case p.IsKeyword("END") || p.IsKeyword("COMMIT"):
-	// 	stmt.End = lang.Commit{}
-	// case p.IsKeyword("ROLLBACK"):
-	// 	stmt.End = lang.Rollback{}
-	// default:
-	// 	return nil, p.Unexpected("begin")
-	// }
-	// p.Next()
-	return stmt, err
-}
-
-func (p *Parser) ParseType() (lang.Type, error) {
-	t, err := p.Parser.ParseType()
-	if err == nil {
-		switch t.Name {
-		case TypeInteger:
-		case TypeReal:
-		case TypeText:
-		case TypeBlob:
-		default:
-			return t, fmt.Errorf("%s not a sqlite type", t.Name)
-		}
+	stmt.Body, err = p.ParseBody(p.KwCheck("END", "COMMIT", "ROLLBACK"))
+	if err != nil {
+		return nil, err
 	}
-	return t, err
+	switch {
+	case p.IsKeyword("END") || p.IsKeyword("COMMIT"):
+		stmt.End = lang.Commit{}
+	case p.IsKeyword("ROLLBACK"):
+		stmt.End = lang.Rollback{}
+	default:
+		return nil, p.Unexpected("begin")
+	}
+	p.Next()
+	return stmt, err
 }
 
 func (p *Parser) ParseUpdate() (lang.Statement, error) {

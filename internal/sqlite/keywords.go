@@ -33,7 +33,6 @@ var keywords = lang.KeywordSet{
 	{"vacuum"},
 	{"into"},
 	{"begin"},
-	{"begin", "transaction"},
 	{"deferred"},
 	{"immediate"},
 	{"exclusive"},

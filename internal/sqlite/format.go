@@ -75,7 +75,11 @@ func (w *Writer) FormatBegin(stmt BeginStatement) error {
 		return err
 	}
 	w.WriteStatement(kw)
-	return nil
+	w.WriteNL()
+	if err := w.FormatStatement(stmt.Body); err != nil {
+		return err
+	}
+	return w.FormatStatement(stmt.End)
 }
 
 func (w *Writer) FormatVacuum(stmt VacuumStatement) error {
