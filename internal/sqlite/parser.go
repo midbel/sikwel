@@ -1,7 +1,6 @@
 package sqlite
 
 import (
-	// "fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -43,15 +42,12 @@ func NewParser(r io.Reader) (*Parser, error) {
 	local.RegisterParseFunc("CREATE TABLE", local.ParseCreateTable)
 	local.RegisterParseFunc("CREATE TEMP TABLE", local.ParseCreateTable)
 	local.RegisterParseFunc("CREATE TEMPORARY TABLE", local.ParseCreateTable)
+
 	return &local, nil
 }
 
 func (p *Parser) ParseCreateTable() (lang.Statement, error) {
-	return p.ParseCreateTableStatement()
-}
-
-func (p *Parser) ParseCreateTableStatement() (lang.Statement, error) {
-	return nil, nil
+	return p.ParseCreateTableStatement(p)
 }
 
 func (p *Parser) ParseVacuum() (lang.Statement, error) {
@@ -242,6 +238,41 @@ func (p *Parser) ParseOrderBy() ([]lang.Statement, error) {
 
 func (p *Parser) Unexpected(ctx string) error {
 	return p.UnexpectedDialect(ctx, Vendor)
+}
+
+func (p *Parser) ParseConstraint(column bool) (lang.Statement, error) {
+	stmt, err := p.Parser.ParseConstraint(column)
+	if err != nil {
+		return nil, err
+	}
+	if p.Is(lang.Comma) || p.Is(lang.Rparen) || !p.IsKeyword("ON CONFLICT") {
+		return stmt, err
+	}
+	cst, ok := stmt.(lang.Constraint)
+	if !ok {
+		return nil, p.Unexpected("on conflict")
+	}
+	switch cst.Statement.(type) {
+	case lang.PrimaryKeyConstraint, lang.NotNullConstraint, lang.UniqueConstraint:
+	default:
+		return cst, nil
+	}
+	p.Next()
+	cft := ConflictConstraint{
+		Constraint: cst,
+	}
+	switch {
+	case p.IsKeyword("ROLLBACK"):
+	case p.IsKeyword("ABORT"):
+	case p.IsKeyword("FAIL"):
+	case p.IsKeyword("IGNORE"):
+	case p.IsKeyword("REPLACE"):
+	default:
+		return nil, p.Unexpected("on confliect")
+	}
+	cft.Conflict = p.GetCurrLiteral()
+	p.Next()
+	return cft, nil
 }
 
 func isValidCollate(str string) bool {

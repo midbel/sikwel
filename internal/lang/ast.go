@@ -511,6 +511,42 @@ type ColumnDef struct {
 	Constraints []Statement
 }
 
+type RenameTableAction struct {
+	Name string
+}
+
+type RenameColumnAction struct {
+	Src string
+	Dst string
+}
+
+type AddColumnAction struct {
+	Def       Statement
+	NotExists bool
+}
+
+type DropColumnAction struct {
+	Name   string
+	Exists bool
+}
+
+type AlterTableStatement struct {
+	Name   Statement
+	Action Statement
+}
+
+type DropTableStatement struct {
+	Name   Statement
+	Exists bool
+}
+
+func (s DropTableStatement) Keyword() (string, error) {
+	if s.Exists {
+		return "DROP TABLE IF EXISTS", nil
+	}
+	return "DROP TABLE", nil
+}
+
 type CreateTableStatement struct {
 	Temp        bool
 	Name        Statement

@@ -14,6 +14,7 @@ var keywords = KeywordSet{
 	{"create", "temp", "table"},
 	{"create", "temporary", "table"},
 	{"if", "not", "exists"},
+	{"if", "exists"},
 	{"declare"},
 	{"default"},
 	{"null"},
@@ -120,12 +121,19 @@ var keywords = KeywordSet{
 	{"foreign", "key"},
 	{"references"},
 	{"autoincrement"},
-	// {"not", "null"},
 	{"unique"},
 	{"check"},
 	{"generated", "always", "as"},
 	{"stored"},
 	{"language"},
+	{"alter", "table"},
+	{"rename", "to"},
+	{"rename", "column"},
+	{"add"},
+	{"add", "column"},
+	{"drop", ""},
+	{"drop", "column"},
+	{"to"},
 }
 
 func isJoin(tok Token) bool {

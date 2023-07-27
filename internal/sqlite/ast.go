@@ -6,6 +6,11 @@ import (
 	"github.com/midbel/sweet/internal/lang"
 )
 
+type ConflictConstraint struct {
+	Constraint lang.Statement
+	Conflict   string
+}
+
 type BeginStatement struct {
 	Action string
 	Body   lang.Statement

@@ -21,3 +21,8 @@ insert into table as t(col) values (1)
 select * from table limit 10;
 select * from table limit 10 offset 5;
 select * from table order by col collate NOCASE desc;
+
+create table departments (
+	id int not null primary key,
+	name text not null on conflict fail
+);

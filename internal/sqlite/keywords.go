@@ -37,4 +37,9 @@ var keywords = lang.KeywordSet{
 	{"immediate"},
 	{"exclusive"},
 	{"transaction"},
+	{"rollback"},
+	{"fail"},
+	{"abort"},
+	{"ignore"},
+	{"replace"},
 }
