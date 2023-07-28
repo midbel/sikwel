@@ -63,10 +63,29 @@ func (w *Writer) FormatStatement(stmt lang.Statement) error {
 		err = w.FormatBegin(stmt)
 	case lang.SelectStatement:
 		err = w.FormatSelect(stmt)
+	case lang.CreateTableStatement:
+		err = w.FormatCreateTableWithFormatter(w, stmt)
 	default:
 		err = w.Writer.FormatStatement(stmt)
 	}
 	return err
+}
+
+func (w *Writer) FormatConstraint(cst lang.Statement) error {
+	conflict, ok := cst.(ConflictConstraint)
+	if ok {
+		cst = conflict.Constraint
+	}
+	if err := w.Writer.FormatConstraint(cst); err != nil {
+		return err
+	}
+	if ok && conflict.Conflict != "" {
+		w.WriteBlank()
+		w.WriteKeyword("ON CONFLICT")
+		w.WriteBlank()
+		w.WriteKeyword(conflict.Conflict)
+	}
+	return nil
 }
 
 func (w *Writer) FormatBegin(stmt BeginStatement) error {
@@ -108,6 +127,11 @@ func (w *Writer) FormatInsert(stmt InsertStatement) error {
 	}
 	w.WriteStatement(kw)
 	w.WriteBlank()
+	// insert, ok := stmt.Statement.(lang.InsertStatement)
+	// if !ok {
+	// 	return fmt.Errorf("insert: unexpected statement type(%T)", stmt)
+	// }
+	// return w.Writer.FormatInsert(insert)
 	return w.formatInsertStatement(stmt.Statement)
 }
 
