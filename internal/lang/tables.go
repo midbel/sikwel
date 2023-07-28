@@ -343,7 +343,11 @@ func (p *Parser) ParseGeneratedAlwaysConstraint() (Statement, error) {
 
 type CreateTableFormatter interface {
 	FormatTableName(Statement) error
-	FormatColumnDef(Statement, int) error
+	FormatColumnDef(ConstraintFormatter, Statement, int) error
+	ConstraintFormatter
+}
+
+type ConstraintFormatter interface {
 	FormatConstraint(Statement) error
 }
 
@@ -388,14 +392,8 @@ func (w *Writer) FormatCreateTableWithFormatter(ctf CreateTableFormatter, stmt C
 			w.WriteString(",")
 			w.WriteNL()
 		}
-		if err := ctf.FormatColumnDef(c, longest); err != nil {
+		if err := ctf.FormatColumnDef(ctf, c, longest); err != nil {
 			return err
-		}
-		for _, c := range c.(ColumnDef).Constraints {
-			w.WriteBlank()
-			if err := ctf.FormatConstraint(c); err != nil {
-				return err
-			}
 		}
 	}
 	for _, c := range stmt.Constraints {
@@ -415,7 +413,7 @@ func (w *Writer) FormatTableName(stmt Statement) error {
 	return w.FormatExpr(stmt, false)
 }
 
-func (w *Writer) FormatColumnDef(stmt Statement, size int) error {
+func (w *Writer) FormatColumnDef(ctf ConstraintFormatter, stmt Statement, size int) error {
 	def, ok := stmt.(ColumnDef)
 	if !ok {
 		return fmt.Errorf("%T can not be used as column definition", stmt)
@@ -428,6 +426,13 @@ func (w *Writer) FormatColumnDef(stmt Statement, size int) error {
 	w.WriteBlank()
 	if err := w.formatType(def.Type); err != nil {
 		return err
+	}
+
+	for _, c := range def.Constraints {
+		w.WriteBlank()
+		if err := ctf.FormatConstraint(c); err != nil {
+			return err
+		}
 	}
 	return nil
 }
