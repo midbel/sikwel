@@ -118,115 +118,27 @@ func (w *Writer) FormatVacuum(stmt VacuumStatement) error {
 }
 
 func (w *Writer) FormatInsert(stmt InsertStatement) error {
-	w.Enter()
-	defer w.Leave()
-
 	kw, err := stmt.Keyword()
 	if err != nil {
 		return err
 	}
-	w.WriteStatement(kw)
-	w.WriteBlank()
-	// insert, ok := stmt.Statement.(lang.InsertStatement)
-	// if !ok {
-	// 	return fmt.Errorf("insert: unexpected statement type(%T)", stmt)
-	// }
-	// return w.Writer.FormatInsert(insert)
-	return w.formatInsertStatement(stmt.Statement)
-}
-
-func (w *Writer) formatInsertStatement(stmt lang.Statement) error {
-	ins, ok := stmt.(lang.InsertStatement)
+	insert, ok := stmt.Statement.(lang.InsertStatement)
 	if !ok {
 		return fmt.Errorf("insert: unexpected statement type(%T)", stmt)
 	}
-	if err := w.FormatExpr(ins.Table, false); err != nil {
-		return err
-	}
-	if len(ins.Columns) > 0 {
-		w.WriteString("(")
-		for i, c := range ins.Columns {
-			if i > 0 {
-				w.WriteString(",")
-				w.WriteBlank()
-			}
-			w.WriteString(c)
-		}
-		w.WriteString(")")
-	}
-	w.WriteBlank()
-	if err := w.FormatInsertValues(ins.Values); err != nil {
-		return err
-	}
-	if ins.Upsert != nil {
-		w.WriteNL()
-		if err := w.FormatUpsert(ins.Upsert); err != nil {
-			return err
-		}
-	}
-	if ins.Return != nil {
-		w.WriteNL()
-		if err := w.FormatReturning(ins.Return); err != nil {
-			return err
-		}
-	}
-	return nil
+	return w.Writer.FormatInsertWithKeyword(kw, insert)
 }
 
 func (w *Writer) FormatUpdate(stmt UpdateStatement) error {
-	w.Enter()
-	defer w.Leave()
-
 	kw, err := stmt.Keyword()
 	if err != nil {
 		return err
 	}
-	w.WriteStatement(kw)
-	w.WriteBlank()
-
-	return w.formatUpdateStatement(stmt.Statement)
-}
-
-func (w *Writer) formatUpdateStatement(stmt lang.Statement) error {
-	up, ok := stmt.(lang.UpdateStatement)
+	update, ok := stmt.Statement.(lang.UpdateStatement)
 	if !ok {
 		return fmt.Errorf("update: unexpected statement type(%T)", stmt)
 	}
-
-	switch stmt := up.Table.(type) {
-	case lang.Name:
-		w.FormatName(stmt)
-	case lang.Alias:
-		if err := w.FormatAlias(stmt); err != nil {
-			return err
-		}
-	default:
-		return w.CanNotUse("update", stmt)
-	}
-
-	w.WriteBlank()
-	w.WriteKeyword("SET")
-	w.WriteNL()
-
-	if len(up.Tables) > 0 {
-		w.WriteNL()
-		if err := w.FormatFrom(up.Tables); err != nil {
-			return err
-		}
-	}
-	if up.Where != nil {
-		w.WriteNL()
-		if err := w.FormatWhere(up.Where); err != nil {
-			return err
-		}
-	}
-	if up.Return != nil {
-		w.WriteNL()
-		if err := w.FormatReturning(up.Return); err != nil {
-			return err
-		}
-	}
-	return nil
+	return w.Writer.FormatUpdateWithKeyword(kw, update)
 }
 
 func (w *Writer) FormatSelect(stmt lang.SelectStatement) error {

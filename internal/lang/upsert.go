@@ -296,12 +296,17 @@ func (w *Writer) FormatDelete(stmt DeleteStatement) error {
 }
 
 func (w *Writer) FormatUpdate(stmt UpdateStatement) error {
+	kw, _ := stmt.Keyword()
+	return w.FormatUpdateWithKeyword(kw, stmt)
+}
+
+func (w *Writer) FormatUpdateWithKeyword(kw string, stmt UpdateStatement) error {
 	w.Enter()
 	defer w.Leave()
 
-	kw, _ := stmt.Keyword()
 	w.WriteStatement(kw)
 	w.WriteBlank()
+
 	switch stmt := stmt.Table.(type) {
 	case Name:
 		w.FormatName(stmt)
@@ -342,12 +347,17 @@ func (w *Writer) FormatUpdate(stmt UpdateStatement) error {
 }
 
 func (w *Writer) FormatInsert(stmt InsertStatement) error {
+	kw, _ := stmt.Keyword()
+	return w.FormatInsertWithKeyword(kw, stmt)
+}
+
+func (w *Writer) FormatInsertWithKeyword(kw string, stmt InsertStatement) error {
 	w.Enter()
 	defer w.Leave()
 
-	kw, _ := stmt.Keyword()
 	w.WriteStatement(kw)
 	w.WriteBlank()
+
 	if err := w.FormatExpr(stmt.Table, false); err != nil {
 		return err
 	}

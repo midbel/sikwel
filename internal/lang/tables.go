@@ -5,16 +5,6 @@ import (
 	"strings"
 )
 
-// type ConstraintParser interface {
-// 	ParsePrimaryKey() (Statement, error)
-// 	ParseForeignKey() (Statement, error)
-// 	ParseNotNull() (Statement, error)
-// 	ParseDefault() (Statement, error)
-// 	ParseCheck() (Statement, error)
-// 	ParseUnique() (Statement, error)
-// 	ParseGeneratedAlways() (Statement, error)
-// }
-
 type CreateTableParser interface {
 	ParseTableName() (Statement, error)
 	ParseConstraint(bool) (Statement, error)
@@ -349,6 +339,14 @@ type CreateTableFormatter interface {
 
 type ConstraintFormatter interface {
 	FormatConstraint(Statement) error
+
+	FormatPrimaryKeyConstraint(PrimaryKeyConstraint) error
+	FormatForeignKeyConstraint(ForeignKeyConstraint) error
+	FormatDefaultConstraint(DefaultConstraint) error
+	FormatNotNullConstraint(NotNullConstraint) error
+	FormatUniqueConstraint(UniqueConstraint) error
+	FormatCheckConstraint(CheckConstraint) error
+	FormatGeneratedConstraint(GeneratedConstraint) error
 }
 
 func (w *Writer) FormatCreateTable(stmt CreateTableStatement) error {
