@@ -42,4 +42,6 @@ var keywords = lang.KeywordSet{
 	{"abort"},
 	{"ignore"},
 	{"replace"},
+	{"strict"},
+	{"without", "rowid"},
 }

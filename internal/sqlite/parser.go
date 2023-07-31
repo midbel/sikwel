@@ -1,6 +1,7 @@
 package sqlite
 
 import (
+	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -47,7 +48,43 @@ func NewParser(r io.Reader) (*Parser, error) {
 }
 
 func (p *Parser) ParseCreateTable() (lang.Statement, error) {
-	return p.ParseCreateTableStatement(p)
+	table, err := p.ParseCreateTableStatement(p)
+	if err != nil {
+		return nil, err
+	}
+	var (
+		seen  = make(map[string]struct{})
+		empty = struct{}{}
+		stmt  CreateTableStatement
+		ok    bool
+	)
+	for !p.Done() && !p.Is(lang.EOL) {
+		if !p.Is(lang.Keyword) {
+			return nil, p.Unexpected("create table")
+		}
+		lit := p.GetCurrLiteral()
+		if _, ok := seen[lit]; ok {
+			return nil, p.Unexpected("create table")
+		}
+		seen[lit] = empty
+		switch {
+		case p.IsKeyword("STRICT"):
+			stmt.Strict = true
+		case p.IsKeyword("WITHOUT ROWID"):
+			stmt.WithoutRowId = true
+		default:
+			return nil, p.Unexpected("create table")
+		}
+		p.Next()
+		if p.Is(lang.Comma) {
+			p.Next()
+		}
+	}
+	stmt.CreateTableStatement, ok = table.(lang.CreateTableStatement)
+	if !ok {
+		return nil, fmt.Errorf("%T not a create table statement", table)
+	}
+	return stmt, nil
 }
 
 func (p *Parser) ParseVacuum() (lang.Statement, error) {

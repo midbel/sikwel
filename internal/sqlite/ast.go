@@ -95,3 +95,9 @@ func (s UpdateStatement) Keyword() (string, error) {
 	}
 	return kw, nil
 }
+
+type CreateTableStatement struct {
+	lang.CreateTableStatement
+	Strict       bool
+	WithoutRowId bool
+}

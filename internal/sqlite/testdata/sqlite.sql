@@ -25,4 +25,15 @@ select * from table order by col collate NOCASE desc;
 create table departments (
 	id int not null primary key,
 	name text not null on conflict fail
-);
+) strict;
+
+create table departments (
+	id int not null primary key,
+	name text not null on conflict fail
+) without rowid;
+
+create table departments (
+	id int not null primary key,
+	name text not null on conflict fail
+) without rowid, strict;
+
