@@ -12,8 +12,9 @@ type Scanner struct {
 	cursor
 	old cursor
 
-	keywords KeywordSet
-	str      bytes.Buffer
+	keywords     KeywordSet
+	str          bytes.Buffer
+	starredIdent bool
 }
 
 func Scan(r io.Reader, keywords KeywordSet) (*Scanner, error) {
@@ -48,7 +49,9 @@ func (s *Scanner) Scan() Token {
 	case isComment(s.char, s.peek()):
 		s.scanComment(&tok)
 	case isLetter(s.char):
-		s.scanIdent(&tok)
+		s.scanIdent(&tok, false)
+	case s.starredIdent && isStarLetter(s.char, s.peek()):
+		s.scanIdent(&tok, true)
 	case isIdentQ(s.char):
 		s.scanQuotedIdent(&tok)
 	case isLiteralQ(s.char):
@@ -89,7 +92,10 @@ func (s *Scanner) scanComment(tok *Token) {
 	tok.Type = Comment
 }
 
-func (s *Scanner) scanIdent(tok *Token) {
+func (s *Scanner) scanIdent(tok *Token, star bool) {
+	if star {
+		s.read()
+	}
 	for !isDelim(s.char) && !s.done() {
 		s.write()
 		s.read()
@@ -97,7 +103,9 @@ func (s *Scanner) scanIdent(tok *Token) {
 	tok.Literal = s.literal()
 	tok.Type = Ident
 
-	s.scanKeyword(tok)
+	if !star {
+		s.scanKeyword(tok)
+	}
 }
 
 func (s *Scanner) scanQuotedIdent(tok *Token) {
@@ -391,6 +399,10 @@ func isDelim(r rune) bool {
 
 func isComment(r, k rune) bool {
 	return r == minus && r == k
+}
+
+func isStarLetter(r, k rune) bool {
+	return r == star && isLetter(k)
 }
 
 func isLetter(r rune) bool {
