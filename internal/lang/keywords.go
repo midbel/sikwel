@@ -123,7 +123,7 @@ var keywords = KeywordSet{
 	{"autoincrement"},
 	{"unique"},
 	{"check"},
-	{"generated", "always", "as"},
+	{"generated", "always"},
 	{"stored"},
 	{"language"},
 	{"alter", "table"},

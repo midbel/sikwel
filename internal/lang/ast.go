@@ -591,3 +591,9 @@ func (s CreateProcedureStatement) Keyword() (string, error) {
 	}
 	return "CREATE PROCEDURE", nil
 }
+
+type GrantStatement struct {
+}
+
+type RevokeStatement struct {
+}
