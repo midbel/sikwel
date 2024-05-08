@@ -8,14 +8,11 @@ import (
 	"io"
 	"os"
 
-	"github.com/midbel/sweet/internal/dialect"
+	"github.com/midbel/sweet/internal/lang"
 )
 
 func main() {
-	var (
-		jsonify = flag.Bool("j", false, "jsonify parsed query")
-		vendor  = flag.String("d", "", "dialect")
-	)
+	jsonify := flag.Bool("j", false, "jsonify parsed query")
 	flag.Parse()
 
 	r, err := os.Open(flag.Arg(0))
@@ -25,14 +22,14 @@ func main() {
 	}
 	defer r.Close()
 
-	if err := parseReader(r, *vendor, *jsonify); err != nil {
+	if err := parseReader(r, *jsonify); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
 }
 
-func parseReader(r io.Reader, vendor string, jsonify bool) error {
-	p, err := dialect.NewParser(r, vendor)
+func parseReader(r io.Reader, jsonify bool) error {
+	p, err := lang.NewParser(r)
 	if err != nil {
 		return err
 	}
