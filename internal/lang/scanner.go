@@ -14,7 +14,6 @@ type Scanner struct {
 
 	keywords     KeywordSet
 	str          bytes.Buffer
-	starredIdent bool
 }
 
 func Scan(r io.Reader, keywords KeywordSet) (*Scanner, error) {
@@ -50,8 +49,6 @@ func (s *Scanner) Scan() Token {
 		s.scanComment(&tok)
 	case isLetter(s.char):
 		s.scanIdent(&tok, false)
-	case s.starredIdent && isStarLetter(s.char, s.peek()):
-		s.scanIdent(&tok, true)
 	case isIdentQ(s.char):
 		s.scanQuotedIdent(&tok)
 	case isLiteralQ(s.char):
@@ -401,10 +398,6 @@ func isComment(r, k rune) bool {
 	return r == minus && r == k
 }
 
-func isStarLetter(r, k rune) bool {
-	return r == star && isLetter(k)
-}
-
 func isLetter(r rune) bool {
 	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')
 }
@@ -412,10 +405,6 @@ func isLetter(r rune) bool {
 func isDigit(r rune) bool {
 	return r >= '0' && r <= '9'
 }
-
-// func isAlpha(r rune) bool {
-// 	return isLetter(r) || isDigit(r) || r == underscore
-// }
 
 func isSpace(r rune) bool {
 	return r == space || r == tab
