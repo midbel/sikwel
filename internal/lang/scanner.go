@@ -320,11 +320,6 @@ func (s *Scanner) read() {
 	s.char, s.curr, s.next = r, s.next, s.next+n
 }
 
-// func (s *Scanner) unread() {
-// 	c, z := utf8.DecodeRune(s.input[s.curr:])
-// 	s.char, s.curr, s.next = c, s.curr-z, s.curr
-// }
-
 func (s *Scanner) peek() rune {
 	r, _ := utf8.DecodeRune(s.input[s.next:])
 	return r
