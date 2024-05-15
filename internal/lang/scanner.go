@@ -12,8 +12,8 @@ type Scanner struct {
 	cursor
 	old cursor
 
-	keywords     KeywordSet
-	str          bytes.Buffer
+	keywords KeywordSet
+	str      bytes.Buffer
 }
 
 func Scan(r io.Reader, keywords KeywordSet) (*Scanner, error) {

@@ -119,20 +119,6 @@ func (p *Parser) QueryEnds() bool {
 	return p.Is(EOL)
 }
 
-func (p *Parser) RegisterParseFunc(kw string, fn func() (Statement, error)) {
-	kw = strings.ToUpper(kw)
-	p.keywords[kw] = fn
-}
-
-func (p *Parser) UnregisterParseFunc(kw string) {
-	kw = strings.ToUpper(kw)
-	delete(p.keywords, kw)
-}
-
-func (p *Parser) UnregisterAllParseFunc() {
-	p.keywords = make(map[string]func() (Statement, error))
-}
-
 func (p *Parser) Parse() (Statement, error) {
 	stmt, err := p.parse()
 	if err != nil {
@@ -176,6 +162,10 @@ func (p *Parser) parse() (Statement, error) {
 		p.Next()
 	}
 	return com.Statement, nil
+}
+
+func (p *Parser) StartExpression() (Statement, error) {
+	return p.parseExpression(powLowest)
 }
 
 func (p *Parser) ParseStatement() (Statement, error) {
@@ -343,6 +333,20 @@ func (p *Parser) ParseReturning() (Statement, error) {
 	return list, nil
 }
 
+func (p *Parser) RegisterParseFunc(kw string, fn func() (Statement, error)) {
+	kw = strings.ToUpper(kw)
+	p.keywords[kw] = fn
+}
+
+func (p *Parser) UnregisterParseFunc(kw string) {
+	kw = strings.ToUpper(kw)
+	delete(p.keywords, kw)
+}
+
+func (p *Parser) UnregisterAllParseFunc() {
+	p.keywords = make(map[string]func() (Statement, error))
+}
+
 func (p *Parser) RegisterPrefix(literal string, kind rune, fn prefixFunc) {
 	p.prefix[symbolFor(kind, literal)] = fn
 }
@@ -373,10 +377,6 @@ func (p *Parser) getInfixExpr(left Statement) (Statement, error) {
 		return nil, p.Unexpected("infix")
 	}
 	return fn(left)
-}
-
-func (p *Parser) StartExpression() (Statement, error) {
-	return p.parseExpression(powLowest)
 }
 
 func (p *Parser) parseExpression(power int) (Statement, error) {
@@ -618,19 +618,29 @@ func (p *Parser) parseCast() (Statement, error) {
 
 func (p *Parser) ParseIdentifier() (Statement, error) {
 	var name Name
-	if p.peekIs(Dot) {
-		name.Prefix = p.curr.Literal
+	for p.peekIs(Dot) {
+		name.Parts = append(name.Parts, p.GetCurrLiteral())
 		p.Next()
 		p.Next()
 	}
 	if !p.Is(Ident) && !p.Is(Star) {
 		return nil, p.Unexpected("identifier")
 	}
-	name.Ident = p.GetCurrLiteral()
-	if p.Is(Star) {
-		name.Ident = "*"
-	}
+	name.Parts = append(name.Parts, p.GetCurrLiteral())
 	p.Next()
+	// if p.peekIs(Dot) {
+	// 	name.Parts = append(name.Parts, p.GetCurrLiteral())
+	// 	p.Next()
+	// 	p.Next()
+	// }
+	// if !p.Is(Ident) && !p.Is(Star) {
+	// 	return nil, p.Unexpected("identifier")
+	// }
+	// name.Ident = p.GetCurrLiteral()
+	// if p.Is(Star) {
+	// 	name.Ident = "*"
+	// }
+	// p.Next()
 	return name, nil
 }
 

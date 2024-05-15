@@ -371,7 +371,7 @@ func (w *Writer) formatCall(call Call) error {
 	if !ok {
 		return w.CanNotUse("call", call.Ident)
 	}
-	w.WriteCall(n.Ident)
+	w.WriteCall(n.Ident())
 	w.WriteString("(")
 	if call.Distinct {
 		w.WriteKeyword("DISTINCT")
@@ -481,11 +481,7 @@ func (w *Writer) formatBinary(stmt Binary, nl bool) error {
 }
 
 func (w *Writer) FormatName(name Name) {
-	if name.Prefix != "" {
-		w.WriteString(name.Prefix)
-		w.WriteString(".")
-	}
-	w.WriteString(name.Ident)
+	w.WriteString(name.Ident())
 }
 
 func (w *Writer) FormatAlias(alias Alias) error {
