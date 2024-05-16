@@ -17,7 +17,7 @@ func (p *Parser) ParseDelete() (Statement, error) {
 	if !p.Is(Ident) {
 		return nil, p.Unexpected("delete")
 	}
-	stmt.Table = p.curr.Literal
+	stmt.Table = p.GetCurrLiteral()
 	p.Next()
 
 	if stmt.Where, err = p.ParseWhere(); err != nil {
@@ -27,6 +27,10 @@ func (p *Parser) ParseDelete() (Statement, error) {
 		return nil, wrapError("delete", err)
 	}
 	return stmt, nil
+}
+
+func (p *Parser) ParseTruncate() (Statement, error) {
+	return nil, nil
 }
 
 func (p *Parser) ParseReturning() (Statement, error) {
@@ -39,7 +43,7 @@ func (p *Parser) ParseReturning() (Statement, error) {
 			Literal: "*",
 		}
 		p.Next()
-		if !p.Is(EOL) {
+		if !p.QueryEnds() {
 			return nil, p.Unexpected("returning")
 		}
 		return stmt, nil
@@ -116,7 +120,7 @@ func (p *Parser) parseAssignment() (Statement, error) {
 	)
 	switch {
 	case p.Is(Ident):
-		ass.Field, err = p.ParseIdent()
+		ass.Field, err = p.ParseIdentifier()
 		if err != nil {
 			return nil, err
 		}
@@ -124,7 +128,7 @@ func (p *Parser) parseAssignment() (Statement, error) {
 		p.Next()
 		var list List
 		for !p.Done() && !p.Is(Rparen) {
-			stmt, err := p.ParseIdent()
+			stmt, err := p.ParseIdentifier()
 			if err != nil {
 				return nil, err
 			}
@@ -177,7 +181,7 @@ func (p *Parser) ParseInsert() (Statement, error) {
 		stmt InsertStatement
 		err  error
 	)
-	stmt.Table, err = p.ParseIdent()
+	stmt.Table, err = p.ParseIdentifier()
 	if err != nil {
 		return nil, err
 	}

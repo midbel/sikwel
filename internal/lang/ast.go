@@ -383,6 +383,14 @@ func (s UpdateStatement) Keyword() (string, error) {
 	return "UPDATE", nil
 }
 
+type TruncateStatement struct {
+	Table string
+}
+
+func (s TruncateStatement) Keyword() (string, error) {
+	return "TRUNCATE", nil
+}
+
 type DeleteStatement struct {
 	Table  string
 	Where  Statement

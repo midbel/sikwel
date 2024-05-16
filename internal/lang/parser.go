@@ -36,6 +36,7 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 	p.RegisterParseFunc("SELECT", p.ParseSelect)
 	p.RegisterParseFunc("VALUES", p.ParseValues)
 	p.RegisterParseFunc("DELETE FROM", p.ParseDelete)
+	p.RegisterParseFunc("TRUNCATE", p.ParseTruncate)
 	p.RegisterParseFunc("UPDATE", p.ParseUpdate)
 	p.RegisterParseFunc("MERGE", p.ParseMerge)
 	p.RegisterParseFunc("INSERT INTO", p.ParseInsert)
