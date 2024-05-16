@@ -384,7 +384,7 @@ func (s UpdateStatement) Keyword() (string, error) {
 }
 
 type TruncateStatement struct {
-	Table string
+	Tables []string
 }
 
 func (s TruncateStatement) Keyword() (string, error) {

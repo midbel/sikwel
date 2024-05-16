@@ -30,7 +30,27 @@ func (p *Parser) ParseDelete() (Statement, error) {
 }
 
 func (p *Parser) ParseTruncate() (Statement, error) {
-	return nil, nil
+	p.Next()
+	var stmt TruncateStatement
+	if p.Is(Star) {
+		p.Next()
+		return stmt, nil
+	}
+	for !p.Is(EOL) && !p.Done() {
+		if !p.Is(Ident) {
+			return nil, p.Unexpected("truncate")
+		}
+		stmt.Tables = append(stmt.Tables, p.GetCurrLiteral())
+		p.Next()
+		switch {
+		case p.Is(EOL):
+		case p.Is(Comma):
+			p.Next()
+		default:
+			return nil, p.Unexpected("truncate")
+		}
+	}
+	return stmt, nil
 }
 
 func (p *Parser) ParseReturning() (Statement, error) {
