@@ -64,6 +64,7 @@ var keywords = KeywordSet{
 	{"ilike"},
 	{"delete", "from"},
 	{"truncate"},
+	{"truncate", "table"},
 	{"update"},
 	{"set"},
 	{"insert", "into"},
