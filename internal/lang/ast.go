@@ -209,8 +209,8 @@ type Offset struct {
 
 type Order struct {
 	Statement
-	Orient string
-	Nulls  string
+	Dir   string
+	Nulls string
 }
 
 type Join struct {

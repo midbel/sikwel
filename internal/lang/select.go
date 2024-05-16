@@ -260,7 +260,7 @@ func (p *Parser) ParseJoinUsing() (Statement, error) {
 
 	var list List
 	for !p.Done() && !p.Is(Rparen) {
-		stmt, err := p.StartExpression()
+		stmt, err := p.ParseIdentifier()
 		if err = wrapError("using", err); err != nil {
 			return nil, err
 		}
@@ -297,7 +297,7 @@ func (p *Parser) ParseGroupBy() ([]Statement, error) {
 	)
 	for !p.Done() && !p.QueryEnds() {
 		var stmt Statement
-		stmt, err = p.StartExpression()
+		stmt, err = p.ParseIdentifier()
 		if err != nil {
 			return nil, err
 		}
@@ -487,15 +487,16 @@ func (p *Parser) ParseOrderBy() ([]Statement, error) {
 	)
 	for !p.Done() && !p.QueryEnds() {
 		var stmt Statement
-		stmt, err = p.StartExpression()
+		stmt, err = p.ParseIdentifier()
 		if err != nil {
 			return nil, err
 		}
 		order := Order{
 			Statement: stmt,
+			Dir:       "ASC",
 		}
 		if p.IsKeyword("ASC") || p.IsKeyword("DESC") {
-			order.Orient = p.GetCurrLiteral()
+			order.Dir = p.GetCurrLiteral()
 			p.Next()
 		}
 		if p.IsKeyword("NULLS") {
@@ -995,9 +996,9 @@ func (w *Writer) formatOrder(order Order) error {
 		return w.CanNotUse("order by", order.Statement)
 	}
 	w.FormatName(n)
-	if order.Orient != "" {
+	if order.Dir != "" {
 		w.WriteBlank()
-		w.WriteString(order.Orient)
+		w.WriteString(order.Dir)
 	}
 	if order.Nulls != "" {
 		w.WriteBlank()
