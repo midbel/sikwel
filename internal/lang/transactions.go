@@ -4,6 +4,17 @@ import (
 	"fmt"
 )
 
+func (p *Parser) ParseBegin() (Statement, error) {
+	p.Next()
+	stmt, err := p.ParseBody(func() bool {
+		return p.Done() || p.IsKeyword("END")
+	})
+	if err == nil {
+		p.Next()
+	}
+	return stmt, err
+}
+
 func (p *Parser) parseSetTransaction() (Statement, error) {
 	p.Next()
 	var (

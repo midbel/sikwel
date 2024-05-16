@@ -4,7 +4,11 @@ import (
 	"fmt"
 )
 
-func (p *Parser) parseDelete() (Statement, error) {
+func (p *Parser) ParseMerge() (Statement, error) {
+	return nil, nil
+}
+
+func (p *Parser) ParseDelete() (Statement, error) {
 	p.Next()
 	var (
 		stmt DeleteStatement
@@ -23,6 +27,35 @@ func (p *Parser) parseDelete() (Statement, error) {
 		return nil, wrapError("delete", err)
 	}
 	return stmt, nil
+}
+
+func (p *Parser) ParseReturning() (Statement, error) {
+	if !p.IsKeyword("RETURNING") {
+		return nil, nil
+	}
+	p.Next()
+	if p.Is(Star) {
+		stmt := Value{
+			Literal: "*",
+		}
+		p.Next()
+		if !p.Is(EOL) {
+			return nil, p.Unexpected("returning")
+		}
+		return stmt, nil
+	}
+	var list List
+	for !p.Done() && !p.Is(EOL) {
+		stmt, err := p.StartExpression()
+		if err != nil {
+			return nil, err
+		}
+		list.Values = append(list.Values, stmt)
+		if err = p.EnsureEnd("returning", Comma, EOL); err != nil {
+			return nil, err
+		}
+	}
+	return list, nil
 }
 
 func (p *Parser) ParseUpdate() (Statement, error) {

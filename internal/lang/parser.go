@@ -5,7 +5,6 @@ import (
 	"io"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 )
 
@@ -36,17 +35,18 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 
 	p.RegisterParseFunc("SELECT", p.ParseSelect)
 	p.RegisterParseFunc("VALUES", p.ParseValues)
-	p.RegisterParseFunc("DELETE FROM", p.parseDelete)
+	p.RegisterParseFunc("DELETE FROM", p.ParseDelete)
 	p.RegisterParseFunc("UPDATE", p.ParseUpdate)
+	p.RegisterParseFunc("MERGE", p.ParseMerge)
 	p.RegisterParseFunc("INSERT INTO", p.ParseInsert)
 	p.RegisterParseFunc("WITH", p.parseWith)
-	p.RegisterParseFunc("CASE", p.parseCase)
+	p.RegisterParseFunc("CASE", p.ParseCase)
 	p.RegisterParseFunc("IF", p.parseIf)
 	p.RegisterParseFunc("WHILE", p.parseWhile)
 	p.RegisterParseFunc("DECLARE", p.parseDeclare)
 	p.RegisterParseFunc("SET", p.parseSet)
 	p.RegisterParseFunc("RETURN", p.parseReturn)
-	p.RegisterParseFunc("BEGIN", p.parseBegin)
+	p.RegisterParseFunc("BEGIN", p.ParseBegin)
 	p.RegisterParseFunc("START TRANSACTION", p.parseStartTransaction)
 	p.RegisterParseFunc("CALL", p.ParseCall)
 	p.RegisterParseFunc("CREATE TABLE", p.ParseCreateTable)
@@ -91,13 +91,42 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 	p.RegisterPrefix("NOT", Keyword, p.parseUnary)
 	p.RegisterPrefix("NULL", Keyword, p.parseUnary)
 	p.RegisterPrefix("DEFAULT", Keyword, p.parseUnary)
-	p.RegisterPrefix("CASE", Keyword, p.parseCase)
+	p.RegisterPrefix("CASE", Keyword, p.ParseCase)
 	p.RegisterPrefix("SELECT", Keyword, p.ParseStatement)
 	p.RegisterPrefix("EXISTS", Keyword, p.parseUnary)
-	p.RegisterPrefix("CAST", Keyword, p.parseCast)
-	p.RegisterPrefix("ROW", Keyword, p.parseRow)
+	p.RegisterPrefix("CAST", Keyword, p.ParseCast)
+	p.RegisterPrefix("ROW", Keyword, p.ParseRow)
 
 	return &p, nil
+}
+
+func (p *Parser) Parse() (Statement, error) {
+	stmt, err := p.parse()
+	if err != nil {
+		p.restore()
+	}
+	return stmt, err
+}
+
+func (p *Parser) ParseStatement() (Statement, error) {
+	p.Enter()
+	defer p.Leave()
+
+	if p.Done() {
+		return nil, io.EOF
+	}
+	if !p.Is(Keyword) {
+		return nil, p.wantError("statement", "keyword")
+	}
+	fn, ok := p.keywords[p.curr.Literal]
+	if !ok {
+		return nil, p.Unexpected("statement")
+	}
+	return fn()
+}
+
+func (p *Parser) StartExpression() (Statement, error) {
+	return p.parseExpression(powLowest)
 }
 
 func (p *Parser) Enter() {
@@ -119,12 +148,22 @@ func (p *Parser) QueryEnds() bool {
 	return p.Is(EOL)
 }
 
-func (p *Parser) Parse() (Statement, error) {
-	stmt, err := p.parse()
-	if err != nil {
-		p.restore()
+func (p *Parser) Done() bool {
+	if p.frame.Done() {
+		if n := len(p.stack); n > 0 {
+			p.frame = p.stack[n-1]
+			p.stack = p.stack[:n-1]
+		}
 	}
-	return stmt, err
+	return p.frame.Done()
+}
+
+func (p *Parser) Expect(ctx string, r rune) error {
+	if !p.Is(r) {
+		return p.Unexpected(ctx)
+	}
+	p.Next()
+	return nil
 }
 
 func (p *Parser) restore() {
@@ -164,175 +203,6 @@ func (p *Parser) parse() (Statement, error) {
 	return com.Statement, nil
 }
 
-func (p *Parser) StartExpression() (Statement, error) {
-	return p.parseExpression(powLowest)
-}
-
-func (p *Parser) ParseStatement() (Statement, error) {
-	p.Enter()
-	defer p.Leave()
-
-	if p.Done() {
-		return nil, io.EOF
-	}
-	if !p.Is(Keyword) {
-		return nil, p.wantError("statement", "keyword")
-	}
-	fn, ok := p.keywords[p.curr.Literal]
-	if !ok {
-		return nil, p.Unexpected("statement")
-	}
-	return fn()
-}
-
-func (p *Parser) ParseCall() (Statement, error) {
-	p.Next()
-	var (
-		stmt CallStatement
-		err  error
-	)
-	stmt.Ident, err = p.ParseIdent()
-	if err != nil {
-		return nil, err
-	}
-	if !p.Is(Lparen) {
-		return nil, p.Unexpected("call")
-	}
-	p.Next()
-	for !p.Done() && !p.Is(Rparen) {
-		if p.peekIs(Arrow) && p.Is(Ident) {
-			stmt.Names = append(stmt.Names, p.GetCurrLiteral())
-			p.Next()
-			p.Next()
-		}
-		arg, err := p.StartExpression()
-		if err = wrapError("call", err); err != nil {
-			return nil, err
-		}
-		if err := p.EnsureEnd("call", Comma, Rparen); err != nil {
-			return nil, err
-		}
-		stmt.Args = append(stmt.Args, arg)
-	}
-	if !p.Is(Rparen) {
-		return nil, p.Unexpected("call")
-	}
-	p.Next()
-	return stmt, err
-}
-
-func (p *Parser) ParseType() (Type, error) {
-	var t Type
-	if !p.Is(Ident) {
-		return t, p.Unexpected("type")
-	}
-	t.Name = p.GetCurrLiteral()
-	p.Next()
-	if p.Is(Lparen) {
-		p.Next()
-		size, err := strconv.Atoi(p.GetCurrLiteral())
-		if err != nil {
-			return t, err
-		}
-		t.Length = size
-		p.Next()
-		if p.Is(Comma) {
-			p.Next()
-			size, err = strconv.Atoi(p.GetCurrLiteral())
-			if err != nil {
-				return t, err
-			}
-			t.Precision = size
-			p.Next()
-		}
-		if !p.Is(Rparen) {
-			return t, p.Unexpected("type")
-		}
-		p.Next()
-	}
-	return t, nil
-}
-
-func (p *Parser) parseBegin() (Statement, error) {
-	p.Next()
-	stmt, err := p.ParseBody(func() bool {
-		return p.Done() || p.IsKeyword("END")
-	})
-	if err == nil {
-		p.Next()
-	}
-	return stmt, err
-}
-
-func (p *Parser) parseCase() (Statement, error) {
-	p.Next()
-	var (
-		stmt CaseStatement
-		err  error
-	)
-	if !p.IsKeyword("WHEN") {
-		stmt.Cdt, err = p.StartExpression()
-		if err = wrapError("case", err); err != nil {
-			return nil, err
-		}
-	}
-	for p.IsKeyword("WHEN") {
-		var when WhenStatement
-		p.Next()
-		when.Cdt, err = p.StartExpression()
-		if err = wrapError("when", err); err != nil {
-			return nil, err
-		}
-		p.Next()
-		when.Body, err = p.StartExpression()
-		if err = wrapError("then", err); err != nil {
-			return nil, err
-		}
-		stmt.Body = append(stmt.Body, when)
-	}
-	if p.IsKeyword("ELSE") {
-		p.Next()
-		stmt.Else, err = p.StartExpression()
-		if err = wrapError("else", err); err != nil {
-			return nil, err
-		}
-	}
-	if !p.IsKeyword("END") {
-		return nil, p.Unexpected("case")
-	}
-	p.Next()
-	return p.ParseAlias(stmt)
-}
-
-func (p *Parser) ParseReturning() (Statement, error) {
-	if !p.IsKeyword("RETURNING") {
-		return nil, nil
-	}
-	p.Next()
-	if p.Is(Star) {
-		stmt := Value{
-			Literal: "*",
-		}
-		p.Next()
-		if !p.Is(EOL) {
-			return nil, p.Unexpected("returning")
-		}
-		return stmt, nil
-	}
-	var list List
-	for !p.Done() && !p.Is(EOL) {
-		stmt, err := p.StartExpression()
-		if err != nil {
-			return nil, err
-		}
-		list.Values = append(list.Values, stmt)
-		if err = p.EnsureEnd("returning", Comma, EOL); err != nil {
-			return nil, err
-		}
-	}
-	return list, nil
-}
-
 func (p *Parser) RegisterParseFunc(kw string, fn func() (Statement, error)) {
 	kw = strings.ToUpper(kw)
 	p.keywords[kw] = fn
@@ -363,6 +233,20 @@ func (p *Parser) UnregisterInfix(literal string, kind rune) {
 	delete(p.infix, symbolFor(kind, literal))
 }
 
+func (p *Parser) parseExpression(power int) (Statement, error) {
+	left, err := p.getPrefixExpr()
+	if err != nil {
+		return nil, err
+	}
+	for !p.QueryEnds() && !p.Is(Comma) && !p.Done() && power < p.currBinding() {
+		left, err = p.getInfixExpr(left)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return left, nil
+}
+
 func (p *Parser) getPrefixExpr() (Statement, error) {
 	fn, ok := p.prefix[p.curr.asSymbol()]
 	if !ok {
@@ -379,20 +263,6 @@ func (p *Parser) getInfixExpr(left Statement) (Statement, error) {
 	return fn(left)
 }
 
-func (p *Parser) parseExpression(power int) (Statement, error) {
-	left, err := p.getPrefixExpr()
-	if err != nil {
-		return nil, err
-	}
-	for !p.QueryEnds() && !p.Is(Comma) && !p.Done() && power < p.currBinding() {
-		left, err = p.getInfixExpr(left)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return left, nil
-}
-
 func (p *Parser) parseInfixExpr(left Statement) (Statement, error) {
 	stmt := Binary{
 		Left: left,
@@ -400,10 +270,9 @@ func (p *Parser) parseInfixExpr(left Statement) (Statement, error) {
 	var (
 		pow = p.currBinding()
 		err error
-		ok  bool
 	)
-	stmt.Op, ok = operandMapping[p.curr.Type]
-	if !ok {
+	stmt.Op = operandMapping.Get(p.curr.Type)
+	if stmt.Op == "" {
 		return nil, p.Unexpected("operand")
 	}
 	p.Next()
@@ -541,7 +410,7 @@ func (p *Parser) parseUnary() (Statement, error) {
 			Op:    "NOT",
 		}
 	case p.IsKeyword("CASE"):
-		stmt, err = p.parseCase()
+		stmt, err = p.ParseCase()
 	case p.IsKeyword("NULL") || p.IsKeyword("DEFAULT"):
 		stmt = Value{
 			Literal: p.curr.Literal,
@@ -561,89 +430,6 @@ func (p *Parser) parseUnary() (Statement, error) {
 	default:
 		err = p.Unexpected("unary")
 	}
-	return stmt, nil
-}
-
-func (p *Parser) parseRow() (Statement, error) {
-	p.Next()
-	if !p.Is(Lparen) {
-		return nil, p.Unexpected("row")
-	}
-	p.Next()
-	var row Row
-	for !p.Done() && !p.Is(Rparen) {
-		expr, err := p.StartExpression()
-		if err != nil {
-			return nil, err
-		}
-		row.Values = append(row.Values, expr)
-		if err = p.EnsureEnd("row", Comma, Rparen); err != nil {
-			return nil, err
-		}
-	}
-	if !p.Is(Rparen) {
-		return nil, p.Unexpected("row")
-	}
-	p.Next()
-	return row, nil
-}
-
-func (p *Parser) parseCast() (Statement, error) {
-	p.Next()
-	if !p.Is(Lparen) {
-		return nil, p.Unexpected("cast")
-	}
-	p.Next()
-	var (
-		cast Cast
-		err  error
-	)
-	cast.Ident, err = p.ParseIdentifier()
-	if err != nil {
-		return nil, err
-	}
-	if !p.IsKeyword("AS") {
-		return nil, p.Unexpected("cast")
-	}
-	p.Next()
-	if cast.Type, err = p.ParseType(); err != nil {
-		return nil, err
-	}
-	if !p.Is(Rparen) {
-		return nil, p.Unexpected("cast")
-	}
-	p.Next()
-	return cast, nil
-}
-
-func (p *Parser) ParseIdentifier() (Statement, error) {
-	var name Name
-	for p.peekIs(Dot) {
-		name.Parts = append(name.Parts, p.GetCurrLiteral())
-		p.Next()
-		p.Next()
-	}
-	if !p.Is(Ident) && !p.Is(Star) {
-		return nil, p.Unexpected("identifier")
-	}
-	name.Parts = append(name.Parts, p.GetCurrLiteral())
-	p.Next()
-	return name, nil
-}
-
-func (p *Parser) ParseIdent() (Statement, error) {
-	stmt, err := p.ParseIdentifier()
-	if err == nil {
-		stmt, err = p.ParseAlias(stmt)
-	}
-	return stmt, nil
-}
-
-func (p *Parser) ParseLiteral() (Statement, error) {
-	stmt := Value{
-		Literal: p.curr.Literal,
-	}
-	p.Next()
 	return stmt, nil
 }
 
@@ -698,26 +484,6 @@ func (p *Parser) parseColumnsList() ([]string, error) {
 	p.Next()
 
 	return list, err
-}
-
-func (p *Parser) ParseAlias(stmt Statement) (Statement, error) {
-	mandatory := p.IsKeyword("AS")
-	if mandatory {
-		p.Next()
-	}
-	switch p.curr.Type {
-	case Ident, Literal, Number:
-		stmt = Alias{
-			Statement: stmt,
-			Alias:     p.curr.Literal,
-		}
-		p.Next()
-	default:
-		if mandatory {
-			return nil, p.Unexpected("alias")
-		}
-	}
-	return stmt, nil
 }
 
 func (p *Parser) IsKeyword(kw string) bool {
@@ -784,78 +550,9 @@ func (p *Parser) KwCheck(str ...string) func() bool {
 	}
 }
 
-func (p *Parser) Done() bool {
-	if p.frame.Done() {
-		if n := len(p.stack); n > 0 {
-			p.frame = p.stack[n-1]
-			p.stack = p.stack[:n-1]
-		}
-	}
-	return p.frame.Done()
-}
-
-func (p *Parser) Expect(ctx string, r rune) error {
-	if !p.Is(r) {
-		return p.Unexpected(ctx)
-	}
-	p.Next()
-	return nil
-}
-
 type prefixFunc func() (Statement, error)
 
 type infixFunc func(Statement) (Statement, error)
-
-var operandMapping = map[rune]string{
-	Plus:   "+",
-	Minus:  "-",
-	Slash:  "/",
-	Star:   "*",
-	Eq:     "=",
-	Ne:     "<>",
-	Gt:     ">",
-	Ge:     ">=",
-	Lt:     "<",
-	Le:     "<=",
-	Concat: "||",
-}
-
-const (
-	powLowest int = iota
-	powRel
-	powCmp
-	powKw
-	powNot
-	powConcat
-	powAdd
-	powMul
-	powUnary
-	powCall
-)
-
-var bindings = map[symbol]int{
-	symbolFor(Keyword, "AND"):     powRel,
-	symbolFor(Keyword, "OR"):      powRel,
-	symbolFor(Keyword, "NOT"):     powNot,
-	symbolFor(Keyword, "LIKE"):    powCmp,
-	symbolFor(Keyword, "ILIKE"):   powCmp,
-	symbolFor(Keyword, "BETWEEN"): powCmp,
-	symbolFor(Keyword, "IN"):      powCmp,
-	symbolFor(Keyword, "AS"):      powKw,
-	symbolFor(Keyword, "IS"):      powKw,
-	symbolFor(Lt, ""):             powCmp,
-	symbolFor(Le, ""):             powCmp,
-	symbolFor(Gt, ""):             powCmp,
-	symbolFor(Ge, ""):             powCmp,
-	symbolFor(Eq, ""):             powCmp,
-	symbolFor(Ne, ""):             powCmp,
-	symbolFor(Plus, ""):           powAdd,
-	symbolFor(Minus, ""):          powAdd,
-	symbolFor(Star, ""):           powMul,
-	symbolFor(Slash, ""):          powMul,
-	symbolFor(Lparen, ""):         powCall,
-	symbolFor(Concat, ""):         powConcat,
-}
 
 type frame struct {
 	scan *Scanner
