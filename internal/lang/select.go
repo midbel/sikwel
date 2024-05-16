@@ -238,6 +238,10 @@ func (p *Parser) ParseFrom() ([]Statement, error) {
 	return list, nil
 }
 
+func (p *Parser) parseTable() (Statement, error) {
+	return nil, nil
+}
+
 func (p *Parser) ParseJoinOn() (Statement, error) {
 	p.Next()
 	p.UnregisterInfix("AS", Keyword)

@@ -145,7 +145,20 @@ type Binary struct {
 	Op    string
 }
 
+type Is struct {
+	Not   bool
+	Ident Statement
+	Value Statement
+}
+
+type In struct {
+	Not   bool
+	Ident Statement
+	List  []Statement
+}
+
 type Between struct {
+	Not   bool
 	Ident Statement
 	Lower Statement
 	Upper Statement
