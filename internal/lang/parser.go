@@ -628,19 +628,6 @@ func (p *Parser) ParseIdentifier() (Statement, error) {
 	}
 	name.Parts = append(name.Parts, p.GetCurrLiteral())
 	p.Next()
-	// if p.peekIs(Dot) {
-	// 	name.Parts = append(name.Parts, p.GetCurrLiteral())
-	// 	p.Next()
-	// 	p.Next()
-	// }
-	// if !p.Is(Ident) && !p.Is(Star) {
-	// 	return nil, p.Unexpected("identifier")
-	// }
-	// name.Ident = p.GetCurrLiteral()
-	// if p.Is(Star) {
-	// 	name.Ident = "*"
-	// }
-	// p.Next()
 	return name, nil
 }
 
