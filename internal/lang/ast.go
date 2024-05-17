@@ -146,7 +146,6 @@ type Binary struct {
 }
 
 type Is struct {
-	Not   bool
 	Ident Statement
 	Value Statement
 }

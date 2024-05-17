@@ -78,8 +78,14 @@ func (p *Parser) parseCollateExpr(left Statement) (Statement, error) {
 
 func (p *Parser) parseKeywordExpr(left Statement) (Statement, error) {
 	not := p.GetCurrLiteral() == "NOT" && p.Is(Keyword)
+	reverse := func(stmt Statement) Statement { return stmt }
 	if not {
 		p.Next()
+		reverse = func(stmt Statement) Statement {
+			return Not{
+				Statement: stmt,
+			}
+		}
 	}
 	switch p.GetCurrLiteral() {
 	case "AND", "OR":
@@ -105,13 +111,9 @@ func (p *Parser) parseKeywordExpr(left Statement) (Statement, error) {
 		)
 		p.Next()
 		stmt.Right, err = p.parseExpression(pow)
-		if err == nil && not {
-			expr := Not{
-				Statement: stmt,
-			}
-			return expr, nil
-		}
-		return stmt, wrapError("infix", err)
+		return reverse(stmt), wrapError("infix", err)
+	case "ANY", "SOME":
+	case "ALL":
 	case "EXISTS":
 		p.Next()
 		if !p.Is(Lparen) {
@@ -130,13 +132,7 @@ func (p *Parser) parseKeywordExpr(left Statement) (Statement, error) {
 			return nil, p.Unexpected("expression")
 		}
 		p.Next()
-		if not {
-			expr := Not{
-				Statement: expr,
-			}
-			return expr, nil
-		}
-		return expr, nil
+		return reverse(expr), nil
 	case "BETWEEN":
 		p.Next()
 		expr := Between{
@@ -156,23 +152,25 @@ func (p *Parser) parseKeywordExpr(left Statement) (Statement, error) {
 		}
 		expr.Lower = left
 		expr.Upper = right
-		if not {
-			expr := Not{
-				Statement: expr,
-			}
-			return expr, nil
-		}
-		return expr, nil
+		return reverse(expr), nil
 	case "IN":
-		if not {
-
-		}
+		var stmt Statement
+		return reverse(stmt), nil
 	case "IS":
-		p.next()
+		p.Next()
 		not := p.GetCurrLiteral() == "NOT" && p.Is(Keyword)
 		if not {
 			p.Next()
 		}
+		expr := Is{
+			Ident: left,
+		}
+		val, err := p.ParseConstant()
+		if err != nil {
+			return nil, err
+		}
+		expr.Value = val
+		return reverse(expr), nil
 	case "ISNULL":
 	case "NOTNULL":
 	default:

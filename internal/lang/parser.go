@@ -84,6 +84,9 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 	p.RegisterInfix("IS", Keyword, p.parseKeywordExpr)
 	p.RegisterInfix("ISNULL", Keyword, p.parseKeywordExpr)
 	p.RegisterInfix("NOTNULL", Keyword, p.parseKeywordExpr)
+	p.RegisterInfix("ANY", Keyword, p.parseKeywordExpr)
+	p.RegisterInfix("SOME", Keyword, p.parseKeywordExpr)
+	p.RegisterInfix("ALL", Keyword, p.parseKeywordExpr)
 
 	p.prefix = make(map[symbol]prefixFunc)
 	p.RegisterPrefix("", Ident, p.ParseIdent)

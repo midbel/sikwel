@@ -12,6 +12,18 @@ func (p *Parser) ParseLiteral() (Statement, error) {
 	return stmt, nil
 }
 
+func (p *Parser) ParseConstant() (Statement, error) {
+	if !p.Is(Keyword) {
+		return nil, p.Unexpected("constant")
+	}
+	switch p.GetCurrLiteral() {
+	case "TRUE", "FALSE", "UNKNOWN", "NULL":
+	default:
+		return nil, p.Unexpected("constant")
+	}
+	return p.ParseLiteral()
+}
+
 func (p *Parser) ParseIdentifier() (Statement, error) {
 	var name Name
 	for p.peekIs(Dot) {
