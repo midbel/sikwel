@@ -1,5 +1,9 @@
 package lang
 
+import (
+	"fmt"
+)
+
 type prefixFunc func() (Statement, error)
 
 type infixFunc func(Statement) (Statement, error)
@@ -78,33 +82,98 @@ func (p *Parser) parseKeywordExpr(left Statement) (Statement, error) {
 		p.Next()
 	}
 	switch p.GetCurrLiteral() {
-	case "AND":
-	case "OR":
-	case "SIMILAR":
-	case "LIKE":
-	case "ILIKE":
+	case "AND", "OR":
+		stmt := Binary{
+			Left: left,
+			Op:   p.GetCurrLiteral(),
+		}
+		var (
+			pow = p.currBinding()
+			err error
+		)
+		p.Next()
+		stmt.Right, err = p.parseExpression(pow)
+		return stmt, wrapError("infix", err)
+	case "LIKE", "ILIKE", "SIMILAR":
+		stmt := Binary{
+			Left: left,
+			Op:   p.GetCurrLiteral(),
+		}
+		var (
+			pow = p.currBinding()
+			err error
+		)
+		p.Next()
+		stmt.Right, err = p.parseExpression(pow)
+		if err == nil && not {
+			expr := Not{
+				Statement: stmt,
+			}
+			return expr, nil
+		}
+		return stmt, wrapError("infix", err)
 	case "EXISTS":
+		p.Next()
+		if !p.Is(Lparen) {
+			return nil, p.Unexpected("expression")
+		}
+		p.Next()
+		var (
+			expr Exists
+			err  error
+		)
+		expr.Statement, err = p.ParseStatement()
+		if err != nil {
+			return nil, err
+		}
+		if !p.Is(Rparen) {
+			return nil, p.Unexpected("expression")
+		}
+		p.Next()
+		if not {
+			expr := Not{
+				Statement: expr,
+			}
+			return expr, nil
+		}
+		return expr, nil
 	case "BETWEEN":
+		p.Next()
+		expr := Between{
+			Ident: left,
+		}
+		left, err := p.StartExpression()
+		if err != nil {
+			return nil, err
+		}
+		if !p.IsKeyword("AND") {
+			return nil, p.Unexpected("expression")
+		}
+		p.Next()
+		right, err := p.StartExpression()
+		if err != nil {
+			return nil, err
+		}
+		expr.Lower = left
+		expr.Upper = right
+		if not {
+			expr := Not{
+				Statement: expr,
+			}
+			return expr, nil
+		}
+		return expr, nil
 	case "IN":
+		if not {
+
+		}
 	case "IS":
 	case "ISNULL":
 	case "NOTNULL":
 	default:
+		return nil, p.Unexpected("expression")
 	}
-	if p.GetCurrLiteral() == "NOT" {
-		p.Next()
-	}
-	stmt := Binary{
-		Left: left,
-		Op:   p.GetCurrLiteral(),
-	}
-	var (
-		pow = p.currBinding()
-		err error
-	)
-	p.Next()
-	stmt.Right, err = p.parseExpression(pow)
-	return stmt, wrapError("infix", err)
+	return nil, fmt.Errorf("not yet implemented")
 }
 
 func (p *Parser) parseCallExpr(left Statement) (Statement, error) {

@@ -142,6 +142,9 @@ var keywords = KeywordSet{
 	{"drop", ""},
 	{"drop", "column"},
 	{"to"},
+	{"true"},
+	{"false"},
+	{"unknown"},
 }
 
 func isJoin(tok Token) bool {
