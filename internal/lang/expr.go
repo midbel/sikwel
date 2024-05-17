@@ -77,7 +77,7 @@ func (p *Parser) parseCollateExpr(left Statement) (Statement, error) {
 }
 
 func (p *Parser) parseKeywordExpr(left Statement) (Statement, error) {
-	not := p.GetCurrLiteral() == "NOT"
+	not := p.GetCurrLiteral() == "NOT" && p.Is(Keyword)
 	if not {
 		p.Next()
 	}
@@ -168,6 +168,11 @@ func (p *Parser) parseKeywordExpr(left Statement) (Statement, error) {
 
 		}
 	case "IS":
+		p.next()
+		not := p.GetCurrLiteral() == "NOT" && p.Is(Keyword)
+		if not {
+			p.Next()
+		}
 	case "ISNULL":
 	case "NOTNULL":
 	default:
