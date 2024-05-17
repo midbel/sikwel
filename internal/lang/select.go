@@ -22,6 +22,10 @@ func (p *Parser) parseWith() (Statement, error) {
 		stmt WithStatement
 		err  error
 	)
+	if p.IsKeyword("RECURSIVE") {
+		stmt.Recursive = true
+		p.Next()
+	}
 	for !p.Done() && !p.Is(Keyword) {
 		cte, err := p.parseSubquery()
 		if err = wrapError("subquery", err); err != nil {
@@ -44,18 +48,28 @@ func (p *Parser) parseSubquery() (Statement, error) {
 	if !p.Is(Ident) {
 		return nil, p.Unexpected("subquery")
 	}
-	cte.Ident = p.curr.Literal
+	cte.Ident = p.GetCurrLiteral()
 	p.Next()
 
 	cte.Columns, err = p.parseColumnsList()
 	if err != nil {
 		return nil, err
 	}
-
 	if !p.IsKeyword("AS") {
 		return nil, p.Unexpected("subquery")
 	}
 	p.Next()
+	if p.IsKeyword("MATERIALIZED") {
+		p.Next()
+		cte.Materialized = MaterializedCte
+	} else if p.IsKeyword("NOT") {
+		p.Next()
+		if !p.IsKeyword("MATERIALIZED") {
+			return nil, p.Unexpected("subquery")
+		}
+		p.Next()
+		cte.Materialized = NotMaterializedCte
+	}
 	if !p.Is(Lparen) {
 		return nil, p.Unexpected("subquery")
 	}
@@ -101,6 +115,10 @@ func (p *Parser) ParseSelectStatement(sp SelectParser) (Statement, error) {
 		stmt SelectStatement
 		err  error
 	)
+	if p.IsKeyword("DISTINCT") {
+		stmt.Distinct = true
+		p.Next()
+	}
 	if stmt.Columns, err = sp.ParseColumns(); err != nil {
 		return nil, err
 	}
@@ -200,7 +218,7 @@ func (p *Parser) ParseFrom() ([]Statement, error) {
 	)
 	for !p.Done() && !p.QueryEnds() {
 		var stmt Statement
-		stmt, err = p.StartExpression()
+		stmt, err = p.ParseIdent()
 		if err != nil {
 			return nil, err
 		}
@@ -218,7 +236,7 @@ func (p *Parser) ParseFrom() ([]Statement, error) {
 			Type: p.GetCurrLiteral(),
 		}
 		p.Next()
-		j.Table, err = p.StartExpression()
+		j.Table, err = p.ParseIdent()
 		if err != nil {
 			return nil, err
 		}
@@ -236,10 +254,6 @@ func (p *Parser) ParseFrom() ([]Statement, error) {
 		list = append(list, j)
 	}
 	return list, nil
-}
-
-func (p *Parser) parseTable() (Statement, error) {
-	return nil, nil
 }
 
 func (p *Parser) ParseJoinOn() (Statement, error) {

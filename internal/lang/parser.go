@@ -72,14 +72,18 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 	p.RegisterInfix("", Lparen, p.parseCallExpr)
 	p.RegisterInfix("AND", Keyword, p.parseKeywordExpr)
 	p.RegisterInfix("OR", Keyword, p.parseKeywordExpr)
+	p.RegisterInfix("NOT", Keyword, p.parseKeywordExpr)
 	p.RegisterInfix("LIKE", Keyword, p.parseKeywordExpr)
+	p.RegisterInfix("SIMILAR", Keyword, p.parseKeywordExpr)
 	p.RegisterInfix("ILIKE", Keyword, p.parseKeywordExpr)
 	p.RegisterInfix("BETWEEN", Keyword, p.parseKeywordExpr)
+	p.RegisterInfix("EXISTS", Keyword, p.parseKeywordExpr)
 	p.RegisterInfix("COLLATE", Keyword, p.parseCollateExpr)
 	p.RegisterInfix("AS", Keyword, p.parseKeywordExpr)
 	p.RegisterInfix("IN", Keyword, p.parseKeywordExpr)
 	p.RegisterInfix("IS", Keyword, p.parseKeywordExpr)
-	p.RegisterInfix("NOT", Keyword, p.parseKeywordExpr)
+	p.RegisterInfix("ISNULL", Keyword, p.parseKeywordExpr)
+	p.RegisterInfix("NOTNULL", Keyword, p.parseKeywordExpr)
 
 	p.prefix = make(map[symbol]prefixFunc)
 	p.RegisterPrefix("", Ident, p.ParseIdent)
@@ -249,7 +253,7 @@ func (p *Parser) parseColumnsList() ([]string, error) {
 		if !p.curr.isValue() {
 			return nil, p.Unexpected("columns")
 		}
-		list = append(list, p.curr.Literal)
+		list = append(list, p.GetCurrLiteral())
 		p.Next()
 		if err := p.EnsureEnd("columns", Comma, Rparen); err != nil {
 			return nil, err

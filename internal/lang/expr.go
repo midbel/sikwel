@@ -78,10 +78,17 @@ func (p *Parser) parseKeywordExpr(left Statement) (Statement, error) {
 		p.Next()
 	}
 	switch p.GetCurrLiteral() {
-	case "BETWEEN":
+	case "AND":
+	case "OR":
+	case "SIMILAR":
 	case "LIKE":
 	case "ILIKE":
+	case "EXISTS":
+	case "BETWEEN":
 	case "IN":
+	case "IS":
+	case "ISNULL":
+	case "NOTNULL":
 	default:
 	}
 	if p.GetCurrLiteral() == "NOT" {

@@ -265,14 +265,23 @@ type BetweenFrameSpec struct {
 	Exclude FrameExclude
 }
 
+type MaterializedMode int
+
+const (
+	MaterializedCte MaterializedMode = iota + 1
+	NotMaterializedCte
+)
+
 type CteStatement struct {
-	Ident   string
-	Columns []string
+	Ident        string
+	Materialized MaterializedMode
+	Columns      []string
 	Statement
 }
 
 type WithStatement struct {
-	Queries []Statement
+	Recursive bool
+	Queries   []Statement
 	Statement
 }
 
