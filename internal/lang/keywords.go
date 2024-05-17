@@ -107,6 +107,7 @@ var keywords = KeywordSet{
 	{"is"},
 	{"not"},
 	{"collate"},
+	{"between"},
 	{"cast"},
 	{"filter"},
 	{"window"},

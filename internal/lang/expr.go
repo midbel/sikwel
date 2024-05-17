@@ -138,7 +138,7 @@ func (p *Parser) parseKeywordExpr(left Statement) (Statement, error) {
 		expr := Between{
 			Ident: left,
 		}
-		left, err := p.StartExpression()
+		left, err := p.parseExpression(powRel)
 		if err != nil {
 			return nil, err
 		}
@@ -146,7 +146,7 @@ func (p *Parser) parseKeywordExpr(left Statement) (Statement, error) {
 			return nil, p.Unexpected("expression")
 		}
 		p.Next()
-		right, err := p.StartExpression()
+		right, err := p.parseExpression(powRel)
 		if err != nil {
 			return nil, err
 		}
