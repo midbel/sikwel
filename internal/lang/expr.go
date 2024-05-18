@@ -1,9 +1,5 @@
 package lang
 
-import (
-	"fmt"
-)
-
 type prefixFunc func() (Statement, error)
 
 type infixFunc func(Statement) (Statement, error)
@@ -27,6 +23,168 @@ func (p *Parser) parseExpression(power int) (Statement, error) {
 		}
 	}
 	return left, nil
+}
+
+func (p *Parser) parseRelational(ident Statement) (Statement, error) {
+	stmt := Binary{
+		Left: ident,
+		Op:   p.GetCurrLiteral(),
+	}
+	var (
+		pow = p.currBinding()
+		err error
+	)
+	p.Next()
+	stmt.Right, err = p.parseExpression(pow)
+	return stmt, err
+}
+
+func (p *Parser) parseLike(ident Statement) (Statement, error) {
+	stmt := Binary{
+		Left: ident,
+		Op:   p.GetCurrLiteral(),
+	}
+	var (
+		pow = p.currBinding()
+		err error
+	)
+	p.Next()
+	stmt.Right, err = p.parseExpression(pow)
+	return stmt, err
+}
+
+func (p *Parser) parseIs(ident Statement) (Statement, error) {
+	p.Next()
+	not := p.GetCurrLiteral() == "NOT" && p.Is(Keyword)
+	if not {
+		p.Next()
+	}
+	stmt := Is{
+		Ident: ident,
+	}
+	val, err := p.ParseConstant()
+	if err != nil {
+		return nil, err
+	}
+	stmt.Value = val
+	if not {
+		return Not{
+			Statement: stmt,
+		}, nil
+	}
+	return stmt, nil
+}
+
+func (p *Parser) parseIsNull(ident Statement) (Statement, error) {
+	p.Next()
+	val := Value{
+		Literal: "NULL",
+	}
+	stmt := Is{
+		Ident: ident,
+		Value: val,
+	}
+	return stmt, nil
+}
+
+func (p *Parser) parseNotNull(ident Statement) (Statement, error) {
+	p.Next()
+	val := Value{
+		Literal: "NULL",
+	}
+	stmt := Is{
+		Ident: ident,
+		Value: val,
+	}
+	not := Not{
+		Statement: stmt,
+	}
+	return not, nil
+}
+
+func (p *Parser) parseExists(ident Statement) (Statement, error) {
+	p.Next()
+	if !p.Is(Lparen) {
+		return nil, p.Unexpected("expression")
+	}
+	p.Next()
+	var (
+		stmt Exists
+		err  error
+	)
+	stmt.Statement, err = p.ParseStatement()
+	if err != nil {
+		return nil, err
+	}
+	if !p.Is(Rparen) {
+		return nil, p.Unexpected("expression")
+	}
+	p.Next()
+	return stmt, nil
+}
+
+func (p *Parser) parseBetween(ident Statement) (Statement, error) {
+	p.Next()
+	stmt := Between{
+		Ident: ident,
+	}
+	left, err := p.parseExpression(powRel)
+	if err != nil {
+		return nil, err
+	}
+	if !p.IsKeyword("AND") {
+		return nil, p.Unexpected("expression")
+	}
+	p.Next()
+	right, err := p.parseExpression(powRel)
+	if err != nil {
+		return nil, err
+	}
+	stmt.Lower = left
+	stmt.Upper = right
+	return stmt, nil
+}
+
+func (p *Parser) parseIn(ident Statement) (Statement, error) {
+	p.Next()
+	in := In{
+		Ident: ident,
+	}
+	var err error
+	if p.Is(Lparen) && p.peekIs(Keyword) && p.GetPeekLiteral() == "SELECT" {
+		in.Value, err = p.parseExpression(powLowest)
+	} else if p.Is(Lparen) {
+		p.Next()
+		var (
+			list List
+			val  Statement
+		)
+		for !p.Done() && !p.Is(Rparen) {
+			val, err = p.parseExpression(powLowest)
+			if err != nil {
+				return nil, err
+			}
+			switch {
+			case p.Is(Comma):
+				p.Next()
+				if p.Is(Rparen) {
+					return nil, p.Unexpected("in")
+				}
+			case p.Is(Rparen):
+			default:
+				return nil, p.Unexpected("in")
+			}
+			list.Values = append(list.Values, val)
+		}
+		if !p.Is(Rparen) {
+			return nil, p.Unexpected("in")
+		}
+		in.Value = list
+		p.Next()
+	} else {
+		in.Value, err = p.ParseIdentifier()
+	}
+	return in, err
 }
 
 func (p *Parser) getPrefixExpr() (prefixFunc, error) {
@@ -77,106 +235,44 @@ func (p *Parser) parseCollateExpr(left Statement) (Statement, error) {
 }
 
 func (p *Parser) parseKeywordExpr(left Statement) (Statement, error) {
-	not := p.GetCurrLiteral() == "NOT" && p.Is(Keyword)
 	reverse := func(stmt Statement) Statement { return stmt }
-	if not {
+	if p.GetCurrLiteral() == "NOT" && p.Is(Keyword) {
 		p.Next()
 		reverse = func(stmt Statement) Statement {
+			if stmt == nil {
+				return stmt
+			}
 			return Not{
 				Statement: stmt,
 			}
 		}
 	}
+	var (
+		stmt Statement
+		err  error
+	)
 	switch p.GetCurrLiteral() {
 	case "AND", "OR":
-		stmt := Binary{
-			Left: left,
-			Op:   p.GetCurrLiteral(),
-		}
-		var (
-			pow = p.currBinding()
-			err error
-		)
-		p.Next()
-		stmt.Right, err = p.parseExpression(pow)
-		return stmt, wrapError("infix", err)
+		stmt, err = p.parseRelational(left)
 	case "LIKE", "ILIKE", "SIMILAR":
-		stmt := Binary{
-			Left: left,
-			Op:   p.GetCurrLiteral(),
-		}
-		var (
-			pow = p.currBinding()
-			err error
-		)
-		p.Next()
-		stmt.Right, err = p.parseExpression(pow)
-		return reverse(stmt), wrapError("infix", err)
-	case "ANY", "SOME":
-	case "ALL":
+		stmt, err = p.parseLike(left)
 	case "EXISTS":
-		p.Next()
-		if !p.Is(Lparen) {
-			return nil, p.Unexpected("expression")
-		}
-		p.Next()
-		var (
-			expr Exists
-			err  error
-		)
-		expr.Statement, err = p.ParseStatement()
-		if err != nil {
-			return nil, err
-		}
-		if !p.Is(Rparen) {
-			return nil, p.Unexpected("expression")
-		}
-		p.Next()
-		return reverse(expr), nil
+		stmt, err = p.parseExists(left)
 	case "BETWEEN":
-		p.Next()
-		expr := Between{
-			Ident: left,
-		}
-		left, err := p.parseExpression(powRel)
-		if err != nil {
-			return nil, err
-		}
-		if !p.IsKeyword("AND") {
-			return nil, p.Unexpected("expression")
-		}
-		p.Next()
-		right, err := p.parseExpression(powRel)
-		if err != nil {
-			return nil, err
-		}
-		expr.Lower = left
-		expr.Upper = right
-		return reverse(expr), nil
+		stmt, err = p.parseBetween(left)
+		return reverse(stmt), err
 	case "IN":
-		var stmt Statement
-		return reverse(stmt), nil
+		stmt, err = p.parseIn(left)
 	case "IS":
-		p.Next()
-		not := p.GetCurrLiteral() == "NOT" && p.Is(Keyword)
-		if not {
-			p.Next()
-		}
-		expr := Is{
-			Ident: left,
-		}
-		val, err := p.ParseConstant()
-		if err != nil {
-			return nil, err
-		}
-		expr.Value = val
-		return reverse(expr), nil
+		stmt, err = p.parseIs(left)
 	case "ISNULL":
+		stmt, err = p.parseIsNull(left)
 	case "NOTNULL":
+		stmt, err = p.parseNotNull(left)
 	default:
-		return nil, p.Unexpected("expression")
+		err = p.Unexpected("expression")
 	}
-	return nil, fmt.Errorf("not yet implemented")
+	return reverse(stmt), wrapError("keyword", err)
 }
 
 func (p *Parser) parseCallExpr(left Statement) (Statement, error) {

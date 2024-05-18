@@ -151,9 +151,8 @@ type Is struct {
 }
 
 type In struct {
-	Not   bool
 	Ident Statement
-	List  []Statement
+	Value Statement
 }
 
 type Between struct {

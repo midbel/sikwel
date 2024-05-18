@@ -6,7 +6,7 @@ import (
 
 func (p *Parser) ParseLiteral() (Statement, error) {
 	stmt := Value{
-		Literal: p.curr.Literal,
+		Literal: p.GetCurrLiteral(),
 	}
 	p.Next()
 	return stmt, nil
