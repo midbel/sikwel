@@ -15,8 +15,8 @@ type Parser struct {
 	level int
 
 	keywords map[string]func() (Statement, error)
-	infix    map[symbol]infixFunc
-	prefix   map[symbol]prefixFunc
+	infix    *funcSet[infixFunc]
+	prefix   *funcSet[prefixFunc]
 }
 
 func NewParser(r io.Reader) (*Parser, error) {
@@ -57,7 +57,7 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 	p.RegisterParseFunc("CREATE OR REPLACE PROCEDURE", p.ParseCreateProcedure)
 	p.RegisterParseFunc("ALTER TABLE", p.ParseAlterTable)
 
-	p.infix = make(map[symbol]infixFunc)
+	p.infix = newFuncSet[infixFunc]()
 	p.RegisterInfix("", Plus, p.parseInfixExpr)
 	p.RegisterInfix("", Minus, p.parseInfixExpr)
 	p.RegisterInfix("", Slash, p.parseInfixExpr)
@@ -88,7 +88,7 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 	p.RegisterInfix("SOME", Keyword, p.parseKeywordExpr)
 	p.RegisterInfix("ALL", Keyword, p.parseKeywordExpr)
 
-	p.prefix = make(map[symbol]prefixFunc)
+	p.prefix = newFuncSet[prefixFunc]()
 	p.RegisterPrefix("", Ident, p.ParseIdent)
 	p.RegisterPrefix("", Star, p.ParseIdentifier)
 	p.RegisterPrefix("", Literal, p.ParseLiteral)
@@ -226,19 +226,19 @@ func (p *Parser) UnregisterAllParseFunc() {
 }
 
 func (p *Parser) RegisterPrefix(literal string, kind rune, fn prefixFunc) {
-	p.prefix[symbolFor(kind, literal)] = fn
+	p.prefix.Register(literal, kind, fn)
 }
 
 func (p *Parser) UnregisterPrefix(literal string, kind rune) {
-	delete(p.prefix, symbolFor(kind, literal))
+	p.prefix.Unregister(literal, kind)
 }
 
 func (p *Parser) RegisterInfix(literal string, kind rune, fn infixFunc) {
-	p.infix[symbolFor(kind, literal)] = fn
+	p.infix.Register(literal, kind, fn)
 }
 
 func (p *Parser) UnregisterInfix(literal string, kind rune) {
-	delete(p.infix, symbolFor(kind, literal))
+	p.infix.Unregister(literal, kind)
 }
 
 func (p *Parser) parseColumnsList() ([]string, error) {

@@ -1,8 +1,43 @@
 package lang
 
+import (
+	"fmt"
+)
+
 type prefixFunc func() (Statement, error)
 
 type infixFunc func(Statement) (Statement, error)
+
+type funcSet[T prefixFunc | infixFunc] struct {
+	disabled bool
+	funcs    map[symbol]T
+}
+
+func newFuncSet[T prefixFunc | infixFunc]() *funcSet[T] {
+	return &funcSet[T]{
+		funcs: make(map[symbol]T),
+	}
+}
+
+func (s *funcSet[T]) Get(sym symbol) (T, error) {
+	fn, ok := s.funcs[sym]
+	if !ok {
+		return nil, fmt.Errorf("undefined function")
+	}
+	return fn, nil
+}
+
+func (s *funcSet[T]) Toggle() {
+	s.disabled = !s.disabled
+}
+
+func (s *funcSet[T]) Register(literal string, kind rune, fn T) {
+	s.funcs[symbolFor(kind, literal)] = fn
+}
+
+func (s *funcSet[T]) Unregister(literal string, kind rune) {
+	delete(s.funcs, symbolFor(kind, literal))
+}
 
 func (p *Parser) parseExpression(power int) (Statement, error) {
 	fn, err := p.getPrefixExpr()
@@ -188,19 +223,11 @@ func (p *Parser) parseIn(ident Statement) (Statement, error) {
 }
 
 func (p *Parser) getPrefixExpr() (prefixFunc, error) {
-	fn, ok := p.prefix[p.curr.asSymbol()]
-	if !ok {
-		return nil, p.Unexpected("prefix")
-	}
-	return fn, nil
+	return p.prefix.Get(p.curr.asSymbol())
 }
 
 func (p *Parser) getInfixExpr() (infixFunc, error) {
-	fn, ok := p.infix[p.curr.asSymbol()]
-	if !ok {
-		return nil, p.Unexpected("infix")
-	}
-	return fn, nil
+	return p.infix.Get(p.curr.asSymbol())
 }
 
 func (p *Parser) parseInfixExpr(left Statement) (Statement, error) {
