@@ -218,7 +218,7 @@ func (p *Parser) ParseFrom() ([]Statement, error) {
 	)
 	for !p.Done() && !p.QueryEnds() {
 		var stmt Statement
-		stmt, err = p.ParseIdent()
+		stmt, err = p.StartExpression()
 		if err != nil {
 			return nil, err
 		}
@@ -236,7 +236,7 @@ func (p *Parser) ParseFrom() ([]Statement, error) {
 			Type: p.GetCurrLiteral(),
 		}
 		p.Next()
-		j.Table, err = p.ParseIdent()
+		j.Table, err = p.StartExpression()
 		if err != nil {
 			return nil, err
 		}

@@ -17,7 +17,7 @@ func (p *Parser) ParseConstant() (Statement, error) {
 		return nil, p.Unexpected("constant")
 	}
 	switch p.GetCurrLiteral() {
-	case "TRUE", "FALSE", "UNKNOWN", "NULL":
+	case "TRUE", "FALSE", "UNKNOWN", "NULL", "DEFAULT":
 	default:
 		return nil, p.Unexpected("constant")
 	}

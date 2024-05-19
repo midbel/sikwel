@@ -20,6 +20,9 @@ func newFuncSet[T prefixFunc | infixFunc]() *funcSet[T] {
 }
 
 func (s *funcSet[T]) Get(sym symbol) (T, error) {
+	if s.disabled {
+		return nil, fmt.Errorf("undefined function")
+	}
 	fn, ok := s.funcs[sym]
 	if !ok {
 		return nil, fmt.Errorf("undefined function")
@@ -388,27 +391,8 @@ func (p *Parser) parseUnary() (Statement, error) {
 		if err = wrapError("not", err); err != nil {
 			return nil, err
 		}
-		stmt = Unary{
-			Right: stmt,
-			Op:    "NOT",
-		}
-	case p.IsKeyword("CASE"):
-		stmt, err = p.ParseCase()
-	case p.IsKeyword("NULL") || p.IsKeyword("DEFAULT"):
-		stmt = Value{
-			Literal: p.curr.Literal,
-		}
-		p.Next()
-	case p.IsKeyword("EXISTS"):
-		p.Next()
-		if !p.Is(Lparen) {
-			return nil, p.Unexpected("exists")
-		}
-		stmt, err = p.StartExpression()
-		if err == nil {
-			stmt = Exists{
-				Statement: stmt,
-			}
+		stmt = Not{
+			Statement: stmt,
 		}
 	default:
 		err = p.Unexpected("unary")
