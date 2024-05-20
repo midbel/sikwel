@@ -42,8 +42,6 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 
 func (p *Parser) Parse() (Statement, error) {
 	p.reset()
-	p.Enter()
-	defer p.Leave()
 	stmt, err := p.parse()
 	if err != nil {
 		p.restore()
@@ -91,7 +89,7 @@ func (p *Parser) Leave() {
 }
 
 func (p *Parser) Nested() bool {
-	return p.level >= 1
+	return p.level > 1
 }
 
 func (p *Parser) reset() {

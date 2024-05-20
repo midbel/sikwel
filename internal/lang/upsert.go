@@ -59,9 +59,7 @@ func (p *Parser) ParseReturning() (Statement, error) {
 	}
 	p.Next()
 	if p.Is(Star) {
-		stmt := Value{
-			Literal: "*",
-		}
+		var stmt Name
 		p.Next()
 		if !p.QueryEnds() {
 			return nil, p.Unexpected("returning")
