@@ -223,14 +223,6 @@ func (p *Parser) IsKeyword(kw string) bool {
 	return p.curr.Type == Keyword && p.curr.Literal == kw
 }
 
-func (p *Parser) currBinding() int {
-	return bindings[p.curr.asSymbol()]
-}
-
-func (p *Parser) peekBinding() int {
-	return bindings[p.peek.asSymbol()]
-}
-
 func (p *Parser) wantError(ctx, str string) error {
 	return fmt.Errorf("%s: expected %q at %d:%d! got %s", ctx, str, p.curr.Line, p.curr.Column, p.curr.Literal)
 }

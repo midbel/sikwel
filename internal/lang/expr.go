@@ -380,6 +380,14 @@ func (p *Parser) parseGroupExpr() (Statement, error) {
 	return stmt, nil
 }
 
+func (p *Parser) currBinding() int {
+	return bindings[p.curr.asSymbol()]
+}
+
+func (p *Parser) peekBinding() int {
+	return bindings[p.peek.asSymbol()]
+}
+
 type OpSet map[rune]string
 
 var operandMapping = OpSet{

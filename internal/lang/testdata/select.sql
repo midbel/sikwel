@@ -51,4 +51,9 @@ select count(*) from employees where dept='it'
 union all
 select count(*) from employees where dept='comm';
 
+select * from employees where dept in ('it', 'hr');
+select * from employees where dept in (select name from departments where active is not null);
+select * from employees where hired_date between '2024-05-01' and '2024-05-30';
+select * from employees where exists (select 1 from employees where dept like '%it%');
+
 @include 'values.sql';
