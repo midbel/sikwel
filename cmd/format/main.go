@@ -15,6 +15,7 @@ func main() {
 	flag.BoolVar(&w.KwUpper, "upper-kw", w.KwUpper, "sql keyword to uppercase")
 	flag.BoolVar(&w.FnUpper, "upper-fn", w.FnUpper, "functions to uppercase")
 	flag.BoolVar(&w.WithAs, "with-as", w.WithAs, "set as keyword to define alias")
+	flag.BoolVar(&w.InlineCte, "inline-cte", w.InlineCte, "inline cte")
 
 	flag.Parse()
 

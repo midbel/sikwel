@@ -12,7 +12,10 @@ import (
 )
 
 func main() {
-	jsonify := flag.Bool("j", false, "jsonify parsed query")
+	var (
+		jsonify   = flag.Bool("j", false, "jsonify parsed query")
+		inlineCte = flag.Bool("i", false, "inline cte in query")
+	)
 	flag.Parse()
 
 	r, err := os.Open(flag.Arg(0))
@@ -22,17 +25,18 @@ func main() {
 	}
 	defer r.Close()
 
-	if err := parseReader(r, *jsonify); err != nil {
+	if err := parseReader(r, *inlineCte, *jsonify); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
 }
 
-func parseReader(r io.Reader, jsonify bool) error {
+func parseReader(r io.Reader, inlineCte, jsonify bool) error {
 	p, err := lang.NewParser(r)
 	if err != nil {
 		return err
 	}
+	p.SetInline(inlineCte)
 	for i := 1; ; i++ {
 		stmt, err := p.Parse()
 		if err != nil {

@@ -3,6 +3,7 @@ package lang
 import (
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -17,6 +18,11 @@ type Parser struct {
 	keywords map[string]func() (Statement, error)
 	infix    *stack[infixFunc]
 	prefix   *stack[prefixFunc]
+
+	inlineCte bool
+
+	queries map[string]Statement
+	values  map[string]Statement
 }
 
 func NewParser(r io.Reader) (*Parser, error) {
@@ -31,6 +37,8 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 		return nil, err
 	}
 	p.frame = frame
+	p.queries = make(map[string]Statement)
+	p.values = make(map[string]Statement)
 	p.infix = emptyStack[infixFunc]()
 	p.prefix = emptyStack[prefixFunc]()
 
@@ -38,6 +46,23 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 	p.setDefaultFuncSet()
 
 	return &p, nil
+}
+
+func (p *Parser) DefineVars(file string) error {
+	r, err := os.Open(file)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	return nil
+}
+
+func (p *Parser) SetInline(inline bool) {
+	if p.level != 0 {
+		return
+	}
+	p.inlineCte = inline
 }
 
 func (p *Parser) Parse() (Statement, error) {

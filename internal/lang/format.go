@@ -19,6 +19,7 @@ type Writer struct {
 	KeepComment bool
 	Colorize    bool
 	WithAs      bool
+	InlineCte   bool
 	Indent      string
 
 	noColor bool
@@ -65,6 +66,7 @@ func (w *Writer) Format(r io.Reader) error {
 	if err != nil {
 		return err
 	}
+	p.SetInline(w.InlineCte)
 	for {
 		stmt, err := p.Parse()
 		if err != nil {
@@ -562,7 +564,7 @@ func (w *Writer) FormatAlias(alias Alias) error {
 		return err
 	}
 	w.WriteBlank()
-	if (w.WithAs) {
+	if w.WithAs {
 		w.WriteKeyword("AS")
 		w.WriteBlank()
 	}

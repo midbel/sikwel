@@ -52,10 +52,22 @@ func (p *Parser) ParseIncludeMacro() error {
 	return nil
 }
 
+// define a query in a SQL script and reuse it via the use macro
 func (p *Parser) ParseDefineMacro() error {
 	return nil
 }
 
+// use a query define via the define macro
 func (p *Parser) ParseUseMacro() error {
+	return nil
+}
+
+// use value from a variable given to a sql script
+func (p *Parser) ParseVarMacro() error {
+	return nil
+}
+
+// use value from an environment variable
+func (p *Parser) ParseEnvMacro() error {
 	return nil
 }
