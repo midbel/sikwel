@@ -56,7 +56,7 @@ func (p *Parser) ParseAlias(stmt Statement) (Statement, error) {
 	case Ident, Literal, Number:
 		stmt = Alias{
 			Statement: stmt,
-			Alias:     p.curr.Literal,
+			Alias:     p.GetCurrLiteral(),
 		}
 		p.Next()
 	default:
@@ -173,6 +173,10 @@ func (p *Parser) ParseRow() (Statement, error) {
 		return nil, p.Unexpected("row")
 	}
 	p.Next()
+
+	p.setDefaultFuncSet()
+	defer p.unsetFuncSet()
+
 	var row Row
 	for !p.Done() && !p.Is(Rparen) {
 		expr, err := p.StartExpression()

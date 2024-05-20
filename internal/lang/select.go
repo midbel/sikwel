@@ -213,10 +213,7 @@ func (p *Parser) ParseFrom() ([]Statement, error) {
 	p.Next()
 
 	p.setFuncSetForTable()
-	defer func() {
-		p.prefix.Pop()
-		p.infix.Pop()
-	}()
+	defer p.unsetFuncSet()
 
 	var (
 		list []Statement
@@ -264,8 +261,9 @@ func (p *Parser) ParseFrom() ([]Statement, error) {
 
 func (p *Parser) ParseJoinOn() (Statement, error) {
 	p.Next()
+	p.setDefaultFuncSet()
 	p.UnregisterInfix("AS", Keyword)
-	defer p.RegisterInfix("AS", Keyword, p.parseKeywordExpr)
+	defer p.unsetFuncSet()
 	return p.StartExpression()
 }
 
@@ -275,8 +273,6 @@ func (p *Parser) ParseJoinUsing() (Statement, error) {
 		return nil, p.Unexpected("using")
 	}
 	p.Next()
-	p.UnregisterInfix("AS", Keyword)
-	defer p.RegisterInfix("AS", Keyword, p.parseKeywordExpr)
 
 	var list List
 	for !p.Done() && !p.Is(Rparen) {

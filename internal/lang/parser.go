@@ -54,6 +54,7 @@ func (p *Parser) Parse() (Statement, error) {
 func (p *Parser) ParseStatement() (Statement, error) {
 	p.Enter()
 	defer p.Leave()
+
 	p.setDefaultFuncSet()
 	defer func() {
 		p.prefix.Pop()
@@ -372,6 +373,11 @@ func (p *Parser) setDefaultFuncSet() {
 	prefix.Register("EXISTS", Keyword, p.parseExists)
 
 	p.prefix.Push(prefix)
+}
+
+func (p *Parser) unsetFuncSet() {
+	p.infix.Pop()
+	p.prefix.Pop()
 }
 
 type frame struct {
