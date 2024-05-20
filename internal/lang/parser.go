@@ -356,6 +356,8 @@ func (p *Parser) setDefaultFuncSet() {
 	prefix.Register("NOT", Keyword, p.parseUnary)
 	prefix.Register("NULL", Keyword, p.ParseConstant)
 	prefix.Register("DEFAULT", Keyword, p.ParseConstant)
+	prefix.Register("TRUE", Keyword, p.ParseConstant)
+	prefix.Register("FALSE", Keyword, p.ParseConstant)
 	prefix.Register("CASE", Keyword, p.ParseCase)
 	prefix.Register("SELECT", Keyword, p.ParseStatement)
 	prefix.Register("CAST", Keyword, p.ParseCast)
