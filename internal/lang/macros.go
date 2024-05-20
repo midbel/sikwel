@@ -15,7 +15,10 @@ func (p *Parser) ParseMacro() error {
 		err = p.ParseDefineMacro()
 	case "USE":
 		err = p.ParseUseMacro()
-	case "INLINE":
+	case "ENV":
+		err = p.ParseEnvMacro()
+	case "VAR":
+		err = p.ParseVarMacro()
 	default:
 		err = fmt.Errorf("macro %s unsupported", p.curr.Literal)
 	}
