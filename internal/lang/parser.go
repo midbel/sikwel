@@ -15,8 +15,8 @@ type Parser struct {
 	level int
 
 	keywords map[string]func() (Statement, error)
-	infix    *funcSet[infixFunc]
-	prefix   *funcSet[prefixFunc]
+	infix    *stack[infixFunc]
+	prefix   *stack[prefixFunc]
 }
 
 func NewParser(r io.Reader) (*Parser, error) {
@@ -31,6 +31,8 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 		return nil, err
 	}
 	p.frame = frame
+	p.infix = emptyStack[infixFunc]()
+	p.prefix = emptyStack[prefixFunc]()
 
 	p.setParseFunc()
 	p.setDefaultFuncSet()
@@ -39,6 +41,9 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 }
 
 func (p *Parser) Parse() (Statement, error) {
+	p.reset()
+	p.Enter()
+	defer p.Leave()
 	stmt, err := p.parse()
 	if err != nil {
 		p.restore()
@@ -49,6 +54,11 @@ func (p *Parser) Parse() (Statement, error) {
 func (p *Parser) ParseStatement() (Statement, error) {
 	p.Enter()
 	defer p.Leave()
+	p.setDefaultFuncSet()
+	defer func() {
+		p.prefix.Pop()
+		p.infix.Pop()
+	}()
 
 	if p.Done() {
 		return nil, io.EOF
@@ -67,6 +77,10 @@ func (p *Parser) StartExpression() (Statement, error) {
 	return p.parseExpression(powLowest)
 }
 
+func (p *Parser) Level() int {
+	return p.level
+}
+
 func (p *Parser) Enter() {
 	p.level++
 }
@@ -77,6 +91,10 @@ func (p *Parser) Leave() {
 
 func (p *Parser) Nested() bool {
 	return p.level >= 1
+}
+
+func (p *Parser) reset() {
+	p.level = 0
 }
 
 func (p *Parser) QueryEnds() bool {
@@ -291,63 +309,69 @@ func (p *Parser) setParseFunc() {
 	p.RegisterParseFunc("ALTER TABLE", p.ParseAlterTable)
 }
 
-func (p *Parser) setDefaultFuncSet() {
-	p.infix = newFuncSet[infixFunc]()
-	p.RegisterInfix("", Plus, p.parseInfixExpr)
-	p.RegisterInfix("", Minus, p.parseInfixExpr)
-	p.RegisterInfix("", Slash, p.parseInfixExpr)
-	p.RegisterInfix("", Star, p.parseInfixExpr)
-	p.RegisterInfix("", Concat, p.parseInfixExpr)
-	p.RegisterInfix("", Eq, p.parseInfixExpr)
-	p.RegisterInfix("", Ne, p.parseInfixExpr)
-	p.RegisterInfix("", Lt, p.parseInfixExpr)
-	p.RegisterInfix("", Le, p.parseInfixExpr)
-	p.RegisterInfix("", Gt, p.parseInfixExpr)
-	p.RegisterInfix("", Ge, p.parseInfixExpr)
-	p.RegisterInfix("", Lparen, p.parseCallExpr)
-	p.RegisterInfix("AND", Keyword, p.parseKeywordExpr)
-	p.RegisterInfix("OR", Keyword, p.parseKeywordExpr)
-	p.RegisterInfix("NOT", Keyword, p.parseKeywordExpr)
-	p.RegisterInfix("LIKE", Keyword, p.parseKeywordExpr)
-	p.RegisterInfix("SIMILAR", Keyword, p.parseKeywordExpr)
-	p.RegisterInfix("ILIKE", Keyword, p.parseKeywordExpr)
-	p.RegisterInfix("BETWEEN", Keyword, p.parseKeywordExpr)
-	p.RegisterInfix("EXISTS", Keyword, p.parseKeywordExpr)
-	p.RegisterInfix("COLLATE", Keyword, p.parseCollateExpr)
-	p.RegisterInfix("AS", Keyword, p.parseKeywordExpr)
-	p.RegisterInfix("IN", Keyword, p.parseKeywordExpr)
-	p.RegisterInfix("IS", Keyword, p.parseKeywordExpr)
-	p.RegisterInfix("ISNULL", Keyword, p.parseKeywordExpr)
-	p.RegisterInfix("NOTNULL", Keyword, p.parseKeywordExpr)
-	p.RegisterInfix("ANY", Keyword, p.parseKeywordExpr)
-	p.RegisterInfix("SOME", Keyword, p.parseKeywordExpr)
-	p.RegisterInfix("ALL", Keyword, p.parseKeywordExpr)
+func (p *Parser) setFuncSetForTable() {
+	prefix := newFuncSet[prefixFunc]()
+	prefix.Register("", Ident, p.ParseIdent)
+	prefix.Register("", Lparen, p.parseGroupExpr)
+	prefix.Register("ROW", Keyword, p.ParseRow)
 
-	p.prefix = newFuncSet[prefixFunc]()
-	p.RegisterPrefix("", Ident, p.ParseIdent)
-	p.RegisterPrefix("", Star, p.ParseIdentifier)
-	p.RegisterPrefix("", Literal, p.ParseLiteral)
-	p.RegisterPrefix("", Number, p.ParseLiteral)
-	p.RegisterPrefix("", Lparen, p.parseGroupExpr)
-	p.RegisterPrefix("", Minus, p.parseUnary)
-	p.RegisterPrefix("", Keyword, p.parseUnary)
-	p.RegisterPrefix("NOT", Keyword, p.parseUnary)
-	p.RegisterPrefix("NULL", Keyword, p.ParseConstant)
-	p.RegisterPrefix("DEFAULT", Keyword, p.ParseConstant)
-	p.RegisterPrefix("CASE", Keyword, p.ParseCase)
-	p.RegisterPrefix("SELECT", Keyword, p.ParseStatement)
-	p.RegisterPrefix("CAST", Keyword, p.ParseCast)
-	p.RegisterPrefix("ROW", Keyword, p.ParseRow)
+	p.prefix.Push(prefix)
+
+	infix := newFuncSet[infixFunc]()
+	p.infix.Push(infix)
 }
 
-func (p *Parser) setFuncSetForTable() {
-	// no infix operator
-	p.infix = newFuncSet[infixFunc]()
+func (p *Parser) setDefaultFuncSet() {
+	infix := newFuncSet[infixFunc]()
+	infix.Register("", Plus, p.parseInfixExpr)
+	infix.Register("", Minus, p.parseInfixExpr)
+	infix.Register("", Slash, p.parseInfixExpr)
+	infix.Register("", Star, p.parseInfixExpr)
+	infix.Register("", Concat, p.parseInfixExpr)
+	infix.Register("", Eq, p.parseInfixExpr)
+	infix.Register("", Ne, p.parseInfixExpr)
+	infix.Register("", Lt, p.parseInfixExpr)
+	infix.Register("", Le, p.parseInfixExpr)
+	infix.Register("", Gt, p.parseInfixExpr)
+	infix.Register("", Ge, p.parseInfixExpr)
+	infix.Register("", Lparen, p.parseCallExpr)
+	infix.Register("AND", Keyword, p.parseKeywordExpr)
+	infix.Register("OR", Keyword, p.parseKeywordExpr)
+	infix.Register("NOT", Keyword, p.parseKeywordExpr)
+	infix.Register("LIKE", Keyword, p.parseKeywordExpr)
+	infix.Register("SIMILAR", Keyword, p.parseKeywordExpr)
+	infix.Register("ILIKE", Keyword, p.parseKeywordExpr)
+	infix.Register("BETWEEN", Keyword, p.parseKeywordExpr)
+	infix.Register("COLLATE", Keyword, p.parseCollateExpr)
+	infix.Register("AS", Keyword, p.parseKeywordExpr)
+	infix.Register("IN", Keyword, p.parseKeywordExpr)
+	infix.Register("IS", Keyword, p.parseKeywordExpr)
+	infix.Register("ISNULL", Keyword, p.parseKeywordExpr)
+	infix.Register("NOTNULL", Keyword, p.parseKeywordExpr)
+	infix.Register("ANY", Keyword, p.parseKeywordExpr)
+	infix.Register("SOME", Keyword, p.parseKeywordExpr)
+	infix.Register("ALL", Keyword, p.parseKeywordExpr)
 
-	p.prefix = newFuncSet[prefixFunc]()
-	p.RegisterPrefix("", Ident, p.ParseIdent)
-	p.RegisterPrefix("", Lparen, p.parseGroupExpr)
-	p.RegisterPrefix("ROW", Keyword, p.ParseRow)
+	p.infix.Push(infix)
+
+	prefix := newFuncSet[prefixFunc]()
+	prefix.Register("", Ident, p.ParseIdent)
+	prefix.Register("", Star, p.ParseIdentifier)
+	prefix.Register("", Literal, p.ParseLiteral)
+	prefix.Register("", Number, p.ParseLiteral)
+	prefix.Register("", Lparen, p.parseGroupExpr)
+	prefix.Register("", Minus, p.parseUnary)
+	prefix.Register("", Keyword, p.parseUnary)
+	prefix.Register("NOT", Keyword, p.parseUnary)
+	prefix.Register("NULL", Keyword, p.ParseConstant)
+	prefix.Register("DEFAULT", Keyword, p.ParseConstant)
+	prefix.Register("CASE", Keyword, p.ParseCase)
+	prefix.Register("SELECT", Keyword, p.ParseStatement)
+	prefix.Register("CAST", Keyword, p.ParseCast)
+	prefix.Register("ROW", Keyword, p.ParseRow)
+	prefix.Register("EXISTS", Keyword, p.parseExists)
+
+	p.prefix.Push(prefix)
 }
 
 type frame struct {

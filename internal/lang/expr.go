@@ -1,47 +1,5 @@
 package lang
 
-import (
-	"fmt"
-)
-
-type prefixFunc func() (Statement, error)
-
-type infixFunc func(Statement) (Statement, error)
-
-type funcSet[T prefixFunc | infixFunc] struct {
-	disabled bool
-	funcs    map[symbol]T
-}
-
-func newFuncSet[T prefixFunc | infixFunc]() *funcSet[T] {
-	return &funcSet[T]{
-		funcs: make(map[symbol]T),
-	}
-}
-
-func (s *funcSet[T]) Get(sym symbol) (T, error) {
-	if s.disabled {
-		return nil, fmt.Errorf("undefined function")
-	}
-	fn, ok := s.funcs[sym]
-	if !ok {
-		return nil, fmt.Errorf("undefined function")
-	}
-	return fn, nil
-}
-
-func (s *funcSet[T]) Toggle() {
-	s.disabled = !s.disabled
-}
-
-func (s *funcSet[T]) Register(literal string, kind rune, fn T) {
-	s.funcs[symbolFor(kind, literal)] = fn
-}
-
-func (s *funcSet[T]) Unregister(literal string, kind rune) {
-	delete(s.funcs, symbolFor(kind, literal))
-}
-
 func (p *Parser) parseExpression(power int) (Statement, error) {
 	fn, err := p.getPrefixExpr()
 	if err != nil {
@@ -140,7 +98,7 @@ func (p *Parser) parseNotNull(ident Statement) (Statement, error) {
 	return not, nil
 }
 
-func (p *Parser) parseExists(ident Statement) (Statement, error) {
+func (p *Parser) parseExists() (Statement, error) {
 	p.Next()
 	if !p.Is(Lparen) {
 		return nil, p.Unexpected("expression")
@@ -286,8 +244,6 @@ func (p *Parser) parseKeywordExpr(left Statement) (Statement, error) {
 		stmt, err = p.parseRelational(left)
 	case "LIKE", "ILIKE", "SIMILAR":
 		stmt, err = p.parseLike(left)
-	case "EXISTS":
-		stmt, err = p.parseExists(left)
 	case "BETWEEN":
 		stmt, err = p.parseBetween(left)
 		return reverse(stmt), err

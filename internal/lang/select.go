@@ -212,6 +212,12 @@ func (p *Parser) ParseFrom() ([]Statement, error) {
 	}
 	p.Next()
 
+	p.setFuncSetForTable()
+	defer func() {
+		p.prefix.Pop()
+		p.infix.Pop()
+	}()
+
 	var (
 		list []Statement
 		err  error
