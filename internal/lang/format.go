@@ -308,7 +308,9 @@ func (w *Writer) formatNot(stmt Not, _ bool) error {
 	case In:
 		return w.formatIn(stmt, true, false)
 	default:
-		return nil
+		w.WriteKeyword("NOT")
+		w.WriteBlank()
+		return w.FormatStatement(stmt)
 	}
 }
 
