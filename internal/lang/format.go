@@ -562,8 +562,10 @@ func (w *Writer) FormatAlias(alias Alias) error {
 		return err
 	}
 	w.WriteBlank()
-	w.WriteKeyword("AS")
-	w.WriteBlank()
+	if (w.WithAs) {
+		w.WriteKeyword("AS")
+		w.WriteBlank()
+	}
 	w.WriteString(alias.Alias)
 	return nil
 }
