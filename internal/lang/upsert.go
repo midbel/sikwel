@@ -327,6 +327,27 @@ func (p *Parser) parseListValues() (Statement, error) {
 	return list, nil
 }
 
+func (w *Writer) FormatTruncate(stmt TruncateStatement) error {
+	w.Enter()
+	defer w.Leave()
+
+	kw, _ := stmt.Keyword()
+	w.WriteStatement(kw)
+	w.WriteBlank()
+	if len(stmt.Tables) == 0 {
+		w.WriteString("*")
+		return nil
+	}
+	for i := range stmt.Tables {
+		if i > 0 {
+			w.WriteString(",")
+			w.WriteBlank()
+		}
+		w.WriteString(stmt.Tables[i])
+	}
+	return nil
+}
+
 func (w *Writer) FormatDelete(stmt DeleteStatement) error {
 	w.Enter()
 	defer w.Leave()

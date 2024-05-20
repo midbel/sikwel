@@ -13,10 +13,12 @@ import (
 type Writer struct {
 	inner       *bufio.Writer
 	Compact     bool
+	CommaBefore bool
 	KwUpper     bool
 	FnUpper     bool
 	KeepComment bool
 	Colorize    bool
+	WithAs      bool
 	Indent      string
 
 	noColor bool
@@ -121,6 +123,8 @@ func (w *Writer) FormatStatement(stmt Statement) error {
 		err = w.FormatUpdate(stmt)
 	case DeleteStatement:
 		err = w.FormatDelete(stmt)
+	case TruncateStatement:
+		err = w.FormatTruncate(stmt)
 	case WithStatement:
 		err = w.FormatWith(stmt)
 	case CteStatement:
@@ -248,7 +252,10 @@ func (w *Writer) FormatExpr(stmt Statement, nl bool) error {
 	case Unary:
 		err = w.formatUnary(stmt, nl)
 	case Between:
-		err = w.formatBetween(stmt, nl)
+		err = w.formatBetween(stmt, false, nl)
+	case Is:
+		err = w.formatIs(stmt, false, nl)
+	case In:
 	case Collate:
 		err = w.formatCollate(stmt, nl)
 	case Cast:
@@ -268,7 +275,8 @@ func (w *Writer) FormatExpr(stmt Statement, nl bool) error {
 }
 
 func (w *Writer) formatRow(stmt Row, nl bool) error {
-	w.WriteKeyword("ROW")
+	kw, _ := stmt.Keyword()
+	w.WriteKeyword(kw)
 	w.WriteString("(")
 	for i, v := range stmt.Values {
 		if i > 0 {
@@ -291,6 +299,12 @@ func (w *Writer) formatRow(stmt Row, nl bool) error {
 }
 
 func (w *Writer) formatNot(stmt Not, _ bool) error {
+	switch stmt := stmt.Statement.(type) {
+	case Between:
+	case Is:
+		return w.formatIs(stmt, true, false)
+	default:
+	} 
 	return nil
 }
 
@@ -440,9 +454,27 @@ func (w *Writer) formatCall(call Call) error {
 	return nil
 }
 
-func (w *Writer) formatBetween(stmt Between, nl bool) error {
+func (w *Writer) formatIs(stmt Is, not, nl bool) error {
 	if err := w.FormatExpr(stmt.Ident, nl); err != nil {
 		return err
+	}
+	w.WriteBlank()
+	w.WriteKeyword("IS")
+	w.WriteBlank()
+	if not {
+		w.WriteKeyword("NOT")
+		w.WriteBlank()
+	}
+	return w.FormatExpr(stmt.Value, false)
+}
+
+func (w *Writer) formatBetween(stmt Between, not, nl bool) error {
+	if err := w.FormatExpr(stmt.Ident, nl); err != nil {
+		return err
+	}
+	if not {
+		w.WriteBlank()
+		w.WriteKeyword("NOT")
 	}
 	w.WriteBlank()
 	w.WriteKeyword("BETWEEN")

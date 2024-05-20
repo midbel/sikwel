@@ -134,6 +134,10 @@ type Row struct {
 	Values []Statement
 }
 
+func (r Row) Keyword() (string, error) {
+	return "ROW", nil
+}
+
 type Unary struct {
 	Right Statement
 	Op    string
@@ -187,6 +191,13 @@ func (n Name) All() bool {
 }
 
 func (n Name) Ident() string {
+	z := len(n.Parts)
+	if z == 0 {
+		return "*"
+	}
+	if n.Parts[z-1] == "" {
+		n.Parts[z-1] = "*"
+	}
 	return strings.Join(n.Parts, ".")
 }
 
