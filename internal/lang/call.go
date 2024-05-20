@@ -6,7 +6,7 @@ func (p *Parser) ParseCall() (Statement, error) {
 		stmt CallStatement
 		err  error
 	)
-	stmt.Ident, err = p.ParseIdent()
+	stmt.Ident, err = p.ParseIdentifier()
 	if err != nil {
 		return nil, err
 	}
