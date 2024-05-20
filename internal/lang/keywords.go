@@ -137,12 +137,17 @@ var keywords = KeywordSet{
 	{"rename", "column"},
 	{"add"},
 	{"add", "column"},
-	{"drop", ""},
+	{"drop"},
+	{"drop", "table"},
 	{"drop", "column"},
 	{"to"},
 	{"true"},
 	{"false"},
 	{"unknown"},
+	{"cascade"},
+	{"restrict"},
+	{"restart", "identity"},
+	{"continue", "identity"},
 }
 
 func isJoin(tok Token) bool {

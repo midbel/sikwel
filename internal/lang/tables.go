@@ -147,7 +147,7 @@ func (p *Parser) ParseColumnDef(ctp CreateTableParser) (Statement, error) {
 	if p.Is(Comma) {
 		return def, nil
 	}
-	for !p.Done() && !p.Is(Comma) && !p.Is(Rparen) {
+	for !p.QueryEnds() && !p.Done() && !p.Is(Comma) && !p.Is(Rparen) {
 		cst, err := ctp.ParseConstraint(true)
 		if err != nil {
 			return nil, err

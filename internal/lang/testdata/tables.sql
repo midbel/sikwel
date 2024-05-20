@@ -21,3 +21,8 @@ alter table employees rename name to fullname;
 alter table employees rename column name to fullname;
 alter table employees drop hired;
 alter table employees drop column hired;
+alter table employees add column seniority int;
+alter table employees add if not exists seniority int;
+
+drop table employees;
+drop table if exists employees;

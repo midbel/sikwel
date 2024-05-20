@@ -401,8 +401,17 @@ func (s UpdateStatement) Keyword() (string, error) {
 	return "UPDATE", nil
 }
 
+type IdentityMode int
+
+const (
+	RestartIdentity IdentityMode = iota + 1
+	ContinueIdentity
+)
+
 type TruncateStatement struct {
-	Tables []string
+	Tables   []string
+	Cascade  bool
+	Identity IdentityMode
 }
 
 func (s TruncateStatement) Keyword() (string, error) {

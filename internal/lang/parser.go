@@ -304,6 +304,7 @@ func (p *Parser) setParseFunc() {
 	p.RegisterParseFunc("VALUES", p.ParseValues)
 	p.RegisterParseFunc("DELETE FROM", p.ParseDelete)
 	p.RegisterParseFunc("TRUNCATE", p.ParseTruncate)
+	p.RegisterParseFunc("TRUNCATE TABLE", p.ParseTruncate)
 	p.RegisterParseFunc("UPDATE", p.ParseUpdate)
 	p.RegisterParseFunc("MERGE", p.ParseMerge)
 	p.RegisterParseFunc("INSERT INTO", p.ParseInsert)
@@ -323,6 +324,8 @@ func (p *Parser) setParseFunc() {
 	p.RegisterParseFunc("CREATE PROCEDURE", p.ParseCreateProcedure)
 	p.RegisterParseFunc("CREATE OR REPLACE PROCEDURE", p.ParseCreateProcedure)
 	p.RegisterParseFunc("ALTER TABLE", p.ParseAlterTable)
+	p.RegisterParseFunc("DROP", p.ParseDropTable)
+	p.RegisterParseFunc("DROP TABLE", p.ParseDropTable)
 }
 
 func (p *Parser) setFuncSetForTable() {

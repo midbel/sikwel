@@ -35,20 +35,32 @@ func (p *Parser) ParseTruncate() (Statement, error) {
 	if p.Is(Star) {
 		p.Next()
 		return stmt, nil
-	}
-	for !p.Is(EOL) && !p.Done() {
-		if !p.Is(Ident) {
-			return nil, p.Unexpected("truncate")
-		}
-		stmt.Tables = append(stmt.Tables, p.GetCurrLiteral())
-		p.Next()
-		switch {
-		case p.Is(EOL):
-		case p.Is(Comma):
+	} else {
+		for !p.Is(EOL) && !p.Done() && !p.Is(Keyword) {
+			if !p.Is(Ident) {
+				return nil, p.Unexpected("truncate")
+			}
+			stmt.Tables = append(stmt.Tables, p.GetCurrLiteral())
 			p.Next()
-		default:
-			return nil, p.Unexpected("truncate")
+			switch {
+			case p.Is(EOL) || p.Is(Keyword):
+			case p.Is(Comma):
+				p.Next()
+			default:
+				return nil, p.Unexpected("truncate")
+			}
 		}
+	}
+	if p.IsKeyword("RESTART IDENTITY") || p.IsKeyword("CONTINUE IDENTITY") {
+		stmt.Identity = RestartIdentity
+		if p.IsKeyword("CONTINUE IDENTITY") {
+			stmt.Identity = ContinueIdentity
+		}
+		p.Next()
+	}
+	if p.IsKeyword("RESTRICT") || p.IsKeyword("CASCADE") {
+		stmt.Cascade = p.IsKeyword("CASCADE")
+		p.Next()
 	}
 	return stmt, nil
 }
