@@ -256,6 +256,7 @@ func (w *Writer) FormatExpr(stmt Statement, nl bool) error {
 	case Is:
 		err = w.formatIs(stmt, false, nl)
 	case In:
+		err = w.formatIn(stmt, false, nl)
 	case Collate:
 		err = w.formatCollate(stmt, nl)
 	case Cast:
@@ -301,11 +302,14 @@ func (w *Writer) formatRow(stmt Row, nl bool) error {
 func (w *Writer) formatNot(stmt Not, _ bool) error {
 	switch stmt := stmt.Statement.(type) {
 	case Between:
+		return w.formatBetween(stmt, true, false)
 	case Is:
 		return w.formatIs(stmt, true, false)
+	case In:
+		return w.formatIn(stmt, true, false)
 	default:
-	} 
-	return nil
+		return nil
+	}
 }
 
 func (w *Writer) formatExists(stmt Exists, _ bool) error {
@@ -468,15 +472,29 @@ func (w *Writer) formatIs(stmt Is, not, nl bool) error {
 	return w.FormatExpr(stmt.Value, false)
 }
 
+func (w *Writer) formatIn(stmt In, not, nl bool) error {
+	if err := w.FormatExpr(stmt.Ident, nl); err != nil {
+		return err
+	}
+	w.WriteBlank()
+	if not {
+		w.WriteKeyword("NOT")
+		w.WriteBlank()
+	}
+	w.WriteKeyword("IN")
+	w.WriteBlank()
+	return w.FormatExpr(stmt.Value, false)
+}
+
 func (w *Writer) formatBetween(stmt Between, not, nl bool) error {
 	if err := w.FormatExpr(stmt.Ident, nl); err != nil {
 		return err
 	}
-	if not {
-		w.WriteBlank()
-		w.WriteKeyword("NOT")
-	}
 	w.WriteBlank()
+	if not {
+		w.WriteKeyword("NOT")
+		w.WriteBlank()
+	}
 	w.WriteKeyword("BETWEEN")
 	w.WriteBlank()
 	if err := w.FormatExpr(stmt.Lower, false); err != nil {
