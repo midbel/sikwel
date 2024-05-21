@@ -1,7 +1,5 @@
 package lang
 
-import "fmt"
-
 func (p *Parser) StartExpression() (Statement, error) {
 	expr, err := p.parseExpression(powLowest)
 	if err != nil {
@@ -35,7 +33,6 @@ func (p *Parser) parseExpression(pow int) (Statement, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("%+v\n", left)
 	for !p.stopExpression(pow) {
 		fn, err := p.getInfixExpr()
 		if err != nil {

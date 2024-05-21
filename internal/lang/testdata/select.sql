@@ -59,4 +59,6 @@ select * from employees where exists (select 1 from employees where dept like '%
 select * from employees where dept notnull;
 select * from employees where dept isnull;
 
+select * from employees where dept in departments;
+
 @include 'values.sql';

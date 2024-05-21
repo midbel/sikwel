@@ -149,6 +149,16 @@ type Binary struct {
 	Op    string
 }
 
+type All struct {
+	Statement
+	Value Statement
+}
+
+type Any struct {
+	Statement
+	Value Statement
+}
+
 type Is struct {
 	Ident Statement
 	Value Statement

@@ -364,8 +364,6 @@ func (p *Parser) setDefaultFuncSet() {
 	infix.Register("IS", Keyword, p.parseKeywordExpr)
 	infix.Register("ISNULL", Keyword, p.parseKeywordExpr)
 	infix.Register("NOTNULL", Keyword, p.parseKeywordExpr)
-	infix.Register("ANY", Keyword, p.parseKeywordExpr)
-	infix.Register("SOME", Keyword, p.parseKeywordExpr)
 	infix.Register("ALL", Keyword, p.parseKeywordExpr)
 
 	p.infix.Push(infix)

@@ -17,6 +17,7 @@ var keywords = KeywordSet{
 	{"if", "exists"},
 	{"declare"},
 	{"default"},
+	{"exists"},
 	{"null"},
 	{"select"},
 	{"from"},
