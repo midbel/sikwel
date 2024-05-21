@@ -549,13 +549,17 @@ func (w *Writer) FormatAlias(alias Alias) error {
 		err = w.formatCase(s)
 	case SelectStatement:
 		w.WriteString("(")
-		w.WriteNL()
+		if !w.Compact {
+			w.WriteNL()
+		}
 		err = w.FormatSelect(s)
 		if err != nil {
 			break
 		}
-		w.WriteNL()
-		w.WritePrefix()
+		if !w.Compact {
+			w.WriteNL()
+			w.WritePrefix()
+		}
 		w.WriteString(")")
 	default:
 		return fmt.Errorf("alias: unsupported expression type used with alias (%T)", s)
