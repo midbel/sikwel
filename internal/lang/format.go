@@ -557,29 +557,21 @@ func (w *Writer) FormatName(name Name) {
 
 func (w *Writer) FormatAlias(alias Alias) error {
 	var err error
-	switch s := alias.Statement.(type) {
-	case Name:
-		w.FormatName(s)
-	case Call:
-		err = w.formatCall(s)
-	case CaseStatement:
-		err = w.formatCase(s)
-	case SelectStatement:
+	if stmt, ok := alias.Statement.(SelectStatement); ok {
 		w.WriteString("(")
 		if !w.Compact {
 			w.WriteNL()
 		}
-		err = w.FormatSelect(s)
-		if err != nil {
-			break
+		err = w.FormatSelect(stmt)
+		if err == nil {
+			if !w.Compact {
+				w.WriteNL()
+				w.WritePrefix()
+			}
+			w.WriteString(")")
 		}
-		if !w.Compact {
-			w.WriteNL()
-			w.WritePrefix()
-		}
-		w.WriteString(")")
-	default:
-		return fmt.Errorf("alias: unsupported expression type used with alias (%T)", s)
+	} else {
+		err = w.FormatExpr(alias.Statement, false)
 	}
 	if err != nil {
 		return err
