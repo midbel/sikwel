@@ -1,11 +1,16 @@
 package lang
 
+import "fmt"
+
 func (p *Parser) StartExpression() (Statement, error) {
 	expr, err := p.parseExpression(powLowest)
 	if err != nil {
 		return nil, err
 	}
-	return p.ParseAlias(expr)
+	if p.withAlias {
+		return p.ParseAlias(expr)
+	}
+	return expr, nil
 }
 
 func (p *Parser) stopExpression(pow int) bool {
@@ -21,7 +26,7 @@ func (p *Parser) stopExpression(pow int) bool {
 	return p.currBinding() <= pow
 }
 
-func (p *Parser) parseExpression(power int) (Statement, error) {
+func (p *Parser) parseExpression(pow int) (Statement, error) {
 	fn, err := p.getPrefixExpr()
 	if err != nil {
 		return nil, err
@@ -30,7 +35,8 @@ func (p *Parser) parseExpression(power int) (Statement, error) {
 	if err != nil {
 		return nil, err
 	}
-	for !p.stopExpression(power) {
+	fmt.Printf("%+v\n", left)
+	for !p.stopExpression(pow) {
 		fn, err := p.getInfixExpr()
 		if err != nil {
 			return nil, err
@@ -450,6 +456,8 @@ var bindings = map[symbol]int{
 	symbolFor(Keyword, "IN"):      powCmp,
 	symbolFor(Keyword, "AS"):      powKw,
 	symbolFor(Keyword, "IS"):      powKw,
+	symbolFor(Keyword, "ISNULL"):  powKw,
+	symbolFor(Keyword, "NOTNULL"): powKw,
 	symbolFor(Lt, ""):             powCmp,
 	symbolFor(Le, ""):             powCmp,
 	symbolFor(Gt, ""):             powCmp,

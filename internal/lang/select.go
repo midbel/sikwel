@@ -227,6 +227,8 @@ func (p *Parser) ParseWhere() (Statement, error) {
 		return nil, nil
 	}
 	p.Next()
+	p.toggleAlias()
+	defer p.toggleAlias()
 	return p.StartExpression()
 }
 
@@ -262,6 +264,8 @@ func (p *Parser) ParseHaving() (Statement, error) {
 		return nil, nil
 	}
 	p.Next()
+	p.toggleAlias()
+	defer p.toggleAlias()
 	return p.StartExpression()
 }
 

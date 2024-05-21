@@ -20,6 +20,7 @@ type Parser struct {
 	prefix   *stack[prefixFunc]
 
 	inlineCte bool
+	withAlias bool
 
 	queries map[string]Statement
 	values  map[string]Statement
@@ -44,6 +45,7 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 
 	p.setParseFunc()
 	p.setDefaultFuncSet()
+	p.toggleAlias()
 
 	return &p, nil
 }
@@ -388,6 +390,10 @@ func (p *Parser) setDefaultFuncSet() {
 	prefix.Register("EXISTS", Keyword, p.parseExists)
 
 	p.prefix.Push(prefix)
+}
+
+func (p *Parser) toggleAlias() {
+	p.withAlias = !p.withAlias
 }
 
 func (p *Parser) unsetFuncSet() {
