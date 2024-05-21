@@ -487,6 +487,23 @@ func (w *Writer) formatIn(stmt In, not, nl bool) error {
 	}
 	w.WriteKeyword("IN")
 	w.WriteBlank()
+
+	if stmt, ok := stmt.Value.(SelectStatement); ok {
+		var (
+			compact = w.Compact
+			prefix = w.prefix
+		)
+		w.Compact = true
+		w.prefix = 0
+		defer func() {
+			w.Compact = compact
+			w.prefix = prefix
+		}()
+		w.WriteString("(")
+		err := w.FormatSelect(stmt)
+		w.WriteString(")")
+		return err
+	}
 	return w.FormatExpr(stmt.Value, false)
 }
 
