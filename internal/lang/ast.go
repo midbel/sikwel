@@ -307,7 +307,6 @@ func (s ValuesStatement) Keyword() (string, error) {
 }
 
 type SelectStatement struct {
-	All      bool
 	Distinct bool
 	Columns  []Statement
 	Tables   []Statement

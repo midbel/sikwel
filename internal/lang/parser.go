@@ -97,10 +97,6 @@ func (p *Parser) ParseStatement() (Statement, error) {
 	return fn()
 }
 
-func (p *Parser) StartExpression() (Statement, error) {
-	return p.parseExpression(powLowest)
-}
-
 func (p *Parser) Level() int {
 	return p.level
 }
@@ -125,7 +121,7 @@ func (p *Parser) QueryEnds() bool {
 	if p.Nested() {
 		return p.Is(Rparen)
 	}
-	return p.Is(EOL)
+	return p.Is(EOL) || p.Done()
 }
 
 func (p *Parser) Done() bool {
@@ -362,7 +358,6 @@ func (p *Parser) setDefaultFuncSet() {
 	infix.Register("ILIKE", Keyword, p.parseKeywordExpr)
 	infix.Register("BETWEEN", Keyword, p.parseKeywordExpr)
 	infix.Register("COLLATE", Keyword, p.parseCollateExpr)
-	infix.Register("AS", Keyword, p.parseKeywordExpr)
 	infix.Register("IN", Keyword, p.parseKeywordExpr)
 	infix.Register("IS", Keyword, p.parseKeywordExpr)
 	infix.Register("ISNULL", Keyword, p.parseKeywordExpr)
@@ -374,7 +369,7 @@ func (p *Parser) setDefaultFuncSet() {
 	p.infix.Push(infix)
 
 	prefix := newFuncSet[prefixFunc]()
-	prefix.Register("", Ident, p.ParseIdent)
+	prefix.Register("", Ident, p.ParseIdentifier)
 	prefix.Register("", Star, p.ParseIdentifier)
 	prefix.Register("", Literal, p.ParseLiteral)
 	prefix.Register("", Number, p.ParseLiteral)

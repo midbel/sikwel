@@ -227,8 +227,6 @@ func (p *Parser) ParseWhere() (Statement, error) {
 		return nil, nil
 	}
 	p.Next()
-	p.UnregisterInfix("AS", Keyword)
-	defer p.RegisterInfix("AS", Keyword, p.parseKeywordExpr)
 	return p.StartExpression()
 }
 
@@ -264,8 +262,6 @@ func (p *Parser) ParseHaving() (Statement, error) {
 		return nil, nil
 	}
 	p.Next()
-	p.UnregisterInfix("AS", Keyword)
-	defer p.RegisterInfix("AS", Keyword, p.parseKeywordExpr)
 	return p.StartExpression()
 }
 

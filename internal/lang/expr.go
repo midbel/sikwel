@@ -1,5 +1,26 @@
 package lang
 
+func (p *Parser) StartExpression() (Statement, error) {
+	expr, err := p.parseExpression(powLowest)
+	if err != nil {
+		return nil, err
+	}
+	return p.ParseAlias(expr)
+}
+
+func (p *Parser) stopExpression(pow int) bool {
+	if p.QueryEnds() {
+		return true
+	}
+	if p.Is(Comma) {
+		return true
+	}
+	if p.IsKeyword("AS") {
+		return true
+	}
+	return p.currBinding() <= pow
+}
+
 func (p *Parser) parseExpression(power int) (Statement, error) {
 	fn, err := p.getPrefixExpr()
 	if err != nil {
@@ -9,7 +30,7 @@ func (p *Parser) parseExpression(power int) (Statement, error) {
 	if err != nil {
 		return nil, err
 	}
-	for !p.QueryEnds() && !p.Is(Comma) && !p.Done() && power < p.currBinding() {
+	for !p.stopExpression(power) {
 		fn, err := p.getInfixExpr()
 		if err != nil {
 			return nil, err
@@ -316,8 +337,6 @@ func (p *Parser) parseOver() (Statement, error) {
 	if !p.IsKeyword("OVER") {
 		return nil, nil
 	}
-	p.UnregisterInfix("AS", Keyword)
-	defer p.RegisterInfix("AS", Keyword, p.parseKeywordExpr)
 	p.Next()
 	if !p.Is(Lparen) {
 		return p.ParseIdentifier()
