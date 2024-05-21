@@ -102,6 +102,8 @@ var keywords = KeywordSet{
 	{"return"},
 	{"returning"},
 	{"is"},
+	{"isnull"},
+	{"notnull"},
 	{"not"},
 	{"collate"},
 	{"between"},

@@ -491,7 +491,7 @@ func (w *Writer) formatIn(stmt In, not, nl bool) error {
 	if stmt, ok := stmt.Value.(SelectStatement); ok {
 		var (
 			compact = w.Compact
-			prefix = w.prefix
+			prefix  = w.prefix
 		)
 		w.Compact = true
 		w.prefix = 0

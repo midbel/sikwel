@@ -56,4 +56,7 @@ select * from employees where dept in (select name from departments where active
 select * from employees where hired_date between '2024-05-01' and '2024-05-30';
 select * from employees where exists (select 1 from employees where dept like '%it%');
 
+select * from employees where dept notnull;
+select * from employees where dept isnull;
+
 @include 'values.sql';
