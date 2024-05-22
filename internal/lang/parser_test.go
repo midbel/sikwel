@@ -33,6 +33,7 @@ func TestParser(t *testing.T) {
 		"select.sql",
 		"delete.sql",
 		"update.sql",
+		"merge.sql",
 		"insert.sql",
 		"transactions.sql",
 		"script.sql",
