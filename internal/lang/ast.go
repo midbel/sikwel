@@ -584,6 +584,21 @@ func (s DropTableStatement) Keyword() (string, error) {
 	return "DROP TABLE", nil
 }
 
+type CreateViewStatement struct {
+	Temp      bool
+	Name      Statement
+	NotExists bool
+	Columns   []string
+	Select    Statement
+}
+
+func (s CreateViewStatement) Keyword() (string, error) {
+	if s.Temp {
+		return "CREATE TEMPORARY VIEW", nil
+	}
+	return "CREATE VIEW", nil
+}
+
 type CreateTableStatement struct {
 	Temp        bool
 	Name        Statement

@@ -26,3 +26,6 @@ alter table employees add if not exists seniority int;
 
 drop table employees;
 drop table if exists employees;
+
+create view if not exists names as select firstname, lastname from employees;
+create view if not exists names(fullname, age) as select firstname || ' ' || lastname, 0 from employees;

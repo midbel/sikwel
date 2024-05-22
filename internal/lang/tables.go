@@ -130,6 +130,34 @@ func (p *Parser) ParseCreateTableStatement(ctp CreateTableParser) (Statement, er
 	return stmt, p.Expect("create table", Rparen)
 }
 
+func (p *Parser) ParseCreateView() (Statement, error) {
+	p.Next()
+	var (
+		stmt CreateViewStatement
+		err  error
+	)
+	if p.IsKeyword("IF NOT EXISTS") {
+		p.Next()
+		stmt.NotExists = true
+	}
+	if stmt.Name, err = p.ParseTableName(); err != nil {
+		return nil, err
+	}
+	if p.Is(Lparen) {
+		stmt.Columns, err = p.parseColumnsList()
+		if err != nil {
+			return nil, err
+		}
+	}
+	if !p.IsKeyword("AS") {
+		return nil, p.Unexpected("create view")
+	}
+	p.Next()
+
+	stmt.Select, err = p.ParseStatement()
+	return stmt, err
+}
+
 func (p *Parser) ParseTableName() (Statement, error) {
 	return p.ParseIdentifier()
 }
