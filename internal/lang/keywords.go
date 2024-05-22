@@ -154,6 +154,9 @@ var keywords = KeywordSet{
 	{"restrict"},
 	{"restart", "identity"},
 	{"continue", "identity"},
+	{"grant"},
+	{"revoke"},
+	{"all", "privileges"},
 }
 
 func isJoin(tok Token) bool {

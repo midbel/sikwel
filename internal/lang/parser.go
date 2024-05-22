@@ -327,6 +327,8 @@ func (p *Parser) setParseFunc() {
 	p.RegisterParseFunc("ALTER TABLE", p.ParseAlterTable)
 	p.RegisterParseFunc("DROP", p.ParseDropTable)
 	p.RegisterParseFunc("DROP TABLE", p.ParseDropTable)
+	p.RegisterParseFunc("GRANT", p.ParseGrant)
+	p.RegisterParseFunc("REVOKE", p.ParseRevoke)
 }
 
 func (p *Parser) setFuncSetForTable() {

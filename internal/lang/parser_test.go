@@ -39,6 +39,7 @@ func TestParser(t *testing.T) {
 		"call.sql",
 		"tables.sql",
 		"procedures.sql",
+		"perms.sql",
 	}
 	for _, f := range files {
 		testFile(t, f)

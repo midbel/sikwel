@@ -645,7 +645,13 @@ func (s CreateProcedureStatement) Keyword() (string, error) {
 }
 
 type GrantStatement struct {
+	Object     string
+	Privileges []string
+	Users      []string
 }
 
 type RevokeStatement struct {
+	Object     string
+	Privileges []string
+	Users      []string
 }
