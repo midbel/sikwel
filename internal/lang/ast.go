@@ -380,6 +380,22 @@ func (s ExceptStatement) Keyword() (string, error) {
 	return getCompoundKeyword("EXCEPT", s.All, s.Distinct)
 }
 
+type MatchStatement struct {
+	Condition Statement
+	Statement
+}
+
+type MergeStatement struct {
+	Target  Statement
+	Source  Statement
+	Join    Statement
+	Actions []Statement
+}
+
+func (s MergeStatement) Keyword() (string, error) {
+	return "MERGE", nil
+}
+
 type UpsertStatement struct {
 	Columns []string
 	List    []Statement

@@ -305,6 +305,7 @@ func (p *Parser) setParseFunc() {
 	p.RegisterParseFunc("TRUNCATE TABLE", p.ParseTruncate)
 	p.RegisterParseFunc("UPDATE", p.ParseUpdate)
 	p.RegisterParseFunc("MERGE", p.ParseMerge)
+	p.RegisterParseFunc("MERGE INTO", p.ParseMerge)
 	p.RegisterParseFunc("INSERT INTO", p.ParseInsert)
 	p.RegisterParseFunc("WITH", p.parseWith)
 	p.RegisterParseFunc("CASE", p.ParseCase)

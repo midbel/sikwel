@@ -5,7 +5,137 @@ import (
 )
 
 func (p *Parser) ParseMerge() (Statement, error) {
-	return nil, nil
+	p.Next()
+	var (
+		stmt MergeStatement
+		err  error
+	)
+	if stmt.Target, err = p.ParseIdent(); err != nil {
+		return nil, err
+	}
+	if !p.IsKeyword("USING") {
+		return nil, p.Unexpected("merge")
+	}
+	p.Next()
+	switch {
+	case p.Is(Lparen):
+	case p.Is(Ident):
+		stmt.Source, err = p.ParseIdent()
+	default:
+		err = p.Unexpected("merge")
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !p.IsKeyword("ON") {
+		return nil, p.Unexpected("merge")
+	}
+	p.Next()
+	if stmt.Join, err = p.StartExpression(); err != nil {
+		return nil, err
+	}
+	for !p.QueryEnds() && !p.Done() {
+		var (
+			parseAction func(Statement) (Statement, error)
+			cdt         Statement
+			err         error
+		)
+		switch {
+		case p.IsKeyword("WHEN MATCHED"):
+			parseAction = p.parseMergeMatched
+		case p.IsKeyword("WHEN NOT MATCHED"):
+			parseAction = p.parseMergeNotMatched
+		default:
+			return nil, p.Unexpected("merge")
+		}
+		p.Next()
+		if p.IsKeyword("AND") {
+			p.Next()
+			if cdt, err = p.StartExpression(); err != nil {
+				return nil, err
+			}
+		}
+		if !p.IsKeyword("THEN") {
+			return nil, p.Unexpected("merge")
+		}
+		p.Next()
+		act, err := parseAction(cdt)
+		if err != nil {
+			return nil, err
+		}
+		stmt.Actions = append(stmt.Actions, act)
+	}
+	return stmt, nil
+}
+
+func (p *Parser) parseMergeMatched(cdt Statement) (Statement, error) {
+	var (
+		stmt Statement
+		err  error
+	)
+	switch {
+	case p.IsKeyword("DELETE"):
+		p.Next()
+		stmt = MatchStatement{
+			Condition: cdt,
+			Statement: DeleteStatement{},
+		}
+	case p.IsKeyword("UPDATE"):
+		p.Next()
+		if !p.IsKeyword("SET") {
+			return nil, p.Unexpected("matched")
+		}
+		p.Next()
+		var upd UpdateStatement
+		for !p.QueryEnds() && !p.IsKeyword("WHEN MATCHED") && !p.IsKeyword("WHEN NOT MATCHED") {
+			s, err := p.parseAssignment()
+			if err != nil {
+				return nil, err
+			}
+			upd.List = append(upd.List, s)
+		}
+		stmt = MatchStatement{
+			Condition: cdt,
+			Statement: upd,
+		}
+	default:
+		err = p.Unexpected("matched")
+	}
+	return stmt, err
+}
+
+func (p *Parser) parseMergeNotMatched(cdt Statement) (Statement, error) {
+	if !p.IsKeyword("INSERT") {
+		return nil, p.Unexpected("match")
+	}
+	p.Next()
+	var (
+		ins InsertStatement
+		err error
+	)
+	if p.Is(Lparen) {
+		ins.Columns, err = p.parseColumnsList()
+		if err != nil {
+			return nil, err
+		}
+	}
+	if !p.IsKeyword("VALUES") {
+		return nil, p.Unexpected("not matched")
+	}
+	p.Next()
+	if !p.Is(Lparen) {
+		return nil, p.Unexpected("not matched")
+	}
+	p.Next()
+	ins.Values, err = p.parseListValues()
+	if err != nil {
+		return nil, err
+	}
+	stmt := MatchStatement{
+		Condition: cdt,
+		Statement: ins,
+	}
+	return stmt, nil
 }
 
 func (p *Parser) ParseDelete() (Statement, error) {
@@ -322,7 +452,7 @@ func (p *Parser) ParseUpsertList() ([]Statement, error) {
 
 func (p *Parser) parseListValues() (Statement, error) {
 	var list List
-	for !p.Done() && !p.Is(Rparen) {
+	for !p.QueryEnds() && !p.Done() && !p.Is(Rparen) {
 		expr, err := p.StartExpression()
 		if err = wrapError("values", err); err != nil {
 			return nil, err
