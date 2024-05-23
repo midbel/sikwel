@@ -170,30 +170,8 @@ func (w *Writer) FormatCte(stmt CteStatement) error {
 	}
 	w.WriteString(ident)
 	if len(stmt.Columns) == 0 && w.UseNames {
-		q, ok := stmt.Statement.(SelectStatement)
-		if ok {
-			var columns []string
-			for _, c := range q.Columns {
-				var str string
-				switch c := c.(type) {
-				case Alias:
-					str = c.Alias
-				case Name:
-					str = c.Parts[len(c.Parts)-1]
-					if str == "" || str == "*" {
-						ok = false
-					}
-				default:
-					ok = false
-				}
-				if !ok {
-					break
-				}
-				columns = append(columns, str)
-			}
-			if ok {
-				stmt.Columns = columns
-			}
+		if q, ok := stmt.Statement.(interface{ GetNames() []string }); ok {
+			stmt.Columns = q.GetNames()
 		}
 	}
 	if len(stmt.Columns) > 0 {

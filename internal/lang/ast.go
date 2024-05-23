@@ -332,6 +332,28 @@ func (s SelectStatement) Keyword() (string, error) {
 	return "SELECT", nil
 }
 
+func (s SelectStatement) GetNames() []string {
+	var list []string
+	for _, c := range s.Columns {
+		switch c := c.(type) {
+		case Alias:
+			list = append(list, c.Alias)
+		case Name:
+			if len(c.Parts) == 0 {
+				return nil
+			}
+			n := c.Parts[len(c.Parts)-1]
+			if n == "" || n == "*" {
+				return nil
+			}
+			list = append(list, n)
+		default:
+			return nil
+		}
+	}
+	return list
+}
+
 func getCompoundKeyword(kw string, all, distinct bool) (string, error) {
 	var suffix string
 	switch {
