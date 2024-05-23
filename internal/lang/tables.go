@@ -365,6 +365,48 @@ func (p *Parser) ParseGeneratedAlwaysConstraint() (Statement, error) {
 	return cst, nil
 }
 
+func (w *Writer) FormatCreateView(stmt CreateViewStatement) error {
+	kw, _ := stmt.Keyword()
+	w.WriteStatement(kw)
+	w.WriteBlank()
+	if stmt.NotExists {
+		w.WriteKeyword("IF NOT EXISTS")
+		w.WriteBlank()
+	}
+	if err := w.FormatTableName(stmt.Name); err != nil {
+		return err
+	}
+
+	if len(stmt.Columns) == 0 && w.UseNames {
+		if q, ok := stmt.Select.(interface{ GetNames() []string }); ok {
+			stmt.Columns = q.GetNames()
+		}
+	}
+	if len(stmt.Columns) > 0 {
+		w.WriteBlank()
+		w.WriteString("(")
+		for i, s := range stmt.Columns {
+			if i > 0 {
+				w.WriteString(",")
+				w.WriteBlank()
+			}
+			if w.AllUpper {
+				s = strings.ToUpper(s)
+			}
+			w.WriteString(s)
+		}
+		w.WriteString(")")
+	}
+
+	w.WriteBlank()
+	w.WriteStatement("AS")
+	w.WriteBlank()
+
+	w.Leave()
+	defer w.Enter()
+	return w.FormatStatement(stmt.Select)
+}
+
 type CreateTableFormatter interface {
 	FormatTableName(Statement) error
 	FormatColumnDef(ConstraintFormatter, Statement, int) error

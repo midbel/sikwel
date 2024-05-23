@@ -110,6 +110,8 @@ func (w *Writer) FormatStatement(stmt Statement) error {
 	switch stmt := stmt.(type) {
 	case CreateTableStatement:
 		err = w.FormatCreateTable(stmt)
+	case CreateViewStatement:
+		err = w.FormatCreateView(stmt)
 	case CreateProcedureStatement:
 		err = w.FormatCreateProcedure(stmt)
 	case SelectStatement:

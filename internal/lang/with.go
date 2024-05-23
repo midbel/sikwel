@@ -193,6 +193,7 @@ func (w *Writer) FormatCte(stmt CteStatement) error {
 	w.WriteBlank()
 	w.WriteString("(")
 	w.WriteNL()
+
 	if err := w.FormatStatement(stmt.Statement); err != nil {
 		return err
 	}

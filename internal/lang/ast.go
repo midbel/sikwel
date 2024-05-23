@@ -304,6 +304,14 @@ type WithStatement struct {
 	Statement
 }
 
+func (s WithStatement) GetNames() []string {
+	q, ok := s.Statement.(interface{ GetNames() []string })
+	if !ok {
+		return nil
+	}
+	return q.GetNames()
+}
+
 func (s WithStatement) Keyword() (string, error) {
 	return "WITH", nil
 }
@@ -608,6 +616,18 @@ type DropColumnAction struct {
 type AlterTableStatement struct {
 	Name   Statement
 	Action Statement
+}
+
+type DropViewStatement struct {
+	Name   Statement
+	Exists bool
+}
+
+func (s DropViewStatement) Keyword() (string, error) {
+	if s.Exists {
+		return "DROP VIEW IF EXISTS", nil
+	}
+	return "DROP VIEW", nil
 }
 
 type DropTableStatement struct {
