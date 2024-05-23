@@ -14,8 +14,11 @@ func main() {
 	flag.BoolVar(&w.Compact, "compact", w.Compact, "compact")
 	flag.BoolVar(&w.KwUpper, "upper-kw", w.KwUpper, "sql keyword to uppercase")
 	flag.BoolVar(&w.FnUpper, "upper-fn", w.FnUpper, "functions to uppercase")
+	flag.BoolVar(&w.AllUpper, "upper-all", w.AllUpper, "all identifiers and keywords to uppercase")
 	flag.BoolVar(&w.WithAs, "with-as", w.WithAs, "set as keyword to define alias")
 	flag.BoolVar(&w.InlineCte, "inline-cte", w.InlineCte, "inline cte")
+	flag.BoolVar(&w.QuoteIdent, "quote-ident", w.QuoteIdent, "quote identifier")
+	flag.BoolVar(&w.UseNames, "use-names", w.UseNames, "use names from select to create fields list of view and/or cte")
 
 	flag.Parse()
 

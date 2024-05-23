@@ -16,10 +16,13 @@ type Writer struct {
 	CommaBefore bool
 	KwUpper     bool
 	FnUpper     bool
+	AllUpper    bool
+	QuoteIdent  bool
 	KeepComment bool
 	Colorize    bool
 	WithAs      bool
 	InlineCte   bool
+	UseNames    bool
 	Indent      string
 
 	noColor bool
@@ -552,7 +555,11 @@ func (w *Writer) formatBinary(stmt Binary, nl bool) error {
 }
 
 func (w *Writer) FormatName(name Name) {
-	w.WriteString(name.Ident())
+	str := name.Ident()
+	if w.AllUpper {
+		str = strings.ToUpper(str)
+	}
+	w.WriteString(str)
 }
 
 func (w *Writer) FormatAlias(alias Alias) error {
@@ -581,12 +588,16 @@ func (w *Writer) FormatAlias(alias Alias) error {
 		w.WriteKeyword("AS")
 		w.WriteBlank()
 	}
-	w.WriteString(alias.Alias)
+	str := alias.Alias
+	if w.AllUpper {
+		str = strings.ToUpper(str)
+	}
+	w.WriteString(str)
 	return nil
 }
 
 func (w *Writer) formatValue(literal string) {
-	if literal == "NULL" || literal == "DEFAULT" || literal == "*" {
+	if literal == "NULL" || literal == "DEFAULT" || literal == "TRUE" || literal == "FALSE" || literal == "*" {
 		if w.withColor() {
 			w.WriteString(keywordColor)
 		}
@@ -689,6 +700,9 @@ func (w *Writer) WriteCall(call string) {
 	if w.withColor() {
 		w.WriteString(callColor)
 	}
+	if w.FnUpper || w.AllUpper {
+		call = strings.ToUpper(call)
+	}
 	w.WriteString(call)
 	if w.withColor() {
 		w.WriteString(resetCode)
@@ -700,10 +714,10 @@ func (w *Writer) WriteKeyword(kw string) {
 		w.WriteString(kw)
 		return
 	}
-	if !w.KwUpper {
-		kw = strings.ToLower(kw)
-	} else {
+	if w.KwUpper || w.AllUpper {
 		kw = strings.ToUpper(kw)
+	} else {
+		kw = strings.ToLower(kw)
 	}
 	if w.withColor() {
 		w.WriteString(keywordColor)
