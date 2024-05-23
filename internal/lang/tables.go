@@ -400,7 +400,7 @@ func (w *Writer) FormatCreateView(stmt CreateViewStatement) error {
 
 	w.WriteBlank()
 	w.WriteStatement("AS")
-	w.WriteBlank()
+	w.WriteNL()
 
 	w.Leave()
 	defer w.Enter()

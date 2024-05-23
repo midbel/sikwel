@@ -10,6 +10,21 @@ import (
 	"strings"
 )
 
+type Options struct {
+	Compact     bool
+	CommaBefore bool
+	KwUpper     bool
+	FnUpper     bool
+	AllUpper    bool
+	QuoteIdent  bool
+	KeepComment bool
+	Colorize    bool
+	WithAs      bool
+	InlineCte   bool
+	UseNames    bool
+	Indent      string
+}
+
 type Writer struct {
 	inner       *bufio.Writer
 	Compact     bool
