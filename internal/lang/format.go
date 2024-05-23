@@ -108,6 +108,10 @@ func (w *Writer) startStatement(stmt Statement) error {
 func (w *Writer) FormatStatement(stmt Statement) error {
 	var err error
 	switch stmt := stmt.(type) {
+	case GrantStatement:
+		err = w.FormatGrant(stmt)
+	case RevokeStatement:
+		err = w.FormatRevoke(stmt)
 	case CreateTableStatement:
 		err = w.FormatCreateTable(stmt)
 	case CreateViewStatement:
