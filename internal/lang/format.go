@@ -565,6 +565,9 @@ func (w *Writer) FormatName(name Name) {
 	if w.AllUpper {
 		str = strings.ToUpper(str)
 	}
+	if w.QuoteIdent {
+		str = fmt.Sprintf("\"%s\"", str)
+	}
 	w.WriteString(str)
 }
 
@@ -597,6 +600,9 @@ func (w *Writer) FormatAlias(alias Alias) error {
 	str := alias.Alias
 	if w.AllUpper {
 		str = strings.ToUpper(str)
+	}
+	if w.QuoteIdent {
+		str = fmt.Sprintf("\"%s\"", str)
 	}
 	w.WriteString(str)
 	return nil
