@@ -278,6 +278,10 @@ func (w *Writer) FormatExpr(stmt Statement, nl bool) error {
 		err = w.formatList(stmt)
 	case Binary:
 		err = w.formatBinary(stmt, nl)
+	case All:
+		err = w.formatAll(stmt, nl)
+	case Any:
+		err = w.formatAny(stmt, nl)
 	case Unary:
 		err = w.formatUnary(stmt, nl)
 	case Between:
@@ -580,6 +584,18 @@ func (w *Writer) formatRelation(stmt Binary, nl bool) error {
 		return err
 	}
 	return nil
+}
+
+func (w *Writer) formatAll(stmt All, _ bool) error {
+	w.WriteKeyword("ALL")
+	w.WriteBlank()
+	return w.FormatExpr(stmt.Statement, false)
+}
+
+func (w *Writer) formatAny(stmt Any, _ bool) error {
+	w.WriteKeyword("ANY")
+	w.WriteBlank()
+	return w.FormatExpr(stmt.Statement, false)
 }
 
 func (w *Writer) formatBinary(stmt Binary, nl bool) error {

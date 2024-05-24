@@ -230,28 +230,66 @@ func (p *Parser) parseInfixExpr(left Statement) (Statement, error) {
 	p.Next()
 	if !p.IsKeyword("ALL") && !p.IsKeyword("ANY") && !p.IsKeyword("SOME") {
 		stmt.Right, err = p.parseExpression(pow)
-		return stmt, wrapError("infix", err)
+	} else {
+		stmt.Right, err = p.parseAllOrAny()
 	}
-	all := p.IsKeyword("ALL")
+	return stmt, wrapError("infix", err)
+}
+
+func (p *Parser) parseAllOrAny() (Statement, error) {
+	var (
+		expr Statement
+		err  error
+		all  = p.IsKeyword("ALL")
+	)
 	p.Next()
 	if !p.Is(Lparen) {
 		return nil, p.Unexpected("operand")
 	}
 	p.Next()
-	grp, err := p.parseGroupExpr()
+	if p.IsKeyword("SELECT") {
+		expr, err = p.ParseStatement()
+	} else {
+		var (
+			list List
+			val  Statement
+		)
+		for !p.Done() && !p.Is(Rparen) {
+			val, err = p.parseExpression(powLowest)
+			if err != nil {
+				return nil, err
+			}
+			switch {
+			case p.Is(Comma):
+				p.Next()
+				if p.Is(Rparen) {
+					return nil, p.Unexpected("in")
+				}
+			case p.Is(Rparen):
+			default:
+				return nil, p.Unexpected("in")
+			}
+			list.Values = append(list.Values, val)
+		}
+		if !p.Is(Rparen) {
+			return nil, p.Unexpected("operand")
+		}
+		p.Next()
+		expr = list
+	}
 	if err != nil {
 		return nil, err
 	}
 	if all {
-		stmt.Right = All{
-			Statement: grp,
+		expr = All{
+			Statement: expr,
 		}
 	} else {
-		stmt.Right = Any{
-			Statement: grp,
+		expr = Any{
+			Statement: expr,
 		}
 	}
-	return stmt, nil
+	return expr, nil
 }
 
 func (p *Parser) parseCollateExpr(left Statement) (Statement, error) {
