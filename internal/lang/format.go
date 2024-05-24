@@ -40,8 +40,9 @@ type Writer struct {
 	UseNames    bool
 	Indent      string
 
-	noColor bool
-	prefix  int
+	noColor   bool
+	prefix    int
+	exprDepth int
 }
 
 func NewWriter(w io.Writer) *Writer {
@@ -259,6 +260,8 @@ func (w *Writer) formatWhen(stmt WhenStatement) error {
 }
 
 func (w *Writer) FormatExpr(stmt Statement, nl bool) error {
+	w.enterExpr()
+	defer w.leaveExpr()
 	var err error
 	switch stmt := stmt.(type) {
 	case Name:
@@ -557,16 +560,36 @@ func (w *Writer) formatUnary(stmt Unary, nl bool) error {
 	return w.FormatExpr(stmt.Right, nl)
 }
 
-func (w *Writer) formatBinary(stmt Binary, nl bool) error {
+func (w *Writer) formatRelation(stmt Binary, nl bool) error {
+	if w.exprDepth > 1 {
+		w.WriteString("(")
+		defer w.WriteString(")")
+	}
 	if err := w.FormatExpr(stmt.Left, nl); err != nil {
 		return err
 	}
-	if nl && (stmt.Op == "AND" || stmt.Op == "OR") {
+	if nl && w.exprDepth == 1 {
 		w.WriteNL()
 		w.WritePrefix()
 	} else {
 		w.WriteBlank()
 	}
+	w.WriteKeyword(stmt.Op)
+	w.WriteBlank()
+	if err := w.FormatExpr(stmt.Right, nl); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (w *Writer) formatBinary(stmt Binary, nl bool) error {
+	if stmt.IsRelation() {
+		return w.formatRelation(stmt, nl)
+	}
+	if err := w.FormatExpr(stmt.Left, nl); err != nil {
+		return err
+	}
+	w.WriteBlank()
 	w.WriteKeyword(stmt.Op)
 	w.WriteBlank()
 	if err := w.FormatExpr(stmt.Right, nl); err != nil {
@@ -768,6 +791,14 @@ func (w *Writer) Flush() {
 
 func (w *Writer) Reset() {
 	w.prefix = -1
+}
+
+func (w *Writer) enterExpr() {
+	w.exprDepth++
+}
+
+func (w *Writer) leaveExpr() {
+	w.exprDepth--
 }
 
 func (w *Writer) CanNotUse(ctx string, stmt Statement) error {

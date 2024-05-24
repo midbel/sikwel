@@ -43,6 +43,7 @@ func (i Linter) Lint(r io.Reader) ([]LintMessage, error) {
 			}
 			return nil, err
 		}
+		_ = stmt
 	}
-	return nil, nil
+	return list, nil
 }

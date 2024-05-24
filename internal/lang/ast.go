@@ -149,6 +149,10 @@ type Binary struct {
 	Op    string
 }
 
+func (b Binary) IsRelation() bool {
+	return b.Op == "AND" || b.Op == "OR"
+}
+
 type All struct {
 	Statement
 	Value Statement
