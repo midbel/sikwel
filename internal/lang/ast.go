@@ -108,6 +108,10 @@ type Not struct {
 	Statement
 }
 
+func (n Not) GetNames() []string {
+	return getNamesFromStmt(n.Statement)
+}
+
 type Collate struct {
 	Statement
 	Collation string
@@ -130,6 +134,10 @@ type Call struct {
 	Over     Statement
 }
 
+func (c Call) BuiltinSql() bool {
+	return false
+}
+
 type Row struct {
 	Values []Statement
 }
@@ -143,10 +151,21 @@ type Unary struct {
 	Op    string
 }
 
+func (u Unary) GetNames() []string {
+	return getNamesFromStmt(u.Right)
+}
+
 type Binary struct {
 	Left  Statement
 	Right Statement
 	Op    string
+}
+
+func (b Binary) GetNames() []string {
+	var list []string
+	list = append(list, getNamesFromStmt(b.Left)...)
+	list = append(list, getNamesFromStmt(b.Right)...)
+	return list
 }
 
 func (b Binary) IsRelation() bool {
@@ -169,6 +188,13 @@ type Is struct {
 type In struct {
 	Ident Statement
 	Value Statement
+}
+
+func (i In) GetNames() []string {
+	var list []string
+	list = append(list, getNamesFromStmt(i.Ident)...)
+	list = append(list, getNamesFromStmt(i.Value)...)
+	return list
 }
 
 type Between struct {
@@ -340,6 +366,34 @@ type SelectStatement struct {
 
 func (s SelectStatement) Keyword() (string, error) {
 	return "SELECT", nil
+}
+
+func (s SelectStatement) GetColumns() []string {
+	var list []string
+	for _, c := range s.Columns {
+		c, ok := c.(Name)
+		if !ok {
+			continue
+		}
+		n := c.Parts[len(c.Parts)-1]
+		if n == "" || n == "*" {
+			continue
+		}
+		list = append(list, n)
+	}
+	return list
+}
+
+func (s SelectStatement) GetAlias() []string {
+	var list []string
+	for _, c := range s.Columns {
+		a, ok := c.(Alias)
+		if !ok {
+			continue
+		}
+		list = append(list, a.Alias)
+	}
+	return list
 }
 
 func (s SelectStatement) GetNames() []string {
@@ -724,4 +778,17 @@ type RevokeStatement struct {
 
 func (s RevokeStatement) Keyword() (string, error) {
 	return "REVOKE", nil
+}
+
+func getNamesFromStmt(stmt Statement) []string {
+	if n, ok := stmt.(Name); ok {
+		if len(n.Parts) == 0 {
+			return nil
+		}
+		return []string{n.Parts[len(n.Parts)-1]}
+	}
+	if g, ok := stmt.(interface{ GetNames() []string }); ok {
+		return g.GetNames()
+	}
+	return nil
 }
