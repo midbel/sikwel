@@ -21,7 +21,51 @@ func (p *Parser) ParseDropTable() (Statement, error) {
 		stmt.Exists = true
 		p.Next()
 	}
-	stmt.Name, err = p.ParseIdentifier()
+	for !p.QueryEnds() && !p.Done() {
+		n, err := p.ParseIdentifier()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Names = append(stmt.Names, n)
+		if !p.Is(Comma) {
+			break
+		}
+		p.Next()
+
+	}
+	if p.IsKeyword("RESTRICT") || p.IsKeyword("CASCADE") {
+		stmt.Cascade = p.IsKeyword("CASCADE")
+		p.Next()
+	}
+	return stmt, err
+}
+
+func (p *Parser) ParseDropView() (Statement, error) {
+	p.Next()
+	var (
+		stmt DropViewStatement
+		err  error
+	)
+	if p.IsKeyword("IF EXISTS") {
+		stmt.Exists = true
+		p.Next()
+	}
+	for !p.QueryEnds() && !p.Done() {
+		n, err := p.ParseIdentifier()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Names = append(stmt.Names, n)
+		if !p.Is(Comma) {
+			break
+		}
+		p.Next()
+
+	}
+	if p.IsKeyword("RESTRICT") || p.IsKeyword("CASCADE") {
+		stmt.Cascade = p.IsKeyword("CASCADE")
+		p.Next()
+	}
 	return stmt, err
 }
 

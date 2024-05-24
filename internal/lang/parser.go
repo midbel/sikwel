@@ -326,8 +326,8 @@ func (p *Parser) setParseFunc() {
 	p.RegisterParseFunc("CREATE PROCEDURE", p.ParseCreateProcedure)
 	p.RegisterParseFunc("CREATE OR REPLACE PROCEDURE", p.ParseCreateProcedure)
 	p.RegisterParseFunc("ALTER TABLE", p.ParseAlterTable)
-	p.RegisterParseFunc("DROP", p.ParseDropTable)
 	p.RegisterParseFunc("DROP TABLE", p.ParseDropTable)
+	p.RegisterParseFunc("DROP VIEW", p.ParseDropView)
 	p.RegisterParseFunc("GRANT", p.ParseGrant)
 	p.RegisterParseFunc("REVOKE", p.ParseRevoke)
 }

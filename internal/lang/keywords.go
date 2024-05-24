@@ -149,6 +149,7 @@ var keywords = KeywordSet{
 	{"add", "column"},
 	{"drop"},
 	{"drop", "table"},
+	{"drop", "view"},
 	{"drop", "column"},
 	{"to"},
 	{"true"},

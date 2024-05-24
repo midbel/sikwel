@@ -621,8 +621,9 @@ type AlterTableStatement struct {
 }
 
 type DropViewStatement struct {
-	Name   Statement
-	Exists bool
+	Names   []Statement
+	Exists  bool
+	Cascade bool
 }
 
 func (s DropViewStatement) Keyword() (string, error) {
@@ -633,8 +634,9 @@ func (s DropViewStatement) Keyword() (string, error) {
 }
 
 type DropTableStatement struct {
-	Name   Statement
-	Exists bool
+	Names   []Statement
+	Exists  bool
+	Cascade bool
 }
 
 func (s DropTableStatement) Keyword() (string, error) {
