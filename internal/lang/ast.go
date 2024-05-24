@@ -155,12 +155,10 @@ func (b Binary) IsRelation() bool {
 
 type All struct {
 	Statement
-	Value Statement
 }
 
 type Any struct {
 	Statement
-	Value Statement
 }
 
 type Is struct {

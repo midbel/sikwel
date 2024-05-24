@@ -228,9 +228,30 @@ func (p *Parser) parseInfixExpr(left Statement) (Statement, error) {
 		return nil, p.Unexpected("operand")
 	}
 	p.Next()
-
-	stmt.Right, err = p.parseExpression(pow)
-	return stmt, wrapError("infix", err)
+	if !p.IsKeyword("ALL") && !p.IsKeyword("ANY") && !p.IsKeyword("SOME") {
+		stmt.Right, err = p.parseExpression(pow)
+		return stmt, wrapError("infix", err)
+	}
+	all := p.IsKeyword("ALL")
+	p.Next()
+	if !p.Is(Lparen) {
+		return nil, p.Unexpected("operand")
+	}
+	p.Next()
+	grp, err := p.parseGroupExpr()
+	if err != nil {
+		return nil, err
+	}
+	if all {
+		stmt.Right = All{
+			Statement: grp,
+		}
+	} else {
+		stmt.Right = Any{
+			Statement: grp,
+		}
+	}
+	return stmt, nil
 }
 
 func (p *Parser) parseCollateExpr(left Statement) (Statement, error) {
