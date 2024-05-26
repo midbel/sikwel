@@ -220,6 +220,8 @@ func (i Linter) lintSelect(stmt SelectStatement) ([]LintMessage, error) {
 		}
 	}
 	list = append(list, checkUniqueAlias(stmt)...)
+	list = append(list, checkMissingAlias(stmt)...)
+	list = append(list, checkUndefinedAlias(stmt)...)
 	list = append(list, checkAliasUsedInWhere(stmt)...)
 	list = append(list, checkColumnUsedInGroup(stmt)...)
 	return list, nil
@@ -284,6 +286,10 @@ func checkUniqueAlias(stmt SelectStatement) []LintMessage {
 			list = append(list, duplicatedAlias(tables[i]))
 		}
 	}
+	return nil
+}
+
+func checkUndefinedAlias(stmt SelectStatement) []LintMessage {
 	return nil
 }
 
