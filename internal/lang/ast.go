@@ -408,6 +408,10 @@ type SelectStatement struct {
 	Limit    Statement
 }
 
+func (s SelectStatement) ColumnsCount() int {
+	return -1
+}
+
 func (s SelectStatement) Keyword() (string, error) {
 	return "SELECT", nil
 }

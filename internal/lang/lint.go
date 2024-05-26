@@ -32,10 +32,20 @@ const (
 	Error
 )
 
+type MultiError []error
+
+func (_ MultiError) Error() string {
+	return "multiple error detected"
+}
+
 type LintMessage struct {
 	Severity Level
 	Rule     string
 	Message  string
+}
+
+func (e LintMessage) Error() string {
+	return ""
 }
 
 type Linter struct {
@@ -75,7 +85,11 @@ func (i Linter) LintStatement(stmt Statement) ([]LintMessage, error) {
 		err  error
 	)
 	switch stmt := stmt.(type) {
+	case CreateViewStatement:
 	case WithStatement:
+		list, err = i.lintWith(stmt)
+	case CteStatement:
+		list, err = i.lintCte(stmt)
 	case SelectStatement:
 		list, err = i.lintSelect(stmt)
 	case InsertStatement:
@@ -88,35 +102,62 @@ func (i Linter) LintStatement(stmt Statement) ([]LintMessage, error) {
 	return list, err
 }
 
-func (i Linter) lintSelect(stmt SelectStatement) ([]LintMessage, error) {
-	// check subqueries
+func (i Linter) lintCte(stmt CteStatement) ([]LintMessage, error) {
 	var list []LintMessage
-	if err := checkAliasUsedInWhere(stmt); err != nil {
-		msg := LintMessage{
-			Severity: Error,
-			Message:  err.Error(),
-			Rule:     "alias-use-where",
+	if z := len(stmt.Columns); z != 0 {
+		if c, ok := stmt.Statement.(interface{ ColumnsCount() int }); ok {
+			n := c.ColumnsCount()
+			if n != z {
+
+			}
 		}
-		list = append(list, msg)
 	}
-	if err := checkColumnUsedInGroup(stmt); err != nil {
-		msg := LintMessage{
-			Severity: Error,
-			Message:  err.Error(),
-			Rule:     "column-in-group",
-		}
-		list = append(list, msg)
+	others, err := i.LintStatement(stmt.Statement)
+	if err != nil {
+		return nil, err
 	}
+	list = append(list, others...)
 	return list, nil
 }
 
-func checkColumnUsedInGroup(stmt SelectStatement) error {
+func (i Linter) lintWith(stmt WithStatement) ([]LintMessage, error) {
+	var list []LintMessage
+	for _, q := range stmt.Queries {
+		others, err := i.LintStatement(q)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, others...)
+	}
+	others, err := i.LintStatement(stmt.Statement)
+	if err != nil {
+		return nil, err
+	}
+	list = append(list, others...)
+	return list, nil
+}
+
+func (i Linter) lintSelect(stmt SelectStatement) ([]LintMessage, error) {
+	// check subqueries
+	var (
+		list []LintMessage
+		tmp  []LintMessage
+	)
+	tmp = checkAliasUsedInWhere(stmt)
+	list = append(list, tmp...)
+
+	tmp = checkColumnUsedInGroup(stmt)
+	list = append(list, tmp...)
+	return list, nil
+}
+
+func checkColumnUsedInGroup(stmt SelectStatement) []LintMessage {
 	if len(stmt.Groups) == 0 {
 		return nil
 	}
 	var (
 		groups = getNamesFromStmt(stmt.Groups)
-		err    error
+		list   []LintMessage
 	)
 	for _, c := range stmt.Columns {
 		switch c := c.(type) {
@@ -124,42 +165,74 @@ func checkColumnUsedInGroup(stmt SelectStatement) error {
 			call, ok := c.Statement.(Call)
 			if ok {
 				if ok = call.IsAggregate(); !ok {
-					err = fmt.Errorf("%s not an aggregate function", call.GetIdent())
+					list = append(list, notAggregateFunction(call.GetIdent()))
 				}
 			}
 			name, ok := c.Statement.(Name)
 			if !ok {
-				err = fmt.Errorf("unexpected expression type")
+				list = append(list, unexpectedExprType("", "GROUP BY"))
 			}
 			if ok = slices.Contains(groups, name.Ident()); !ok {
-				err = fmt.Errorf("field %s should be used in group by or with aggregate function", name.Name())
+				list = append(list, fieldNotInGroup(name.Ident()))
 			}
 		case Call:
 			if ok := c.IsAggregate(); !ok {
-				err = fmt.Errorf("%s not an aggregate function", c.GetIdent())
+				list = append(list, notAggregateFunction(c.GetIdent()))
 			}
 		case Name:
 			ok := slices.Contains(groups, c.Name())
 			if !ok {
-				err = fmt.Errorf("field %s should be used in group by or with aggregate function", c.Name())
+				list = append(list, fieldNotInGroup(c.Name()))
 			}
 		default:
-			err = fmt.Errorf("unexpected expression type")
-		}
-		if err != nil {
-			break
+			list = append(list, unexpectedExprType("", "GROUP BY"))
 		}
 	}
-	return err
+	return list
 }
 
-func checkAliasUsedInWhere(stmt SelectStatement) error {
-	names := getNamesFromStmt([]Statement{stmt.Where})
+func checkAliasUsedInWhere(stmt SelectStatement) []LintMessage {
+	var (
+		names = getNamesFromStmt([]Statement{stmt.Where})
+		list  []LintMessage
+	)
 	for _, a := range stmt.GetAlias() {
 		ok := slices.Contains(names, a)
 		if ok {
-			return fmt.Errorf("alias found in where clause")
+			list = append(list, aliasFoundInWhere(a))
 		}
 	}
-	return nil
+	return list
+}
+
+func fieldNotInGroup(field string) LintMessage {
+	return LintMessage{
+		Severity: Error,
+		Message:  fmt.Sprintf("field %s not used in group by closed nor in an aggregate function"),
+		Rule:     "field-not-grouped",
+	}
+}
+
+func notAggregateFunction(ident string) LintMessage {
+	return LintMessage{
+		Severity: Error,
+		Message:  fmt.Sprintf("%s not an aggregation function"),
+		Rule:     "aggregate-function",
+	}
+}
+
+func unexpectedExprType(field, ctx string) LintMessage {
+	return LintMessage{
+		Severity: Error,
+		Message:  fmt.Sprintf("unexpected expression type in %s", ctx),
+		Rule:     "unexpected-expression",
+	}
+}
+
+func aliasFoundInWhere(field string) LintMessage {
+	return LintMessage{
+		Severity: Error,
+		Message:  fmt.Sprintf("alias %s found in predicate", field),
+		Rule:     "alias-in-predicate",
+	}
 }
