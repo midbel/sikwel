@@ -417,15 +417,7 @@ func (s SelectStatement) Keyword() (string, error) {
 }
 
 func (s SelectStatement) GetAlias() []string {
-	var list []string
-	for _, c := range s.Columns {
-		a, ok := c.(Alias)
-		if !ok {
-			continue
-		}
-		list = append(list, a.Alias)
-	}
-	return list
+	return getAliasFromStmt(s.Columns)
 }
 
 func (s SelectStatement) GetNames() []string {
@@ -824,6 +816,18 @@ func getNamesFromStatments(cs []Statement) []string {
 			continue
 		}
 		list = append(list, n)
+	}
+	return list
+}
+
+func getAliasFromStmt(all []Statement) []string {
+	var list []string
+	for _, c := range all {
+		a, ok := c.(Alias)
+		if !ok {
+			continue
+		}
+		list = append(list, a.Alias)
 	}
 	return list
 }
