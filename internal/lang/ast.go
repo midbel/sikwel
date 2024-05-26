@@ -2,6 +2,7 @@ package lang
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -109,7 +110,7 @@ type Not struct {
 }
 
 func (n Not) GetNames() []string {
-	return getNamesFromStmt(n.Statement)
+	return getNamesFromStmt([]Statement{n.Statement})
 }
 
 type Collate struct {
@@ -126,6 +127,22 @@ type Exists struct {
 	Statement
 }
 
+var sqlAggregates = []string{
+	"max",
+	"min",
+	"avg",
+	"sum",
+	"count",
+}
+
+var sqlBuiltins = []string{
+	"max",
+	"min",
+	"avg",
+	"sum",
+	"count",
+}
+
 type Call struct {
 	Distinct bool
 	Ident    Statement
@@ -134,8 +151,24 @@ type Call struct {
 	Over     Statement
 }
 
+func (c Call) GetNames() []string {
+	return getNamesFromStmt(c.Args)
+}
+
+func (c Call) GetIdent() string {
+	n, ok := c.Ident.(Name)
+	if !ok {
+		return "?"
+	}
+	return n.Ident()
+}
+
+func (c Call) IsAggregate() bool {
+	return slices.Contains(sqlAggregates, c.GetIdent())
+}
+
 func (c Call) BuiltinSql() bool {
-	return false
+	return slices.Contains(sqlBuiltins, c.GetIdent())
 }
 
 type Row struct {
@@ -152,7 +185,7 @@ type Unary struct {
 }
 
 func (u Unary) GetNames() []string {
-	return getNamesFromStmt(u.Right)
+	return getNamesFromStmt([]Statement{u.Right})
 }
 
 type Binary struct {
@@ -163,8 +196,8 @@ type Binary struct {
 
 func (b Binary) GetNames() []string {
 	var list []string
-	list = append(list, getNamesFromStmt(b.Left)...)
-	list = append(list, getNamesFromStmt(b.Right)...)
+	list = append(list, getNamesFromStmt([]Statement{b.Left})...)
+	list = append(list, getNamesFromStmt([]Statement{b.Right})...)
 	return list
 }
 
@@ -192,8 +225,8 @@ type In struct {
 
 func (i In) GetNames() []string {
 	var list []string
-	list = append(list, getNamesFromStmt(i.Ident)...)
-	list = append(list, getNamesFromStmt(i.Value)...)
+	list = append(list, getNamesFromStmt([]Statement{i.Ident})...)
+	list = append(list, getNamesFromStmt([]Statement{i.Value})...)
 	return list
 }
 
@@ -226,6 +259,17 @@ type Name struct {
 
 func (n Name) All() bool {
 	return false
+}
+
+func (n Name) Name() string {
+	if len(n.Parts) == 0 {
+		return "*"
+	}
+	str := n.Parts[len(n.Parts)-1]
+	if str == "" {
+		str = "*"
+	}
+	return str
 }
 
 func (n Name) Ident() string {
@@ -366,22 +410,6 @@ type SelectStatement struct {
 
 func (s SelectStatement) Keyword() (string, error) {
 	return "SELECT", nil
-}
-
-func (s SelectStatement) GetColumns() []string {
-	var list []string
-	for _, c := range s.Columns {
-		c, ok := c.(Name)
-		if !ok {
-			continue
-		}
-		n := c.Parts[len(c.Parts)-1]
-		if n == "" || n == "*" {
-			continue
-		}
-		list = append(list, n)
-	}
-	return list
 }
 
 func (s SelectStatement) GetAlias() []string {
@@ -780,15 +808,39 @@ func (s RevokeStatement) Keyword() (string, error) {
 	return "REVOKE", nil
 }
 
-func getNamesFromStmt(stmt Statement) []string {
-	if n, ok := stmt.(Name); ok {
-		if len(n.Parts) == 0 {
-			return nil
+func getNamesFromStatments(cs []Statement) []string {
+	var list []string
+	for _, c := range cs {
+		c, ok := c.(Name)
+		if !ok {
+			continue
 		}
-		return []string{n.Parts[len(n.Parts)-1]}
+		n := c.Parts[len(c.Parts)-1]
+		if n == "" || n == "*" {
+			continue
+		}
+		list = append(list, n)
 	}
-	if g, ok := stmt.(interface{ GetNames() []string }); ok {
-		return g.GetNames()
+	return list
+}
+
+func getNamesFromStmt(all []Statement) []string {
+	get := func(s Statement) []string {
+		if n, ok := s.(Name); ok {
+			if len(n.Parts) == 0 {
+				return nil
+			}
+			return []string{n.Parts[len(n.Parts)-1]}
+		}
+		if g, ok := s.(interface{ GetNames() []string }); ok {
+			return g.GetNames()
+		}
+		return nil
 	}
-	return nil
+	var list []string
+	for _, s := range all {
+		list = append(list, get(s)...)
+	}
+	return list
+
 }

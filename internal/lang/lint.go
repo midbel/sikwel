@@ -111,11 +111,50 @@ func (i Linter) lintSelect(stmt SelectStatement) ([]LintMessage, error) {
 }
 
 func checkColumnUsedInGroup(stmt SelectStatement) error {
-	return nil
+	if len(stmt.Groups) == 0 {
+		return nil
+	}
+	var (
+		groups = getNamesFromStmt(stmt.Groups)
+		err    error
+	)
+	for _, c := range stmt.Columns {
+		switch c := c.(type) {
+		case Alias:
+			call, ok := c.Statement.(Call)
+			if ok {
+				if ok = call.IsAggregate(); !ok {
+					err = fmt.Errorf("%s not an aggregate function", call.GetIdent())
+				}
+			}
+			name, ok := c.Statement.(Name)
+			if !ok {
+				err = fmt.Errorf("unexpected expression type")
+			}
+			if ok = slices.Contains(groups, name.Ident()); !ok {
+				err = fmt.Errorf("field %s should be used in group by or with aggregate function", name.Name())
+			}
+		case Call:
+			if ok := c.IsAggregate(); !ok {
+				err = fmt.Errorf("%s not an aggregate function", c.GetIdent())
+			}
+		case Name:
+			ok := slices.Contains(groups, c.Name())
+			if !ok {
+				err = fmt.Errorf("field %s should be used in group by or with aggregate function", c.Name())
+			}
+		default:
+			err = fmt.Errorf("unexpected expression type")
+		}
+		if err != nil {
+			break
+		}
+	}
+	return err
 }
 
 func checkAliasUsedInWhere(stmt SelectStatement) error {
-	names := getNamesFromStmt(stmt.Where)
+	names := getNamesFromStmt([]Statement{stmt.Where})
 	for _, a := range stmt.GetAlias() {
 		ok := slices.Contains(names, a)
 		if ok {

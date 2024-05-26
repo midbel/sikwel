@@ -1,5 +1,7 @@
 package lang
 
+import "fmt"
+
 func (p *Parser) StartExpression() (Statement, error) {
 	expr, err := p.parseExpression(powLowest)
 	if err != nil {
@@ -345,6 +347,9 @@ func (p *Parser) parseKeywordExpr(left Statement) (Statement, error) {
 }
 
 func (p *Parser) parseCallExpr(left Statement) (Statement, error) {
+	if _, ok := left.(Name); !ok {
+		return nil, fmt.Errorf("call identifier should a valid SQL name")
+	}
 	p.Next()
 	stmt := Call{
 		Ident:    left,
