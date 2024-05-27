@@ -101,8 +101,11 @@ func (i Linter) LintStatement(stmt Statement) ([]LintMessage, error) {
 	case MergeStatement:
 		list, err = i.lintMerge(stmt)
 	case UnionStatement:
+		list, err = i.lintUnion(stmt)
 	case IntersectStatement:
+		list, err = i.lintIntersect(stmt)
 	case ExceptStatement:
+		list, err = i.lintExcept(stmt)
 	case Unary:
 		list, err = i.LintStatement(stmt.Right)
 	case Binary:
@@ -166,6 +169,64 @@ func (i Linter) lintUpdate(stmt UpdateStatement) ([]LintMessage, error) {
 
 func (i Linter) lintDelete(stmt DeleteStatement) ([]LintMessage, error) {
 	return nil, nil
+}
+
+func (i Linter) lintUnion(stmt UnionStatement) ([]LintMessage, error) {
+	s1, ok := stmt.Left.(SelectStatement)
+	if !ok {
+		return nil, fmt.Errorf("expected select on left side of union")
+	}
+	s2, ok := stmt.Right.(SelectStatement)
+	if !ok {
+		return nil, fmt.Errorf("expected select on right side of union")
+	}
+	return i.lintSets(s1, s2)
+}
+
+func (i Linter) lintIntersect(stmt IntersectStatement) ([]LintMessage, error) {
+	s1, ok := stmt.Left.(SelectStatement)
+	if !ok {
+		return nil, fmt.Errorf("expected select on left side of intersect")
+	}
+	s2, ok := stmt.Right.(SelectStatement)
+	if !ok {
+		return nil, fmt.Errorf("expected select on right side of intersect")
+	}
+	return i.lintSets(s1, s2)
+}
+
+func (i Linter) lintExcept(stmt ExceptStatement) ([]LintMessage, error) {
+	s1, ok := stmt.Left.(SelectStatement)
+	if !ok {
+		return nil, fmt.Errorf("expected select on left side of expect")
+	}
+	s2, ok := stmt.Right.(SelectStatement)
+	if !ok {
+		return nil, fmt.Errorf("expected select on right side of expect")
+	}
+	return i.lintSets(s1, s2)
+}
+
+func (i Linter) lintSets(s1, s2 SelectStatement) ([]LintMessage, error) {
+	var (
+		list   []LintMessage
+		others []LintMessage
+		err    error
+	)
+	if c1, c2 := s1.ColumnsCount(), s2.ColumnsCount(); c1 != c2 || c1 < 0 || c2 < 0 {
+		list = append(list, columnsCountMismatched())
+	}
+	others, err = i.LintStatement(s1)
+	if err != nil {
+		return nil, err
+	}
+	list = append(list, others...)
+	others, err = i.LintStatement(s2)
+	if err != nil {
+		return nil, err
+	}
+	list = append(list, others...)
+	return list, nil
 }
 
 func (i Linter) lintCte(stmt CteStatement) ([]LintMessage, error) {
