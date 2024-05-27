@@ -241,7 +241,7 @@ func checkColumnUsedInGroup(stmt SelectStatement) []LintMessage {
 			call, ok := c.Statement.(Call)
 			if ok {
 				if ok = call.IsAggregate(); !ok {
-					list = append(list, notAggregateFunction(call.GetIdent()))
+					list = append(list, aggregateFunctionExpected(call.GetIdent()))
 				}
 			}
 			name, ok := c.Statement.(Name)
@@ -253,7 +253,7 @@ func checkColumnUsedInGroup(stmt SelectStatement) []LintMessage {
 			}
 		case Call:
 			if ok := c.IsAggregate(); !ok {
-				list = append(list, notAggregateFunction(c.GetIdent()))
+				list = append(list, aggregateFunctionExpected(c.GetIdent()))
 			}
 		case Name:
 			ok := slices.Contains(groups, c.Name())
@@ -269,13 +269,13 @@ func checkColumnUsedInGroup(stmt SelectStatement) []LintMessage {
 
 func checkUniqueAlias(stmt SelectStatement) []LintMessage {
 	var (
-		columns = getAliasFromStmt(stmt.Columns)
-		tables  = getAliasFromStmt(stmt.Tables)
-		list    []LintMessage
+		columns  = getAliasFromStmt(stmt.Columns)
+		tables   = getAliasFromStmt(stmt.Tables)
+		contains = func(list []string, str string) bool {
+			return slices.Contains(list, str)
+		}
+		list []LintMessage
 	)
-	contains := func(list []string, str string) bool {
-		return slices.Contains(list, str)
-	}
 	for i := range columns {
 		if ok := contains(columns[i+1:], columns[i]); ok {
 			list = append(list, duplicatedAlias(columns[i]))
@@ -290,7 +290,25 @@ func checkUniqueAlias(stmt SelectStatement) []LintMessage {
 }
 
 func checkUndefinedAlias(stmt SelectStatement) []LintMessage {
-	return nil
+	var (
+		alias  = getAliasFromStmt(stmt.Tables)
+		names  = getNamesFromStmt(stmt.Tables)
+		values = slices.Concat(alias, names)
+		list   []LintMessage
+	)
+	for _, c := range stmt.Columns {
+		if a, ok := c.(Alias); ok {
+			c = a.Statement
+		}
+		n, ok := c.(Name)
+		if !ok {
+			continue
+		}
+		if schema := n.Schema(); schema != "" && !slices.Contains(values, schema) {
+			list = append(list, undefinedAlias(schema))
+		}
+	}
+	return list
 }
 
 func checkMissingAlias(stmt SelectStatement) []LintMessage {
@@ -303,6 +321,7 @@ func checkMissingAlias(stmt SelectStatement) []LintMessage {
 	for _, s := range stmt.Tables {
 		switch s := s.(type) {
 		case SelectStatement:
+			list = append(list, missingAlias())
 		case Join:
 			if _, ok := s.Table.(SelectStatement); ok {
 				list = append(list, missingAlias())
@@ -318,29 +337,13 @@ func checkAliasUsedInWhere(stmt SelectStatement) []LintMessage {
 		names = getNamesFromStmt([]Statement{stmt.Where, stmt.Having})
 		list  []LintMessage
 	)
-	for _, a := range stmt.GetAlias() {
+	for _, a := range getAliasFromStmt(stmt.Columns) {
 		ok := slices.Contains(names, a)
 		if ok {
-			list = append(list, aliasFoundInWhere(a))
+			list = append(list, unexpectedAlias(a))
 		}
 	}
 	return list
-}
-
-func missingAlias() LintMessage {
-	return LintMessage{
-		Severity: Error,
-		Message:  "missing alias",
-		Rule:     "alias.missing",
-	}
-}
-
-func duplicatedAlias(alias string) LintMessage {
-	return LintMessage{
-		Severity: Error,
-		Message:  fmt.Sprintf("%s: duplicate alias found", alias),
-		Rule:     "alias.duplicate",
-	}
 }
 
 func columnsCountMismatched() LintMessage {
@@ -354,15 +357,15 @@ func columnsCountMismatched() LintMessage {
 func fieldNotInGroup(field string) LintMessage {
 	return LintMessage{
 		Severity: Error,
-		Message:  fmt.Sprintf("field %s not used in group by closed nor in an aggregate function"),
+		Message:  fmt.Sprintf("%s: field should be used in a 'group by' clause or with an aggregate function", field),
 		Rule:     "expression.group",
 	}
 }
 
-func notAggregateFunction(ident string) LintMessage {
+func aggregateFunctionExpected(ident string) LintMessage {
 	return LintMessage{
 		Severity: Error,
-		Message:  fmt.Sprintf("%s not an aggregation function"),
+		Message:  fmt.Sprintf("%s: aggregate function expected"),
 		Rule:     "aggregate.function",
 	}
 }
@@ -370,15 +373,39 @@ func notAggregateFunction(ident string) LintMessage {
 func unexpectedExprType(field, ctx string) LintMessage {
 	return LintMessage{
 		Severity: Error,
-		Message:  fmt.Sprintf("unexpected expression type in %s", ctx),
+		Message:  fmt.Sprintf("%s: unexpected expression type", ctx),
 		Rule:     "expression.invalid",
 	}
 }
 
-func aliasFoundInWhere(field string) LintMessage {
+func unexpectedAlias(alias string) LintMessage {
 	return LintMessage{
 		Severity: Error,
-		Message:  fmt.Sprintf("alias %s found in predicate", field),
+		Message:  fmt.Sprintf("%s: alias found in predicate", alias),
 		Rule:     "alias.unexpected",
+	}
+}
+
+func undefinedAlias(alias string) LintMessage {
+	return LintMessage{
+		Severity: Error,
+		Message:  fmt.Sprintf("%s: alias not defined", alias),
+		Rule:     "alias.missing",
+	}
+}
+
+func missingAlias() LintMessage {
+	return LintMessage{
+		Severity: Error,
+		Message:  "expression needs to be used with an alias",
+		Rule:     "alias.missing",
+	}
+}
+
+func duplicatedAlias(alias string) LintMessage {
+	return LintMessage{
+		Severity: Error,
+		Message:  fmt.Sprintf("%s: alias already defined", alias),
+		Rule:     "alias.duplicate",
 	}
 }

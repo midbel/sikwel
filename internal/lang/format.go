@@ -202,23 +202,6 @@ func (w *Writer) FormatBody(list List) error {
 	return nil
 }
 
-func (w *Writer) FormatCall(stmt CallStatement) error {
-	kw, _ := stmt.Keyword()
-	w.WriteStatement(kw)
-	w.WriteString("(")
-	for i, a := range stmt.Args {
-		if i > 0 {
-			w.WriteString(",")
-			w.WriteBlank()
-		}
-		if err := w.FormatExpr(a, false); err != nil {
-			return err
-		}
-	}
-	w.WriteString(")")
-	return nil
-}
-
 func (w *Writer) formatCase(stmt CaseStatement) error {
 	w.WriteKeyword("CASE")
 	if stmt.Cdt != nil {

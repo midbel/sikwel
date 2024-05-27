@@ -261,6 +261,17 @@ func (n Name) All() bool {
 	return false
 }
 
+func (n Name) Schema() string {
+	switch len(n.Parts) {
+	case 2:
+		return n.Parts[0]
+	case 3:
+		return n.Parts[1]
+	default:
+		return ""
+	}
+}
+
 func (n Name) Name() string {
 	if len(n.Parts) == 0 {
 		return "*"
@@ -414,10 +425,6 @@ func (s SelectStatement) ColumnsCount() int {
 
 func (s SelectStatement) Keyword() (string, error) {
 	return "SELECT", nil
-}
-
-func (s SelectStatement) GetAlias() []string {
-	return getAliasFromStmt(s.Columns)
 }
 
 func (s SelectStatement) GetNames() []string {
@@ -816,6 +823,20 @@ func getNamesFromStatments(cs []Statement) []string {
 			continue
 		}
 		list = append(list, n)
+	}
+	return list
+}
+
+func getSchemasFromStmt(all []Statement) []string {
+	var list []string
+	for _, c := range all {
+		if c, ok := c.(interface{ Schema() string }); ok {
+			schema := c.Schema()
+			if schema == "" {
+				continue
+			}
+			list = append(list, schema)
+		}
 	}
 	return list
 }
