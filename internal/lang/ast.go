@@ -513,7 +513,7 @@ func (s MergeStatement) Keyword() (string, error) {
 	return "MERGE", nil
 }
 
-type UpsertStatement struct {
+type Upsert struct {
 	Columns []string
 	List    []Statement
 	Where   Statement

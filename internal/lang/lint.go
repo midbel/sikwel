@@ -156,7 +156,55 @@ func (i Linter) LintStatement(stmt Statement) ([]LintMessage, error) {
 }
 
 func (i Linter) lintInsert(stmt InsertStatement) ([]LintMessage, error) {
-	return nil, nil
+	var (
+		list  []LintMessage
+		count = len(stmt.Columns)
+	)
+	if count > 0 {
+		switch stmt := stmt.Values.(type) {
+		case SelectStatement:
+			if stmt.ColumnsCount() != count {
+				list = append(list, columnsCountMismatched())
+			}
+		case List:
+			for i := range stmt.Values {
+				vs, ok := stmt.Values[i].(List)
+				if !ok {
+					return nil, fmt.Errorf("values expected with insert statement")
+				}
+				if len(vs.Values) != count {
+					list = append(list, columnsCountMismatched())
+				}
+			}
+		default:
+			return nil, fmt.Errorf("select/values expected with insert statement")
+		}
+	}
+	switch stmt := stmt.Values.(type) {
+	case SelectStatement:
+		others, err := i.LintStatement(stmt)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, others...)
+	case List:
+		for j := range stmt.Values {
+			vs, ok := stmt.Values[j].(List)
+			if !ok {
+				return nil, fmt.Errorf("values expected with insert statement")
+			}
+			for _, v := range vs.Values {
+				others, err := i.LintStatement(v)
+				if err != nil {
+					return nil, err
+				}
+				list = append(list, others...)
+			}
+		}
+	default:
+		return nil, fmt.Errorf("select/values expected with insert statement")
+	}
+	return list, nil
 }
 
 func (i Linter) lintMerge(stmt MergeStatement) ([]LintMessage, error) {
@@ -174,11 +222,11 @@ func (i Linter) lintDelete(stmt DeleteStatement) ([]LintMessage, error) {
 func (i Linter) lintUnion(stmt UnionStatement) ([]LintMessage, error) {
 	s1, ok := stmt.Left.(SelectStatement)
 	if !ok {
-		return nil, fmt.Errorf("expected select on left side of union")
+		return nil, fmt.Errorf("select expected on left side of union")
 	}
 	s2, ok := stmt.Right.(SelectStatement)
 	if !ok {
-		return nil, fmt.Errorf("expected select on right side of union")
+		return nil, fmt.Errorf("select expected on right side of union")
 	}
 	return i.lintSets(s1, s2)
 }
@@ -186,11 +234,11 @@ func (i Linter) lintUnion(stmt UnionStatement) ([]LintMessage, error) {
 func (i Linter) lintIntersect(stmt IntersectStatement) ([]LintMessage, error) {
 	s1, ok := stmt.Left.(SelectStatement)
 	if !ok {
-		return nil, fmt.Errorf("expected select on left side of intersect")
+		return nil, fmt.Errorf("select expected on left side of union")
 	}
 	s2, ok := stmt.Right.(SelectStatement)
 	if !ok {
-		return nil, fmt.Errorf("expected select on right side of intersect")
+		return nil, fmt.Errorf("select expected on right side of union")
 	}
 	return i.lintSets(s1, s2)
 }
@@ -198,11 +246,11 @@ func (i Linter) lintIntersect(stmt IntersectStatement) ([]LintMessage, error) {
 func (i Linter) lintExcept(stmt ExceptStatement) ([]LintMessage, error) {
 	s1, ok := stmt.Left.(SelectStatement)
 	if !ok {
-		return nil, fmt.Errorf("expected select on left side of expect")
+		return nil, fmt.Errorf("select expected on left side of union")
 	}
 	s2, ok := stmt.Right.(SelectStatement)
 	if !ok {
-		return nil, fmt.Errorf("expected select on right side of expect")
+		return nil, fmt.Errorf("select expected on right side of union")
 	}
 	return i.lintSets(s1, s2)
 }

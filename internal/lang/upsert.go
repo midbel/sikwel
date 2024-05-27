@@ -352,7 +352,7 @@ func (p *Parser) ParseInsert() (Statement, error) {
 	}
 
 	switch {
-	case p.IsKeyword("SELECT"):
+	case p.IsKeyword("SELECT") || p.IsKeyword("WITH"):
 		stmt.Values, err = p.ParseStatement()
 	case p.IsKeyword("VALUES"):
 		p.Next()
@@ -380,7 +380,7 @@ func (p *Parser) ParseInsert() (Statement, error) {
 		}
 		stmt.Values = all
 	default:
-		return nil, p.Unexpected("values")
+		return nil, p.Unexpected("insert")
 	}
 	if err = wrapError("insert", err); err != nil {
 		return nil, err
@@ -399,7 +399,7 @@ func (p *Parser) ParseUpsert() (Statement, error) {
 	p.Next()
 
 	var (
-		stmt UpsertStatement
+		stmt Upsert
 		err  error
 	)
 
@@ -645,7 +645,7 @@ func (w *Writer) FormatUpsert(stmt Statement) error {
 	if stmt == nil {
 		return nil
 	}
-	upsert, ok := stmt.(UpsertStatement)
+	upsert, ok := stmt.(Upsert)
 	if !ok {
 		return w.CanNotUse("insert(upsert)", stmt)
 	}
