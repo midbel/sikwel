@@ -106,6 +106,8 @@ func (i Linter) LintStatement(stmt Statement) ([]LintMessage, error) {
 		list, err = i.lintIntersect(stmt)
 	case ExceptStatement:
 		list, err = i.lintExcept(stmt)
+	case List:
+		list, err = i.lintList(stmt)
 	case Unary:
 		list, err = i.LintStatement(stmt.Right)
 	case Binary:
@@ -155,6 +157,18 @@ func (i Linter) LintStatement(stmt Statement) ([]LintMessage, error) {
 	return list, err
 }
 
+func (i Linter) lintList(stmt List) ([]LintMessage, error) {
+	var list []LintMessage
+	for _, v := range stmt.Values {
+		others, err := i.LintStatement(v)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, others...)
+	}
+	return list, nil
+}
+
 func (i Linter) lintInsert(stmt InsertStatement) ([]LintMessage, error) {
 	var (
 		list  []LintMessage
@@ -180,30 +194,11 @@ func (i Linter) lintInsert(stmt InsertStatement) ([]LintMessage, error) {
 			return nil, fmt.Errorf("select/values expected with insert statement")
 		}
 	}
-	switch stmt := stmt.Values.(type) {
-	case SelectStatement:
-		others, err := i.LintStatement(stmt)
-		if err != nil {
-			return nil, err
-		}
-		list = append(list, others...)
-	case List:
-		for j := range stmt.Values {
-			vs, ok := stmt.Values[j].(List)
-			if !ok {
-				return nil, fmt.Errorf("values expected with insert statement")
-			}
-			for _, v := range vs.Values {
-				others, err := i.LintStatement(v)
-				if err != nil {
-					return nil, err
-				}
-				list = append(list, others...)
-			}
-		}
-	default:
-		return nil, fmt.Errorf("select/values expected with insert statement")
+	others, err := i.LintStatement(stmt.Values)
+	if err != nil {
+		return nil, err
 	}
+	list = append(list, others...)
 	return list, nil
 }
 
