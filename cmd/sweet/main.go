@@ -38,6 +38,7 @@ func runFormat(args []string) error {
 	set.BoolVar(&writer.Compact, "compact", writer.Compact, "produces compact SQL queries")
 	set.BoolVar(&writer.UseAs, "use-as", writer.UseAs, "always use as to define alias")
 	set.BoolVar(&writer.UseQuote, "use-quote", writer.UseQuote, "quote all identifier")
+	set.BoolVar(&writer.PrependComma, "prepend-comma", writer.PrependComma, "write comma before expressions")
 	if err := set.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 
@@ -78,7 +79,7 @@ func runLint(args []string) error {
 		return err
 	}
 	if init {
-		return nil
+		return runInit()
 	}
 	process := func(file string) ([]lang.LintMessage, error) {
 		r, err := os.Open(file)
@@ -98,5 +99,9 @@ func runLint(args []string) error {
 			fmt.Fprintln(os.Stdout)
 		}
 	}
+	return nil
+}
+
+func runInit() error {
 	return nil
 }

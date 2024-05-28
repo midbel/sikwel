@@ -11,12 +11,12 @@ import (
 )
 
 type Writer struct {
-	inner    *bufio.Writer
-	Compact  bool
-	UseQuote bool
-	UseAs    bool
+	inner        *bufio.Writer
+	Compact      bool
+	UseQuote     bool
+	UseAs        bool
+	PrependComma bool
 
-	CommaBefore bool
 	KwUpper     bool
 	FnUpper     bool
 	AllUpper    bool
@@ -711,6 +711,17 @@ func (w *Writer) WriteQuoted(str string) {
 	w.inner.WriteRune('\'')
 	if w.withColor() {
 		w.WriteString(resetCode)
+	}
+}
+
+func (w *Writer) WriteComma() {
+	if w.PrependComma && !w.Compact && w.exprDepth == 0 {
+		w.WriteNL()
+		w.WritePrefix()
+		w.WriteString(",")
+	} else {
+		w.WriteString(",")
+		w.WriteNL()
 	}
 }
 
