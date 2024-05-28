@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -12,11 +13,11 @@ func main() {
 	flag.Parse()
 
 	var err error
-	switch n := flag.Arg(0); n {
+	switch n, args := flag.Arg(0), flag.Args(); n {
 	case "format", "fmt":
-		err = runFormat(flag.Args())
+		err = runFormat(args[1:])
 	case "lint", "check", "verify":
-		err = runLint(flag.Args())
+		err = runLint(args[1:])
 	default:
 		err = fmt.Errorf("unknown command %s", n)
 	}
@@ -27,10 +28,20 @@ func main() {
 
 func runFormat(args []string) error {
 	var (
-		set flag.FlagSet
-		wtr = lang.NewWriter(os.Stdout)
+		set     = flag.NewFlagSet("format", flag.ExitOnError)
+		writer  = lang.NewWriter(os.Stdout)
+		dialect string
+		config  string
 	)
+	set.StringVar(&config, "config", "test.config", "formatter configuration")
+	set.StringVar(&dialect, "dialect", "lang", "SQL dialect")
+	set.BoolVar(&writer.Compact, "compact", writer.Compact, "produces compact SQL queries")
+	set.BoolVar(&writer.UseAs, "use-as", writer.UseAs, "always use as to define alias")
+	set.BoolVar(&writer.UseQuote, "use-quote", writer.UseQuote, "quote all identifier")
 	if err := set.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+
+		}
 		return err
 	}
 	process := func(file string) error {
@@ -39,7 +50,7 @@ func runFormat(args []string) error {
 			return err
 		}
 		defer r.Close()
-		return wtr.Format(r)
+		return writer.Format(r)
 	}
 	for _, f := range set.Args() {
 		if err := process(f); err != nil {
@@ -51,18 +62,30 @@ func runFormat(args []string) error {
 
 func runLint(args []string) error {
 	var (
-		set flag.FlagSet
-		ltr = lang.NewLinter()
+		set     = flag.NewFlagSet("lint", flag.ExitOnError)
+		linter  = lang.NewLinter()
+		dialect string
+		config  string
+		init    bool
 	)
+	set.StringVar(&config, "config", "", "linter configuration")
+	set.StringVar(&dialect, "dialect", "", "SQL dialect")
+	set.BoolVar(&init, "init", false, "create linter configuration file")
 	if err := set.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+
+		}
 		return err
+	}
+	if init {
+		return nil
 	}
 	process := func(file string) ([]lang.LintMessage, error) {
 		r, err := os.Open(file)
 		if err != nil {
 			return nil, err
 		}
-		return ltr.Lint(r)
+		return linter.Lint(r)
 	}
 	for _, f := range set.Args() {
 		list, err := process(f)

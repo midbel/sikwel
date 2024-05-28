@@ -10,32 +10,18 @@ import (
 	"strings"
 )
 
-type Options struct {
-	Compact     bool
-	CommaBefore bool
-	KwUpper     bool
-	FnUpper     bool
-	AllUpper    bool
-	QuoteIdent  bool
-	KeepComment bool
-	Colorize    bool
-	WithAs      bool
-	InlineCte   bool
-	UseNames    bool
-	Indent      string
-}
-
 type Writer struct {
-	inner       *bufio.Writer
-	Compact     bool
+	inner    *bufio.Writer
+	Compact  bool
+	UseQuote bool
+	UseAs    bool
+
 	CommaBefore bool
 	KwUpper     bool
 	FnUpper     bool
 	AllUpper    bool
-	QuoteIdent  bool
 	KeepComment bool
 	Colorize    bool
-	WithAs      bool
 	InlineCte   bool
 	UseNames    bool
 	Indent      string
@@ -602,7 +588,7 @@ func (w *Writer) FormatName(name Name) {
 	if w.AllUpper {
 		str = strings.ToUpper(str)
 	}
-	if w.QuoteIdent {
+	if w.UseQuote {
 		str = fmt.Sprintf("\"%s\"", str)
 	}
 	w.WriteString(str)
@@ -630,7 +616,7 @@ func (w *Writer) FormatAlias(alias Alias) error {
 		return err
 	}
 	w.WriteBlank()
-	if w.WithAs {
+	if w.UseAs {
 		w.WriteKeyword("AS")
 		w.WriteBlank()
 	}
@@ -638,7 +624,7 @@ func (w *Writer) FormatAlias(alias Alias) error {
 	if w.AllUpper {
 		str = strings.ToUpper(str)
 	}
-	if w.QuoteIdent {
+	if w.UseQuote {
 		str = fmt.Sprintf("\"%s\"", str)
 	}
 	w.WriteString(str)

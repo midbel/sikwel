@@ -446,7 +446,7 @@ func columnsCountMismatched() LintMessage {
 	return LintMessage{
 		Severity: Error,
 		Message:  "columns count mismatched",
-		Rule:     "count.invalid",
+		Rule:     ruleCountInvalid,
 	}
 }
 
@@ -454,7 +454,7 @@ func fieldNotInGroup(field string) LintMessage {
 	return LintMessage{
 		Severity: Error,
 		Message:  fmt.Sprintf("%s: field should be used in a 'group by' clause or with an aggregate function", field),
-		Rule:     "expression.group",
+		Rule:     ruleExprGroup,
 	}
 }
 
@@ -462,7 +462,7 @@ func aggregateFunctionExpected(ident string) LintMessage {
 	return LintMessage{
 		Severity: Error,
 		Message:  fmt.Sprintf("%s: aggregate function expected"),
-		Rule:     "aggregate.function",
+		Rule:     ruleExprAggregate,
 	}
 }
 
@@ -470,7 +470,7 @@ func unexpectedExprType(field, ctx string) LintMessage {
 	return LintMessage{
 		Severity: Error,
 		Message:  fmt.Sprintf("%s: unexpected expression type", ctx),
-		Rule:     "expression.invalid",
+		Rule:     ruleExprInvalid,
 	}
 }
 
@@ -478,7 +478,7 @@ func unexpectedAlias(alias string) LintMessage {
 	return LintMessage{
 		Severity: Error,
 		Message:  fmt.Sprintf("%s: alias found in predicate", alias),
-		Rule:     "alias.unexpected",
+		Rule:     ruleAliasUnexpected,
 	}
 }
 
@@ -486,7 +486,7 @@ func undefinedAlias(alias string) LintMessage {
 	return LintMessage{
 		Severity: Error,
 		Message:  fmt.Sprintf("%s: alias not defined", alias),
-		Rule:     "alias.missing",
+		Rule:     ruleAliasUndefined,
 	}
 }
 
@@ -494,7 +494,7 @@ func missingAlias() LintMessage {
 	return LintMessage{
 		Severity: Error,
 		Message:  "expression needs to be used with an alias",
-		Rule:     "alias.missing",
+		Rule:     ruleAliasMissing,
 	}
 }
 
@@ -502,6 +502,17 @@ func duplicatedAlias(alias string) LintMessage {
 	return LintMessage{
 		Severity: Error,
 		Message:  fmt.Sprintf("%s: alias already defined", alias),
-		Rule:     "alias.duplicate",
+		Rule:     ruleAliasDuplicate,
 	}
 }
+
+const (
+	ruleCountInvalid    = "count.invalid"
+	ruleExprGroup       = "expression.group"
+	ruleExprAggregate   = "expression.aggregate"
+	ruleExprInvalid     = "expression.invalid"
+	ruleAliasUnexpected = "alias.unexpected"
+	ruleAliasUndefined  = "alias.undefined"
+	ruleAliasDuplicate  = "alias.duplicate"
+	ruleAliasMissing    = "alias.missing"
+)
