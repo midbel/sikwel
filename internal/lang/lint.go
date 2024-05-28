@@ -140,14 +140,6 @@ func (i Linter) LintStatement(stmt Statement) ([]LintMessage, error) {
 		list, err = i.LintStatement(stmt.Statement)
 	case Exists:
 		list, err = i.LintStatement(stmt.Statement)
-	case List:
-		for j := range stmt.Values {
-			others, err := i.LintStatement(stmt.Values[j])
-			if err != nil {
-				return nil, err
-			}
-			list = append(list, others...)
-		}
 	case All:
 		list, err = i.LintStatement(stmt.Statement)
 	case Any:
