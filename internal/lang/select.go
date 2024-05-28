@@ -657,17 +657,8 @@ func (w *Writer) FormatSelect(stmt SelectStatement) error {
 func (w *Writer) FormatSelectColumns(columns []Statement) error {
 	w.Enter()
 	defer w.Leave()
-	for i, s := range columns {
-		if i > 0 {
-			w.WriteString(",")
-			w.WriteNL()
-		}
-		w.WritePrefix()
-		if err := w.FormatExpr(s, false); err != nil {
-			return err
-		}
-	}
-	return nil
+	w.WritePrefix()
+	return w.formatStmtSlice(columns)
 }
 
 func (w *Writer) FormatWhere(stmt Statement) error {
