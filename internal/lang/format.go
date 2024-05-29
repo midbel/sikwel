@@ -19,6 +19,8 @@ type Writer struct {
 	UseSpace     bool
 	PrependComma bool
 	UseColor     bool
+	UseSubQuery  bool
+	UseCte       bool
 
 	KwUpper     bool
 	FnUpper     bool
