@@ -15,7 +15,10 @@ type Writer struct {
 	Compact      bool
 	UseQuote     bool
 	UseAs        bool
+	UseIndent    int
+	UseSpace     bool
 	PrependComma bool
+	UseColor     bool
 
 	KwUpper     bool
 	FnUpper     bool
