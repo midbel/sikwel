@@ -18,31 +18,12 @@ func main() {
 	}
 	defer r.Close()
 
-	ps, err := config.New(r)
+	cfg, err := config.Load(r)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-	if err := ps.Parse(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-
-	// scan, err := config.Scan(r)
-	// if err != nil {
-	// 	fmt.Fprintln(os.Stderr, err)
-	// 	os.Exit(1)
-	// }
-	// for {
-	// 	tok := scan.Scan()
-	// 	if tok.Type == config.Invalid {
-	// 		fmt.Fprintf(os.Stderr, "invalid token found at %s", tok.Position)
-	// 		fmt.Fprintln(os.Stderr)
-	// 		os.Exit(1)
-	// 	}
-	// 	if tok.Type == config.EOF {
-	// 		break
-	// 	}
-	// 	fmt.Println(tok.Position, tok)
-	// }
+	sub := cfg.Sub("indent")
+	fmt.Println("space", sub.GetBool("space"))
+	fmt.Println("count", sub.GetInt("count"))
 }

@@ -4,8 +4,75 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strconv"
+	"time"
 	"unicode/utf8"
 )
+
+type Config struct {
+	values map[string]any
+}
+
+var defaultConfig *Config
+
+func Configure(r io.Reader) error {
+	cfg, err := Load(r)
+	if err == nil {
+		defaultConfig = cfg
+	}
+	return err
+}
+
+func Make() *Config {
+	return &Config{
+		values: make(map[string]any),
+	}
+}
+
+func Load(r io.Reader) (*Config, error) {
+	p, err := NewParser(r)
+	if err != nil {
+		return nil, err
+	}
+	return p.Parse()
+}
+
+func (c *Config) Sub(key string) *Config {
+	switch other := c.values[key].(type) {
+	case *Config:
+		return other
+	default:
+		return Make()
+	}
+}
+
+func (c Config) Get(key string) any {
+	return c.values[key]
+}
+
+func (c Config) GetString(key string) string {
+	v, _ := c.Get(key).(string)
+	return v
+}
+
+func (c Config) GetBool(key string) bool {
+	v, _ := c.Get(key).(bool)
+	return v
+}
+
+func (c Config) GetInt(key string) int64 {
+	v, _ := c.Get(key).(float64)
+	return int64(v)
+}
+
+func (c Config) GetFloat(key string) float64 {
+	v, _ := c.Get(key).(float64)
+	return v
+}
+
+func (c Config) GetTime(key string) time.Time {
+	return time.Now()
+}
 
 type Parser struct {
 	scan *Scanner
@@ -13,7 +80,7 @@ type Parser struct {
 	peek Token
 }
 
-func New(r io.Reader) (*Parser, error) {
+func NewParser(r io.Reader) (*Parser, error) {
 	sc, err := Scan(r)
 	if err != nil {
 		return nil, err
@@ -26,76 +93,74 @@ func New(r io.Reader) (*Parser, error) {
 	return ps, nil
 }
 
-func (p *Parser) Parse() error {
+func (p *Parser) Parse() (*Config, error) {
+	cfg := Make()
 	for !p.isDone() {
 		p.skip(Comment)
-		if err := p.parse(); err != nil {
-			return nil
+		if err := p.parse(cfg); err != nil {
+			return nil, err
 		}
 	}
-	return nil
+	return cfg, nil
 }
 
-func (p *Parser) parse() error {
+func (p *Parser) parse(cfg *Config) error {
 	if !p.isIdent() {
 		return p.unexpected()
 	}
 	ident := p.curr
 	p.next()
 	if p.is(Equal) {
-		return p.parseEqual(ident)
+		return p.parseEqual(cfg, ident)
 	}
-	return p.parseObject(ident, false)
+	return p.parseObject(cfg, ident, false)
 }
 
-func (p *Parser) parseEqual(ident Token) error {
+func (p *Parser) parseEqual(cfg *Config, ident Token) error {
 	p.next()
+	var err error
 	switch {
 	case p.is(BegArr):
-		return p.parseArray(ident)
+		cfg.values[ident.Literal], err = p.parseArray(ident)
 	case p.is(BegObj):
-		return p.parseObject(ident, true)
+		err = p.parseObject(cfg, ident, true)
 	default:
-		return p.parseLiteral(ident)
+		cfg.values[ident.Literal], err = p.parseLiteral()
 	}
+	return err
 }
 
-func (p *Parser) parseLiteral(ident Token) error {
+func (p *Parser) parseLiteral() (any, error) {
+	var last Token
 	for p.isValue() {
+		last = p.curr
 		p.next()
 	}
 	if !p.isEOL() {
-		return p.unexpected()
+		return nil, p.unexpected()
 	}
 	p.next()
-	return nil
+	switch last.Type {
+	case String, Ident:
+		return last.Literal, nil
+	case Bool:
+		return strconv.ParseBool(last.Literal)
+	case Number:
+		return strconv.ParseFloat(last.Literal, 64)
+	default:
+		return nil, fmt.Errorf("invalid literal type")
+	}
 }
 
-func (p *Parser) parseArray(ident Token) error {
-	p.next()
-	for !p.isDone() && !p.is(EndArr) {
-		if !p.isValue() {
-			return p.unexpected()
-		}
-		p.next()
-		switch {
-		case p.is(Comma):
-			p.next()
-		case p.is(EndArr):
-		default:
-			return p.unexpected()
-		}
-	}
-	if !p.is(EndArr) {
-		return p.unexpected()
-	}
-	p.next()
-	return nil
-}
-
-func (p *Parser) parseObject(ident Token, inline bool) error {
+func (p *Parser) parseObject(cfg *Config, ident Token, inline bool) error {
+	other := Make()
+	cfg.values[ident.Literal] = other
 	if !inline {
 		for p.isIdent() {
+			n := Make()
+			other.values[ident.Literal] = n
+			other = n
+			ident = p.curr
 			p.next()
 		}
 	}
@@ -105,7 +170,7 @@ func (p *Parser) parseObject(ident Token, inline bool) error {
 	p.next()
 	for !p.isDone() && !p.is(EndObj) {
 		p.skip(Comment)
-		if err := p.parse(); err != nil {
+		if err := p.parse(other); err != nil {
 			return err
 		}
 	}
@@ -114,6 +179,34 @@ func (p *Parser) parseObject(ident Token, inline bool) error {
 	}
 	p.next()
 	return nil
+}
+
+func (p *Parser) parseArray(ident Token) (any, error) {
+	p.next()
+	var list []any
+	for !p.isDone() && !p.is(EndArr) {
+		if !p.isValue() {
+			return nil, p.unexpected()
+		}
+		a, err := p.parseLiteral()
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, a)
+		p.next()
+		switch {
+		case p.is(Comma):
+			p.next()
+		case p.is(EndArr):
+		default:
+			return nil, p.unexpected()
+		}
+	}
+	if !p.is(EndArr) {
+		return nil, p.unexpected()
+	}
+	p.next()
+	return list, nil
 }
 
 func (p *Parser) isDone() bool {
