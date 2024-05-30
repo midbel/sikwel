@@ -351,16 +351,7 @@ func (w *Writer) formatCollate(stmt Collate, _ bool) error {
 
 func (w *Writer) formatStmtSlice(values []Statement) error {
 	for i, v := range values {
-		if !w.PrependComma && i > 0 {
-			w.WriteString(",")
-		}
-		if i > 0 {
-			w.WriteNL()
-		}
-		w.WritePrefix()
-		if w.PrependComma && i > 0 {
-			w.WriteString(",")
-		}
+		w.WriteComma(i)
 		if err := w.FormatExpr(v, false); err != nil {
 			return err
 		}
@@ -686,6 +677,19 @@ func (w *Writer) WriteQuoted(str string) {
 	w.inner.WriteRune('\'')
 	if w.withColor() {
 		w.WriteString(resetCode)
+	}
+}
+
+func (w *Writer) WriteComma(i int) {
+	if !w.PrependComma && i > 0 {
+		w.WriteString(",")
+	}
+	if i > 0 {
+		w.WriteNL()
+	}
+	w.WritePrefix()
+	if w.PrependComma && i > 0 {
+		w.WriteString(",")
 	}
 }
 
