@@ -555,7 +555,7 @@ func (w *Writer) FormatName(name Name) {
 	if w.Upperize {
 		str = strings.ToUpper(str)
 	}
-	if w.UseQuote {
+	if w.UseQuote && str != "*" {
 		str = fmt.Sprintf("\"%s\"", str)
 	}
 	w.WriteString(str)
