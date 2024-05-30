@@ -46,6 +46,9 @@ func runFormat(args []string) error {
 	set.BoolVar(&writer.UseCrlf, "use-crlf", writer.UseCrlf, "use crlf for newline")
 	set.BoolVar(&writer.PrependComma, "prepend-comma", writer.PrependComma, "write comma before expressions")
 	set.BoolVar(&writer.KeepComment, "keep-comment", writer.KeepComment, "keep comments")
+	set.BoolVar(&writer.Upperize, "upper", writer.Upperize, "write all keywords and identifiers to uppercase")
+	set.BoolVar(&writer.UpperizeK, "upper-keywords", writer.UpperizeK, "write all keywords to uppercase")
+	set.BoolVar(&writer.UpperizeF, "upper-functions", writer.UpperizeF, "write all function names to uppercase")
 	if err := set.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 

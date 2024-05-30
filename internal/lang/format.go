@@ -24,10 +24,10 @@ type Writer struct {
 	UseCrlf      bool
 	PrependComma bool
 	KeepComment  bool
+	Upperize     bool
+	UpperizeK    bool
+	UpperizeF    bool
 
-	KwUpper  bool
-	FnUpper  bool
-	AllUpper bool
 	UseNames bool
 
 	noColor       bool
@@ -552,7 +552,7 @@ func (w *Writer) formatBinary(stmt Binary, nl bool) error {
 
 func (w *Writer) FormatName(name Name) {
 	str := name.Ident()
-	if w.AllUpper {
+	if w.Upperize {
 		str = strings.ToUpper(str)
 	}
 	if w.UseQuote {
@@ -588,7 +588,7 @@ func (w *Writer) FormatAlias(alias Alias) error {
 		w.WriteBlank()
 	}
 	str := alias.Alias
-	if w.AllUpper {
+	if w.Upperize {
 		str = strings.ToUpper(str)
 	}
 	if w.UseQuote {
@@ -602,7 +602,7 @@ func (w *Writer) WriteCall(call string) {
 	if w.withColor() {
 		w.WriteString(callColor)
 	}
-	if w.FnUpper || w.AllUpper {
+	if w.UpperizeF || w.Upperize {
 		call = strings.ToUpper(call)
 	}
 	w.WriteString(call)
@@ -681,15 +681,19 @@ func (w *Writer) WriteQuoted(str string) {
 }
 
 func (w *Writer) WriteComma(i int) {
-	if !w.PrependComma && i > 0 {
+	if (!w.PrependComma || w.Compact) && i > 0 {
 		w.WriteString(",")
 	}
 	if i > 0 {
 		w.WriteNL()
 	}
 	w.WritePrefix()
-	if w.PrependComma && i > 0 {
-		w.WriteString(",")
+	if w.PrependComma && !w.Compact {
+		if i == 0 {
+			w.WriteBlank()
+		} else {
+			w.WriteString(",")
+		}
 	}
 }
 
@@ -718,7 +722,7 @@ func (w *Writer) WriteKeyword(kw string) {
 		w.WriteString(kw)
 		return
 	}
-	if w.KwUpper || w.AllUpper {
+	if w.UpperizeK || w.Upperize {
 		kw = strings.ToUpper(kw)
 	} else {
 		kw = strings.ToLower(kw)

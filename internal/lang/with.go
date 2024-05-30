@@ -165,7 +165,7 @@ func (w *Writer) FormatCte(stmt CteStatement) error {
 
 	w.WritePrefix()
 	ident := stmt.Ident
-	if w.AllUpper {
+	if w.Upperize {
 		ident = strings.ToUpper(ident)
 	}
 	w.WriteString(ident)
@@ -181,7 +181,7 @@ func (w *Writer) FormatCte(stmt CteStatement) error {
 				w.WriteString(",")
 				w.WriteBlank()
 			}
-			if w.AllUpper {
+			if w.Upperize {
 				s = strings.ToUpper(s)
 			}
 			w.WriteString(s)

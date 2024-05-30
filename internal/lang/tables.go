@@ -434,7 +434,7 @@ func (w *Writer) FormatCreateView(stmt CreateViewStatement) error {
 				w.WriteString(",")
 				w.WriteBlank()
 			}
-			if w.AllUpper {
+			if w.Upperize {
 				s = strings.ToUpper(s)
 			}
 			w.WriteString(s)
