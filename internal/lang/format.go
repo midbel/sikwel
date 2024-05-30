@@ -351,8 +351,15 @@ func (w *Writer) formatCollate(stmt Collate, _ bool) error {
 
 func (w *Writer) formatStmtSlice(values []Statement) error {
 	for i, v := range values {
+		if !w.PrependComma && i > 0 {
+			w.WriteString(",")
+		}
 		if i > 0 {
-			w.WriteComma()
+			w.WriteNL()
+		}
+		w.WritePrefix()
+		if w.PrependComma && i > 0 {
+			w.WriteString(",")
 		}
 		if err := w.FormatExpr(v, false); err != nil {
 			return err
@@ -600,6 +607,19 @@ func (w *Writer) FormatAlias(alias Alias) error {
 	return nil
 }
 
+func (w *Writer) WriteCall(call string) {
+	if w.withColor() {
+		w.WriteString(callColor)
+	}
+	if w.FnUpper || w.AllUpper {
+		call = strings.ToUpper(call)
+	}
+	w.WriteString(call)
+	if w.withColor() {
+		w.WriteString(resetCode)
+	}
+}
+
 func (w *Writer) formatValue(literal string) {
 	if literal == "NULL" || literal == "DEFAULT" || literal == "TRUE" || literal == "FALSE" || literal == "*" {
 		if w.withColor() {
@@ -669,23 +689,6 @@ func (w *Writer) WriteQuoted(str string) {
 	}
 }
 
-func (w *Writer) WriteComma() {
-	if w.currExprDepth > 0 {
-		w.WriteString(",")
-		w.WriteBlank()
-		return
-	}
-	if w.PrependComma && !w.Compact && w.currExprDepth == 0 {
-		w.WriteNL()
-		w.WritePrefix()
-		w.WriteString(",")
-	} else {
-		w.WriteString(",")
-		w.WriteNL()
-		w.WritePrefix()
-	}
-}
-
 func (w *Writer) WriteNL() {
 	if w.Compact {
 		w.WriteBlank()
@@ -704,19 +707,6 @@ func (w *Writer) WriteBlank() {
 func (w *Writer) WriteStatement(kw string) {
 	w.WritePrefix()
 	w.WriteKeyword(kw)
-}
-
-func (w *Writer) WriteCall(call string) {
-	if w.withColor() {
-		w.WriteString(callColor)
-	}
-	if w.FnUpper || w.AllUpper {
-		call = strings.ToUpper(call)
-	}
-	w.WriteString(call)
-	if w.withColor() {
-		w.WriteString(resetCode)
-	}
 }
 
 func (w *Writer) WriteKeyword(kw string) {

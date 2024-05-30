@@ -657,7 +657,6 @@ func (w *Writer) FormatSelect(stmt SelectStatement) error {
 func (w *Writer) FormatSelectColumns(columns []Statement) error {
 	w.Enter()
 	defer w.Leave()
-	w.WritePrefix()
 	return w.formatStmtSlice(columns)
 }
 

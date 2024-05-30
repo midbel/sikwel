@@ -323,6 +323,20 @@ func (i Linter) lintSelect(stmt SelectStatement) ([]LintMessage, error) {
 	return list, nil
 }
 
+func checkFieldsFromSubqueries(stmt SelectStatement) []LintMessage {
+	var list []LintMessage
+	for _, c := range stmt.Columns {
+		s, ok := c.(SelectStatement)
+		if !ok {
+			continue
+		}
+		if len(s.Columns) != 1 {
+			list = append(list, countMultipleFields())
+		}
+	}
+	return nil
+}
+
 func checkColumnUsedInGroup(stmt SelectStatement) []LintMessage {
 	if len(stmt.Groups) == 0 {
 		return nil
@@ -442,6 +456,14 @@ func checkAliasUsedInWhere(stmt SelectStatement) []LintMessage {
 	return list
 }
 
+func countMultipleFields() LintMessage {
+	return LintMessage{
+		Severity: Error,
+		Message:  "subquery should only return one field",
+		Rule:     ruleCountMulti,
+	}
+}
+
 func columnsCountMismatched() LintMessage {
 	return LintMessage{
 		Severity: Error,
@@ -507,6 +529,7 @@ func duplicatedAlias(alias string) LintMessage {
 }
 
 const (
+	ruleCountMulti      = "count.mulitple"
 	ruleCountInvalid    = "count.invalid"
 	ruleExprGroup       = "expression.group"
 	ruleExprAggregate   = "expression.aggregate"

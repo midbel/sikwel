@@ -33,7 +33,7 @@ func runFormat(args []string) error {
 		dialect string
 		config  string
 	)
-	set.StringVar(&config, "config", "test.config", "formatter configuration")
+	set.StringVar(&config, "config", "", "formatter configuration")
 	set.StringVar(&dialect, "dialect", "lang", "SQL dialect")
 	set.BoolVar(&writer.Compact, "compact", writer.Compact, "produces compact SQL queries")
 	set.BoolVar(&writer.UseAs, "use-as", writer.UseAs, "always use as to define alias")
