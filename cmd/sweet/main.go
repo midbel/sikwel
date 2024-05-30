@@ -38,7 +38,14 @@ func runFormat(args []string) error {
 	set.BoolVar(&writer.Compact, "compact", writer.Compact, "produces compact SQL queries")
 	set.BoolVar(&writer.UseAs, "use-as", writer.UseAs, "always use as to define alias")
 	set.BoolVar(&writer.UseQuote, "use-quote", writer.UseQuote, "quote all identifier")
+	set.IntVar(&writer.UseIndent, "use-indent", writer.UseIndent, "number of space to use to indent SQL")
+	set.BoolVar(&writer.UseSpace, "use-space", writer.UseSpace, "use tabs instead of space to indent SQL")
+	set.BoolVar(&writer.UseColor, "use-color", writer.UseColor, "colorify SQL keywords, identifiers")
+	set.BoolVar(&writer.UseSubQuery, "use-subquery", writer.UseSubQuery, "replace cte by subqueries")
+	set.BoolVar(&writer.UseCte, "use-cte", writer.UseCte, "replace subqueries by cte")
+	set.BoolVar(&writer.UseCrlf, "use-crlf", writer.UseCrlf, "use crlf for newline")
 	set.BoolVar(&writer.PrependComma, "prepend-comma", writer.PrependComma, "write comma before expressions")
+	set.BoolVar(&writer.KeepComment, "keep-comment", writer.KeepComment, "keep comments")
 	if err := set.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 

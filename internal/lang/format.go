@@ -11,35 +11,35 @@ import (
 )
 
 type Writer struct {
-	inner        *bufio.Writer
+	inner *bufio.Writer
+
 	Compact      bool
 	UseQuote     bool
 	UseAs        bool
 	UseIndent    int
 	UseSpace     bool
-	PrependComma bool
 	UseColor     bool
 	UseSubQuery  bool
 	UseCte       bool
+	UseCrlf      bool
+	PrependComma bool
+	KeepComment  bool
 
-	KwUpper     bool
-	FnUpper     bool
-	AllUpper    bool
-	KeepComment bool
-	Colorize    bool
-	InlineCte   bool
-	UseNames    bool
-	Indent      string
+	KwUpper  bool
+	FnUpper  bool
+	AllUpper bool
+	UseNames bool
 
-	noColor   bool
-	prefix    int
-	exprDepth int
+	noColor       bool
+	currExprDepth int
+	currDepth     int
 }
 
 func NewWriter(w io.Writer) *Writer {
 	ws := Writer{
-		inner:  bufio.NewWriter(w),
-		Indent: "  ",
+		inner:     bufio.NewWriter(w),
+		UseIndent: 4,
+		UseSpace:  true,
 	}
 	if w != os.Stdout {
 		ws.noColor = true
@@ -47,36 +47,11 @@ func NewWriter(w io.Writer) *Writer {
 	return &ws
 }
 
-func (w *Writer) SetIndent(indent string) {
-	w.Indent = indent
-}
-
-func (w *Writer) SetCompact(compact bool) {
-	w.Compact = compact
-}
-
-func (w *Writer) SetKeepComments(keep bool) {
-	w.KeepComment = keep
-}
-
-func (w *Writer) SetKeywordUppercase(upper bool) {
-	w.KwUpper = upper
-}
-
-func (w *Writer) SetFunctionUppercase(upper bool) {
-	w.FnUpper = upper
-}
-
-func (w *Writer) ColorizeOutput(colorize bool) {
-	w.Colorize = colorize
-}
-
 func (w *Writer) Format(r io.Reader) error {
 	p, err := NewParser(r)
 	if err != nil {
 		return err
 	}
-	p.SetInline(w.InlineCte)
 	for {
 		stmt, err := p.Parse()
 		if err != nil {
@@ -493,16 +468,6 @@ func (w *Writer) formatIn(stmt In, not, nl bool) error {
 	w.WriteBlank()
 
 	if stmt, ok := stmt.Value.(SelectStatement); ok {
-		var (
-			compact = w.Compact
-			prefix  = w.prefix
-		)
-		w.Compact = true
-		w.prefix = 0
-		defer func() {
-			w.Compact = compact
-			w.prefix = prefix
-		}()
 		w.WriteString("(")
 		err := w.FormatSelect(stmt)
 		w.WriteString(")")
@@ -538,14 +503,14 @@ func (w *Writer) formatUnary(stmt Unary, nl bool) error {
 }
 
 func (w *Writer) formatRelation(stmt Binary, nl bool) error {
-	if w.exprDepth > 1 {
+	if w.currExprDepth > 1 {
 		w.WriteString("(")
 		defer w.WriteString(")")
 	}
 	if err := w.FormatExpr(stmt.Left, nl); err != nil {
 		return err
 	}
-	if nl && w.exprDepth == 1 {
+	if nl && w.currExprDepth == 1 {
 		w.WriteNL()
 		w.WritePrefix()
 	} else {
@@ -669,20 +634,6 @@ func (w *Writer) formatValue(literal string) {
 	w.WriteQuoted(literal)
 }
 
-func (w *Writer) Enter() {
-	if w.Compact {
-		return
-	}
-	w.prefix++
-}
-
-func (w *Writer) Leave() {
-	if w.Compact {
-		return
-	}
-	w.prefix--
-}
-
 func (w *Writer) WriteString(str string) {
 	if w.Compact && str == "\n" {
 		str = " "
@@ -719,12 +670,12 @@ func (w *Writer) WriteQuoted(str string) {
 }
 
 func (w *Writer) WriteComma() {
-	if w.exprDepth > 0 {
+	if w.currExprDepth > 0 {
 		w.WriteString(",")
 		w.WriteBlank()
 		return
 	}
-	if w.PrependComma && !w.Compact && w.exprDepth == 0 {
+	if w.PrependComma && !w.Compact && w.currExprDepth == 0 {
 		w.WriteNL()
 		w.WritePrefix()
 		w.WriteString(",")
@@ -739,6 +690,9 @@ func (w *Writer) WriteNL() {
 	if w.Compact {
 		w.WriteBlank()
 		return
+	}
+	if w.UseCrlf {
+		w.inner.WriteRune('\r')
 	}
 	w.inner.WriteRune('\n')
 }
@@ -785,10 +739,16 @@ func (w *Writer) WriteKeyword(kw string) {
 }
 
 func (w *Writer) WritePrefix() {
-	if w.prefix <= 0 {
+	if w.Compact {
 		return
 	}
-	w.WriteString(strings.Repeat(w.Indent, w.prefix))
+	if !w.UseSpace {
+		w.inner.WriteRune('\t')
+	}
+	if w.UseIndent <= 0 {
+		return
+	}
+	w.WriteString(strings.Repeat(" ", w.UseIndent*w.currDepth))
 }
 
 func (w *Writer) Flush() {
@@ -796,15 +756,29 @@ func (w *Writer) Flush() {
 }
 
 func (w *Writer) Reset() {
-	w.prefix = -1
+	w.currDepth = -1
+}
+
+func (w *Writer) Enter() {
+	if w.Compact {
+		return
+	}
+	w.currDepth++
+}
+
+func (w *Writer) Leave() {
+	if w.Compact {
+		return
+	}
+	w.currDepth--
 }
 
 func (w *Writer) enterExpr() {
-	w.exprDepth++
+	w.currExprDepth++
 }
 
 func (w *Writer) leaveExpr() {
-	w.exprDepth--
+	w.currExprDepth--
 }
 
 func (w *Writer) CanNotUse(ctx string, stmt Statement) error {
@@ -815,7 +789,7 @@ func (w *Writer) withColor() bool {
 	if w.noColor {
 		return false
 	}
-	return w.Colorize
+	return w.UseColor
 }
 
 func isAlpha(str string) bool {
