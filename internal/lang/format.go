@@ -362,7 +362,17 @@ func (w *Writer) formatStmtSlice(values []Statement) error {
 func (w *Writer) formatList(stmt List) error {
 	w.WriteString("(")
 	defer w.WriteString(")")
-	return w.formatStmtSlice(stmt.Values)
+	for i, v := range stmt.Values {
+		if i > 0 {
+			w.WriteString(",")
+			w.WriteBlank()
+		}
+		if err := w.FormatExpr(v, false); err != nil {
+			return err
+		}
+	}
+	return nil
+	// return w.formatStmtSlice(stmt.Values)
 }
 
 func (w *Writer) formatCall(call Call) error {
@@ -501,25 +511,32 @@ func (w *Writer) formatUnary(stmt Unary, nl bool) error {
 }
 
 func (w *Writer) formatRelation(stmt Binary, nl bool) error {
-	if w.currExprDepth > 1 {
-		w.WriteString("(")
-		defer w.WriteString(")")
+	var doFmt func(Statement) error
+
+	doFmt = func(stmt Statement) error {
+		b, ok := stmt.(Binary)
+		if ok && b.IsRelation() {
+			w.WriteString("(")
+			defer w.WriteString(")")
+			b1, ok1 := b.Left.(Binary)
+			b2, ok2 := b.Left.(Binary)
+
+			if (!ok1 || (ok1 && !b1.IsRelation())) && (!ok2 || (ok2 && !b2.IsRelation())) {
+				w.Enter()
+				// defer w.Leave()
+			}
+		}
+		return w.FormatExpr(stmt, false)
 	}
-	if err := w.FormatExpr(stmt.Left, nl); err != nil {
+
+	if err := doFmt(stmt.Left); err != nil {
 		return err
 	}
-	if nl && w.currExprDepth == 1 {
-		w.WriteNL()
-		w.WritePrefix()
-	} else {
-		w.WriteBlank()
-	}
+	w.WriteNL()
+	w.WritePrefix()
 	w.WriteKeyword(stmt.Op)
 	w.WriteBlank()
-	if err := w.FormatExpr(stmt.Right, nl); err != nil {
-		return err
-	}
-	return nil
+	return doFmt(stmt.Right)
 }
 
 func (w *Writer) formatAll(stmt All, _ bool) error {

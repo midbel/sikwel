@@ -667,8 +667,12 @@ func (w *Writer) FormatWhere(stmt Statement) error {
 	w.WriteStatement("WHERE")
 	w.WriteBlank()
 
+	currDepth := w.currDepth
 	w.Enter()
-	defer w.Leave()
+	defer func() {
+		w.Leave()
+		w.currDepth = currDepth
+	}()
 
 	return w.FormatExpr(stmt, true)
 }
