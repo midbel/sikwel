@@ -1,7 +1,6 @@
 package lang
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -26,66 +25,7 @@ func (p *Parser) parseWith() (Statement, error) {
 		}
 	}
 	stmt.Statement, err = p.ParseStatement()
-	if p.inlineCte {
-		return p.inlineWith(stmt)
-	}
 	return stmt, wrapError("with", err)
-}
-
-func (p *Parser) inlineWith(with WithStatement) (Statement, error) {
-	list := make(map[string]Statement)
-	for _, c := range with.Queries {
-		q, ok := c.(CteStatement)
-		if !ok {
-			return nil, fmt.Errorf("unexpected cte type")
-		}
-		list[q.Ident] = q.Statement
-	}
-	var replace func(Statement, bool) Statement
-
-	replace = func(stmt Statement, withAlias bool) Statement {
-		switch s := stmt.(type) {
-		case Name:
-			if len(s.Parts) != 1 {
-				break
-			}
-			n := s.Parts[0]
-			if q, ok := list[n]; ok {
-				if withAlias {
-					q = Alias{
-						Statement: q,
-						Alias:     n,
-					}
-				}
-				return q
-			}
-			return stmt
-		case Join:
-			return replace(s.Table, withAlias)
-		case Alias:
-		default:
-		}
-		return stmt
-	}
-	switch stmt := with.Statement.(type) {
-	case SelectStatement:
-		for i := range stmt.Columns {
-			stmt.Columns[i] = replace(stmt.Columns[i], false)
-		}
-		for i := range stmt.Tables {
-			stmt.Tables[i] = replace(stmt.Tables[i], true)
-		}
-		stmt.Where = replace(stmt.Where, false)
-		return stmt, nil
-	case UpdateStatement:
-		return stmt, nil
-	case InsertStatement:
-		return stmt, nil
-	case DeleteStatement:
-		return stmt, nil
-	default:
-		return nil, fmt.Errorf("unsupported query type")
-	}
 }
 
 func (p *Parser) parseSubquery() (Statement, error) {
