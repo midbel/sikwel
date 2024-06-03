@@ -414,7 +414,9 @@ func (s WithStatement) Keyword() (string, error) {
 }
 
 type ValuesStatement struct {
-	List []Statement
+	List   []Statement
+	Orders []Statement
+	Limit  Statement
 }
 
 func (s ValuesStatement) Keyword() (string, error) {
