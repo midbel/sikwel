@@ -693,7 +693,6 @@ func (w *Writer) formatFromJoin(join Join) error {
 		w.WriteString(")")
 	default:
 		return w.CanNotUse("from", s)
-		err = fmt.Errorf("from: unsupported statement (%T)", s)
 	}
 	if err != nil {
 		return err

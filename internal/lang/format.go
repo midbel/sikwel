@@ -391,8 +391,14 @@ func (w *Writer) formatCall(call Call) error {
 		w.WriteKeyword("DISTINCT")
 		w.WriteBlank()
 	}
-	if err := w.formatStmtSlice(call.Args); err != nil {
-		return err
+	for i := range call.Args {
+		if i > 0 {
+			w.WriteString(",")
+			w.WriteBlank()
+		}
+		if err := w.FormatExpr(call.Args[i], false); err != nil {
+			return err
+		}
 	}
 	w.WriteString(")")
 	if call.Filter != nil {
