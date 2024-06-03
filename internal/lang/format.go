@@ -769,7 +769,8 @@ func (w *Writer) WritePrefix() {
 	if w.UseIndent <= 0 {
 		return
 	}
-	w.WriteString(strings.Repeat(" ", w.UseIndent*w.currDepth))
+
+	w.WriteString(strings.Repeat(" ", w.UseIndent*w.getCurrDepth()))
 }
 
 func (w *Writer) Flush() {
@@ -794,8 +795,11 @@ func (w *Writer) Leave() {
 	w.currDepth--
 }
 
-func (w *Writer) isRootExpr() bool {
-	return w.currExprDepth <= 1
+func (w *Writer) getCurrDepth() int {
+	if w.currDepth < 0 {
+		return 0
+	}
+	return w.currDepth
 }
 
 func (w *Writer) enterExpr() {

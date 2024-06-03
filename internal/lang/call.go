@@ -37,18 +37,28 @@ func (p *Parser) ParseCall() (Statement, error) {
 }
 
 func (w *Writer) FormatCall(stmt CallStatement) error {
+	w.Enter()
+	defer w.Leave()
+
 	kw, _ := stmt.Keyword()
 	w.WriteStatement(kw)
 	w.WriteString("(")
+	defer w.WriteString(")")
+
+	w.Enter()
+	defer w.Leave()
+
+	w.WriteNL()
 	for i, a := range stmt.Args {
 		if i > 0 {
 			w.WriteString(",")
 			w.WriteNL()
 		}
+		w.WritePrefix()
 		if err := w.FormatExpr(a, false); err != nil {
 			return err
 		}
 	}
-	w.WriteString(")")
+	w.WriteNL()
 	return nil
 }
