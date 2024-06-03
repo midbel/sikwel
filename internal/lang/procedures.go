@@ -140,7 +140,7 @@ func (w *Writer) FormatCreateProcedure(stmt CreateProcedureStatement) error {
 		}
 		w.WriteString(p.Name)
 		w.WriteBlank()
-		if err := w.formatType(p.Type); err != nil {
+		if err := w.FormatType(p.Type); err != nil {
 			return err
 		}
 		if p.Default != nil {

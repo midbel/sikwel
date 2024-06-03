@@ -216,7 +216,7 @@ func (w *Writer) FormatDeclare(stmt Declare) error {
 	w.WriteBlank()
 	w.WriteString(stmt.Ident)
 	w.WriteBlank()
-	if err := w.formatType(stmt.Type); err != nil {
+	if err := w.FormatType(stmt.Type); err != nil {
 		return err
 	}
 	if stmt.Value != nil {

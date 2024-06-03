@@ -542,7 +542,7 @@ func (w *Writer) FormatColumnDef(ctf ConstraintFormatter, stmt Statement, size i
 		w.WriteString(strings.Repeat(" ", size-z))
 	}
 	w.WriteBlank()
-	if err := w.formatType(def.Type); err != nil {
+	if err := w.FormatType(def.Type); err != nil {
 		return err
 	}
 

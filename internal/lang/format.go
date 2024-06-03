@@ -168,46 +168,6 @@ func (w *Writer) FormatBody(list List) error {
 	return nil
 }
 
-func (w *Writer) formatCase(stmt CaseStatement) error {
-	w.WriteKeyword("CASE")
-	if stmt.Cdt != nil {
-		w.WriteBlank()
-		w.FormatExpr(stmt.Cdt, false)
-	}
-	w.WriteBlank()
-	w.Enter()
-	for _, s := range stmt.Body {
-		w.WriteNL()
-		if err := w.FormatExpr(s, false); err != nil {
-			return err
-		}
-	}
-	if stmt.Else != nil {
-		w.WriteNL()
-		w.WriteStatement("ELSE")
-		w.WriteBlank()
-		if err := w.FormatExpr(stmt.Else, false); err != nil {
-			return err
-		}
-	}
-	w.Leave()
-	w.WriteNL()
-	w.WriteStatement("END")
-	return nil
-}
-
-func (w *Writer) formatWhen(stmt WhenStatement) error {
-	w.WriteStatement("WHEN")
-	w.WriteBlank()
-	if err := w.FormatExpr(stmt.Cdt, false); err != nil {
-		return err
-	}
-	w.WriteBlank()
-	w.WriteKeyword("THEN")
-	w.WriteBlank()
-	return w.FormatExpr(stmt.Body, false)
-}
-
 func (w *Writer) FormatExpr(stmt Statement, nl bool) error {
 	w.enterExpr()
 	defer w.leaveExpr()
@@ -218,7 +178,7 @@ func (w *Writer) FormatExpr(stmt Statement, nl bool) error {
 	case Value:
 		w.formatValue(stmt.Literal)
 	case Row:
-		err = w.formatRow(stmt, nl)
+		err = w.FormatRow(stmt, nl)
 	case Alias:
 		err = w.FormatAlias(stmt)
 	case Call:
@@ -242,43 +202,19 @@ func (w *Writer) FormatExpr(stmt Statement, nl bool) error {
 	case Collate:
 		err = w.formatCollate(stmt, nl)
 	case Cast:
-		err = w.formatCast(stmt, nl)
+		err = w.FormatCast(stmt, nl)
 	case Exists:
 		err = w.formatExists(stmt, nl)
 	case Not:
 		err = w.formatNot(stmt, nl)
 	case CaseStatement:
-		err = w.formatCase(stmt)
+		err = w.FormatCase(stmt)
 	case WhenStatement:
-		err = w.formatWhen(stmt)
+		err = w.FormatWhen(stmt)
 	default:
 		err = w.FormatStatement(stmt)
 	}
 	return err
-}
-
-func (w *Writer) formatRow(stmt Row, nl bool) error {
-	kw, _ := stmt.Keyword()
-	w.WriteKeyword(kw)
-	w.WriteString("(")
-	for i, v := range stmt.Values {
-		if i > 0 {
-			w.WriteString(",")
-			w.WriteBlank()
-		}
-		if nl {
-			w.WriteNL()
-			w.WritePrefix()
-		}
-		if err := w.FormatExpr(v, false); err != nil {
-			return err
-		}
-	}
-	if nl {
-		w.WriteNL()
-	}
-	w.WriteString(")")
-	return nil
 }
 
 func (w *Writer) formatNot(stmt Not, _ bool) error {
@@ -306,38 +242,6 @@ func (w *Writer) formatExists(stmt Exists, _ bool) error {
 	w.WriteString("(")
 	if err := w.FormatExpr(stmt.Statement, false); err != nil {
 		return err
-	}
-	w.WriteString(")")
-	return nil
-}
-
-func (w *Writer) formatCast(stmt Cast, _ bool) error {
-	w.WriteKeyword("CAST")
-	w.WriteString("(")
-	if err := w.FormatExpr(stmt.Ident, false); err != nil {
-		return err
-	}
-	w.WriteBlank()
-	w.WriteKeyword("AS")
-	w.WriteBlank()
-	if err := w.formatType(stmt.Type); err != nil {
-		return err
-	}
-	w.WriteString(")")
-	return nil
-}
-
-func (w *Writer) formatType(dt Type) error {
-	w.WriteString(dt.Name)
-	if dt.Length <= 0 {
-		return nil
-	}
-	w.WriteString("(")
-	w.WriteString(strconv.Itoa(dt.Length))
-	if dt.Precision > 0 {
-		w.WriteString(",")
-		w.WriteBlank()
-		w.WriteString(strconv.Itoa(dt.Precision))
 	}
 	w.WriteString(")")
 	return nil

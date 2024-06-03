@@ -194,3 +194,99 @@ func (p *Parser) ParseRow() (Statement, error) {
 	p.Next()
 	return row, nil
 }
+
+func (w *Writer) FormatRow(stmt Row, nl bool) error {
+	kw, _ := stmt.Keyword()
+	w.WriteKeyword(kw)
+	w.WriteString("(")
+	for i, v := range stmt.Values {
+		if i > 0 {
+			w.WriteString(",")
+			w.WriteBlank()
+		}
+		if nl {
+			w.WriteNL()
+			w.WritePrefix()
+		}
+		if err := w.FormatExpr(v, false); err != nil {
+			return err
+		}
+	}
+	if nl {
+		w.WriteNL()
+	}
+	w.WriteString(")")
+	return nil
+}
+
+func (w *Writer) FormatCase(stmt CaseStatement) error {
+	w.WriteKeyword("CASE")
+	if stmt.Cdt != nil {
+		w.WriteBlank()
+		w.FormatExpr(stmt.Cdt, false)
+	}
+	w.WriteBlank()
+	w.Enter()
+	for _, s := range stmt.Body {
+		w.WriteNL()
+		if err := w.FormatExpr(s, false); err != nil {
+			return err
+		}
+	}
+	if stmt.Else != nil {
+		w.WriteNL()
+		w.WriteStatement("ELSE")
+		w.WriteBlank()
+		if err := w.FormatExpr(stmt.Else, false); err != nil {
+			return err
+		}
+	}
+	w.Leave()
+	w.WriteNL()
+	w.WriteStatement("END")
+	return nil
+}
+
+func (w *Writer) FormatWhen(stmt WhenStatement) error {
+	w.WriteStatement("WHEN")
+	w.WriteBlank()
+	if err := w.FormatExpr(stmt.Cdt, false); err != nil {
+		return err
+	}
+	w.WriteBlank()
+	w.WriteKeyword("THEN")
+	w.WriteBlank()
+	return w.FormatExpr(stmt.Body, false)
+}
+
+func (w *Writer) FormatCast(stmt Cast, _ bool) error {
+	w.WriteKeyword("CAST")
+	w.WriteString("(")
+	if err := w.FormatExpr(stmt.Ident, false); err != nil {
+		return err
+	}
+	w.WriteBlank()
+	w.WriteKeyword("AS")
+	w.WriteBlank()
+	if err := w.FormatType(stmt.Type); err != nil {
+		return err
+	}
+	w.WriteString(")")
+	return nil
+}
+
+func (w *Writer) FormatType(dt Type) error {
+	w.WriteString(dt.Name)
+	if dt.Length <= 0 {
+		return nil
+	}
+	w.WriteString("(")
+	w.WriteString(strconv.Itoa(dt.Length))
+	if dt.Precision > 0 {
+		w.WriteString(",")
+		w.WriteBlank()
+		w.WriteString(strconv.Itoa(dt.Precision))
+	}
+	w.WriteString(")")
+	return nil
+}

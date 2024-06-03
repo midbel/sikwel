@@ -743,7 +743,7 @@ func (w *Writer) FormatFrom(list []Statement) error {
 				w.WriteNL()
 			}
 		case Row:
-			err = w.formatRow(s, true)
+			err = w.FormatRow(s, true)
 		default:
 			err = w.CanNotUse("from", s)
 		}
