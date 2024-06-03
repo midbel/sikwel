@@ -1,7 +1,9 @@
 package lang
 
 import (
+	"fmt"
 	"strconv"
+	"strings"
 )
 
 func (p *Parser) ParseLiteral() (Statement, error) {
@@ -193,6 +195,54 @@ func (p *Parser) ParseRow() (Statement, error) {
 	}
 	p.Next()
 	return row, nil
+}
+
+func (w *Writer) FormatName(name Name) {
+	str := name.Ident()
+	if w.Upperize {
+		str = strings.ToUpper(str)
+	}
+	if w.UseQuote && str != "*" {
+		str = fmt.Sprintf("\"%s\"", str)
+	}
+	w.WriteString(str)
+}
+
+func (w *Writer) FormatAlias(alias Alias) error {
+	var err error
+	if stmt, ok := alias.Statement.(SelectStatement); ok {
+		w.WriteString("(")
+		if !w.Compact {
+			w.WriteNL()
+		}
+		err = w.FormatSelect(stmt)
+		if err == nil {
+			if !w.Compact {
+				w.WriteNL()
+				w.WritePrefix()
+			}
+			w.WriteString(")")
+		}
+	} else {
+		err = w.FormatExpr(alias.Statement, false)
+	}
+	if err != nil {
+		return err
+	}
+	w.WriteBlank()
+	if w.UseAs {
+		w.WriteKeyword("AS")
+		w.WriteBlank()
+	}
+	str := alias.Alias
+	if w.Upperize {
+		str = strings.ToUpper(str)
+	}
+	if w.UseQuote {
+		str = fmt.Sprintf("\"%s\"", str)
+	}
+	w.WriteString(str)
+	return nil
 }
 
 func (w *Writer) FormatRow(stmt Row, nl bool) error {

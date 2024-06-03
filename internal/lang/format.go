@@ -281,7 +281,6 @@ func (w *Writer) formatList(stmt List) error {
 		}
 	}
 	return nil
-	// return w.formatStmtSlice(stmt.Values)
 }
 
 func (w *Writer) formatCall(call Call) error {
@@ -474,54 +473,6 @@ func (w *Writer) formatBinary(stmt Binary, nl bool) error {
 	if err := w.FormatExpr(stmt.Right, nl); err != nil {
 		return err
 	}
-	return nil
-}
-
-func (w *Writer) FormatName(name Name) {
-	str := name.Ident()
-	if w.Upperize {
-		str = strings.ToUpper(str)
-	}
-	if w.UseQuote && str != "*" {
-		str = fmt.Sprintf("\"%s\"", str)
-	}
-	w.WriteString(str)
-}
-
-func (w *Writer) FormatAlias(alias Alias) error {
-	var err error
-	if stmt, ok := alias.Statement.(SelectStatement); ok {
-		w.WriteString("(")
-		if !w.Compact {
-			w.WriteNL()
-		}
-		err = w.FormatSelect(stmt)
-		if err == nil {
-			if !w.Compact {
-				w.WriteNL()
-				w.WritePrefix()
-			}
-			w.WriteString(")")
-		}
-	} else {
-		err = w.FormatExpr(alias.Statement, false)
-	}
-	if err != nil {
-		return err
-	}
-	w.WriteBlank()
-	if w.UseAs {
-		w.WriteKeyword("AS")
-		w.WriteBlank()
-	}
-	str := alias.Alias
-	if w.Upperize {
-		str = strings.ToUpper(str)
-	}
-	if w.UseQuote {
-		str = fmt.Sprintf("\"%s\"", str)
-	}
-	w.WriteString(str)
 	return nil
 }
 
