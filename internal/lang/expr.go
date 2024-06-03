@@ -444,13 +444,13 @@ func (p *Parser) parseUnary() (Statement, error) {
 
 func (p *Parser) parseGroupExpr() (Statement, error) {
 	p.Next()
-	if p.IsKeyword("SELECT") {
+	if p.IsKeyword("SELECT") || p.IsKeyword("VALUES") {
 		stmt, err := p.ParseStatement()
 		if err != nil {
 			return nil, err
 		}
 		if !p.Is(Rparen) {
-			return nil, p.Unexpected("group")
+			return nil, p.Unexpected("group(select)")
 		}
 		p.Next()
 		return p.ParseAlias(stmt)
