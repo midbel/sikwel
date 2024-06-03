@@ -297,6 +297,11 @@ func (w *Writer) formatNot(stmt Not, _ bool) error {
 }
 
 func (w *Writer) formatExists(stmt Exists, _ bool) error {
+	compact := w.Compact
+	defer func() {
+		w.Compact = compact
+	}()
+	w.Compact = true
 	w.WriteKeyword("EXISTS")
 	w.WriteString("(")
 	if err := w.FormatExpr(stmt.Statement, false); err != nil {
@@ -511,32 +516,27 @@ func (w *Writer) formatUnary(stmt Unary, nl bool) error {
 }
 
 func (w *Writer) formatRelation(stmt Binary, nl bool) error {
-	var doFmt func(Statement) error
+	var (
+		bothSimple   = hasSimple(stmt.Left) && hasSimple(stmt.Right)
+		bothRelation = isRelation(stmt.Left) && isRelation(stmt.Right)
+	)
 
-	doFmt = func(stmt Statement) error {
-		b, ok := stmt.(Binary)
-		if ok && b.IsRelation() {
-			w.WriteString("(")
-			defer w.WriteString(")")
-			b1, ok1 := b.Left.(Binary)
-			b2, ok2 := b.Left.(Binary)
-
-			if (!ok1 || (ok1 && !b1.IsRelation())) && (!ok2 || (ok2 && !b2.IsRelation())) {
-				w.Enter()
-				// defer w.Leave()
-			}
-		}
-		return w.FormatExpr(stmt, false)
+	if bothSimple || bothRelation {
+		w.WriteString("(")
+		defer w.WriteString(")")
 	}
-
-	if err := doFmt(stmt.Left); err != nil {
+	if bothSimple {
+		w.Enter()
+		defer w.Leave()
+	}
+	if err := w.FormatExpr(stmt.Left, false); err != nil {
 		return err
 	}
 	w.WriteNL()
 	w.WritePrefix()
 	w.WriteKeyword(stmt.Op)
 	w.WriteBlank()
-	return doFmt(stmt.Right)
+	return w.FormatExpr(stmt.Right, false)
 }
 
 func (w *Writer) formatAll(stmt All, _ bool) error {
@@ -786,6 +786,10 @@ func (w *Writer) Leave() {
 		return
 	}
 	w.currDepth--
+}
+
+func (w *Writer) isRootExpr() bool {
+	return w.currExprDepth <= 1
 }
 
 func (w *Writer) enterExpr() {

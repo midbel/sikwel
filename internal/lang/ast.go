@@ -16,6 +16,20 @@ type Expression interface {
 	// fmt.Stringer
 }
 
+type relation interface {
+	IsRelation() bool
+}
+
+func hasSimple(st Statement) bool {
+	r, ok := st.(relation)
+	return !ok || !r.IsRelation()
+}
+
+func isRelation(st Statement) bool {
+	r, ok := st.(relation)
+	return ok && r.IsRelation()
+}
+
 type Commented struct {
 	Before []string
 	After  string
