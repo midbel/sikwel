@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/midbel/sweet/internal/lang"
@@ -18,6 +19,8 @@ func main() {
 		err = runFormat(args[1:])
 	case "lint", "check", "verify":
 		err = runLint(args[1:])
+	case "debug", "ast":
+		err = runDebug(args[1:])
 	default:
 		err = fmt.Errorf("unknown command %s", n)
 	}
@@ -113,5 +116,40 @@ func runLint(args []string) error {
 }
 
 func runInit() error {
+	return nil
+}
+
+func runDebug(files []string) error {
+	for _, f := range files {
+		if err := printTree(f); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func printTree(file string) error {
+	r, err := os.Open(file)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	p, err := lang.NewParser(r)
+	if err != nil {
+		return err
+	}
+	for {
+		stmt, err := p.Parse()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return err
+		}
+		if err := lang.Print(stmt); err != nil {
+			return err
+		}
+	}
 	return nil
 }

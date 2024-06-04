@@ -22,6 +22,19 @@ func (p *Parser) ParseValues() (Statement, error) {
 		stmt ValuesStatement
 		err  error
 	)
+	if !p.Is(Lparen) {
+		for !p.Done() && !p.Is(EOL) {
+			v, err := p.StartExpression()
+			if err != nil {
+				return nil, err
+			}
+			if err := p.EnsureEnd("values", Comma, EOL); err != nil {
+				return nil, err
+			}
+			stmt.List = append(stmt.List, v)
+		}
+		return stmt, nil
+	}
 	for !p.Done() && !p.Is(EOL) {
 		if !p.Is(Lparen) {
 			return nil, p.Unexpected("values")

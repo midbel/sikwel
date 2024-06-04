@@ -6,6 +6,10 @@ import (
 	"strings"
 )
 
+func Print(stmt Statement) error {
+	return nil
+}
+
 type Statement interface {
 	// Keyword() (string, error)
 	// fmt.Stringer

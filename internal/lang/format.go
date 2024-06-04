@@ -118,6 +118,8 @@ func (w *Writer) FormatStatement(stmt Statement) error {
 		err = w.FormatDelete(stmt)
 	case TruncateStatement:
 		err = w.FormatTruncate(stmt)
+	case MergeStatement:
+		err = w.FormatMerge(stmt)
 	case WithStatement:
 		err = w.FormatWith(stmt)
 	case CteStatement:
