@@ -483,7 +483,7 @@ func fieldNotInGroup(field string) LintMessage {
 func aggregateFunctionExpected(ident string) LintMessage {
 	return LintMessage{
 		Severity: Error,
-		Message:  fmt.Sprintf("%s: aggregate function expected"),
+		Message:  fmt.Sprintf("%s: aggregate function expected", ident),
 		Rule:     ruleExprAggregate,
 	}
 }
