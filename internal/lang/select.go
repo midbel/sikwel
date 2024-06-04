@@ -23,14 +23,37 @@ func (p *Parser) ParseValues() (Statement, error) {
 		err  error
 	)
 	for !p.Done() && !p.Is(EOL) {
-		expr, err := p.StartExpression()
-		if err != nil {
-			return nil, err
+		if !p.Is(Lparen) {
+			return nil, p.Unexpected("values")
 		}
-		if err := p.EnsureEnd("values", Comma, EOL); err != nil {
-			return nil, err
+		p.Next()
+		var list List
+		for !p.Done() && !p.Is(Rparen) {
+			v, err := p.StartExpression()
+			if err != nil {
+				return nil, err
+			}
+			list.Values = append(list.Values, v)
+			switch {
+			case p.Is(Comma):
+				p.Next()
+				if p.Is(Rparen) {
+					return nil, p.Unexpected("values")
+				}
+			case p.Is(Rparen):
+			default:
+				return nil, p.Unexpected("values")
+			}
 		}
-		stmt.List = append(stmt.List, expr)
+		if !p.Is(Rparen) {
+			return nil, p.Unexpected("values")
+		}
+		p.Next()
+		stmt.List = append(stmt.List, list)
+		if !p.Is(Comma) {
+			break
+		}
+		p.Next()
 	}
 	return stmt, err
 }
@@ -598,7 +621,16 @@ func (w *Writer) FormatValues(stmt ValuesStatement) error {
 	kw, _ := stmt.Keyword()
 	w.WriteStatement(kw)
 	w.WriteBlank()
-	return w.formatStmtSlice(stmt.List)
+	for i := range stmt.List {
+		if i > 0 {
+			w.WriteString(",")
+			w.WriteBlank()
+		}
+		if err := w.FormatExpr(stmt.List[i], false); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (w *Writer) FormatSelect(stmt SelectStatement) error {
@@ -721,8 +753,16 @@ func (w *Writer) FormatFrom(list []Statement) error {
 	w.Enter()
 	defer w.Leave()
 
+	withComma := func(stmt Statement) bool {
+		_, ok := stmt.(Join)
+		return !ok
+	}
+
 	var err error
 	for i, s := range list {
+		if withComma(s) && i > 0 {
+			w.WriteString(",")
+		}
 		if i > 0 {
 			w.WriteNL()
 			w.WritePrefix()
@@ -734,14 +774,6 @@ func (w *Writer) FormatFrom(list []Statement) error {
 			err = w.FormatAlias(s)
 		case Join:
 			err = w.formatFromJoin(s)
-		case SelectStatement:
-			w.WriteString("(")
-			err = w.FormatStatement(s)
-			if err == nil {
-				w.WriteNL()
-				w.WriteString(")")
-				w.WriteNL()
-			}
 		case Row:
 			err = w.FormatRow(s, true)
 		default:

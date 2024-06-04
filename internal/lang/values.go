@@ -210,12 +210,13 @@ func (w *Writer) FormatName(name Name) {
 
 func (w *Writer) FormatAlias(alias Alias) error {
 	var err error
-	if stmt, ok := alias.Statement.(SelectStatement); ok {
+	if wrapWithParens(alias.Statement) {
 		w.WriteString("(")
 		if !w.Compact {
 			w.WriteNL()
 		}
-		err = w.FormatSelect(stmt)
+		w.WritePrefix()
+		err = w.FormatStatement(alias.Statement)
 		if err == nil {
 			if !w.Compact {
 				w.WriteNL()

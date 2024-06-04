@@ -30,6 +30,16 @@ func isRelation(st Statement) bool {
 	return ok && r.IsRelation()
 }
 
+func wrapWithParens(st Statement) bool {
+	switch st.(type) {
+	case SelectStatement:
+	case ValuesStatement:
+	default:
+		return false
+	}
+	return true
+}
+
 type Commented struct {
 	Before []string
 	After  string
