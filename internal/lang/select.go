@@ -789,6 +789,13 @@ func (w *Writer) FormatFrom(list []Statement) error {
 			err = w.formatFromJoin(s)
 		case Row:
 			err = w.FormatRow(s, true)
+		case SelectStatement:
+			w.WriteString("(")
+			w.WriteNL()
+			err = w.FormatStatement(s)
+			if err == nil {
+				w.WriteString(")")
+			}
 		default:
 			err = w.CanNotUse("from", s)
 		}

@@ -88,6 +88,13 @@ func (w *Writer) startStatement(stmt Statement) error {
 }
 
 func (w *Writer) FormatStatement(stmt Statement) error {
+	if w.UseSubQuery {
+		with, ok := stmt.(WithStatement)
+		if ok {
+			stmt := substituteQueries(with.Queries, with.Statement)
+			return w.FormatStatement(stmt)
+		}
+	}
 	var err error
 	switch stmt := stmt.(type) {
 	case GrantStatement:

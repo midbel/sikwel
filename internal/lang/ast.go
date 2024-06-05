@@ -903,3 +903,50 @@ func getNamesFromStmt(all []Statement) []string {
 	return list
 
 }
+
+func substituteQueries(list []Statement, stmt Statement) Statement {
+	queries := make(map[string]Statement)
+	for _, q := range list {
+		c, ok := q.(CteStatement)
+		if !ok {
+			continue
+		}
+		queries[c.Ident] = c.Statement
+	}
+	switch q := stmt.(type) {
+	case SelectStatement:
+		stmt = substituteSelect(q, queries)
+	default:
+	}
+	return stmt
+}
+
+func substituteSelect(stmt SelectStatement, queries map[string]Statement) Statement {
+	for i, t := range stmt.Tables {
+		ident := getIdentFromStatement(t)
+		if ident == "" {
+			continue
+		}
+		q, ok := queries[ident]
+		if ok {
+			stmt.Tables[i] = Alias{
+				Statement: q,
+				Alias:     ident,
+			}
+		}
+	}
+	return stmt
+}
+
+func getIdentFromStatement(stmt Statement) string {
+	switch s := stmt.(type) {
+	case Name:
+		return s.Ident()
+	case Alias:
+		return getIdentFromStatement(s.Statement)
+	case Join:
+		return getIdentFromStatement(s.Table)
+	default:
+		return ""
+	}
+}
