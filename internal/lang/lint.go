@@ -90,6 +90,8 @@ func (i Linter) LintStatement(stmt Statement) ([]LintMessage, error) {
 		list, err = i.lintWith(stmt)
 	case CteStatement:
 		list, err = i.lintCte(stmt)
+	case ValuesStatement:
+		list, err = i.lintValues(stmt)
 	case SelectStatement:
 		list, err = i.lintSelect(stmt)
 	case InsertStatement:
@@ -296,6 +298,45 @@ func (i Linter) lintWith(stmt WithStatement) ([]LintMessage, error) {
 		return nil, err
 	}
 	list = append(list, others...)
+	return list, nil
+}
+
+func (i Linter) lintValues(stmt ValuesStatement) ([]LintMessage, error) {
+	if len(stmt.List) <= 1 {
+		return nil, nil
+	}
+	var (
+		list  []LintMessage
+		count int
+	)
+	others, err := i.LintStatement(stmt.List[0])
+	if err != nil {
+		return nil, err
+	}
+	list = append(list, others...)
+	switch vs := stmt.List[0].(type) {
+	case List:
+		count = len(vs.Values)
+	default:
+		count++
+	}
+	for _, vs := range stmt.List[1:] {
+		others, err := i.LintStatement(vs)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, others...)
+		switch vs := vs.(type) {
+		case List:
+			if count != len(vs.Values) {
+				list = append(list, columnsCountMismatched())
+			}
+		default:
+			if count != 1 {
+				list = append(list, columnsCountMismatched())
+			}
+		}
+	}
 	return list, nil
 }
 
