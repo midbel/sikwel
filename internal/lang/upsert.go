@@ -453,42 +453,88 @@ func (w *Writer) FormatMerge(stmt MergeStatement) error {
 		}
 		w.WriteNL()
 		w.WritePrefix()
-		w.WriteKeyword("WHEN")
-		w.WriteBlank()
-		switch m.Statement.(type) {
-		case DeleteStatement:
-			w.WriteKeyword("MATCHED")
-		case UpdateStatement:
-			w.WriteKeyword("MATCHED")
-		case InsertStatement:
-			w.WriteKeyword("NOT MATCHED")
-		default:
-			return w.CanNotUse("merge", m.Statement)
+		if err := w.FormatMatch(m); err != nil {
+			return err
 		}
-		if m.Condition != nil {
-			w.WriteBlank()
-			w.WriteKeyword("AND")
-			w.WriteBlank()
-			if err := w.FormatExpr(m.Condition, false); err != nil {
-				return err
+	}
+	return nil
+}
+
+func (w *Writer) FormatMatch(stmt MatchStatement) error {
+	w.WriteKeyword("WHEN")
+	w.WriteBlank()
+	switch stmt.Statement.(type) {
+	case DeleteStatement:
+		w.WriteKeyword("MATCHED")
+	case UpdateStatement:
+		w.WriteKeyword("MATCHED")
+	case InsertStatement:
+		w.WriteKeyword("NOT MATCHED")
+	default:
+		return w.CanNotUse("merge", stmt.Statement)
+	}
+	if stmt.Condition != nil {
+		w.WriteBlank()
+		w.WriteKeyword("AND")
+		w.WriteBlank()
+		if err := w.FormatExpr(stmt.Condition, false); err != nil {
+			return err
+		}
+	}
+	w.WriteBlank()
+	w.WriteKeyword("THEN")
+	w.WriteNL()
+	w.Enter()
+	defer w.Leave()
+
+	w.WritePrefix()
+
+	switch stmt := stmt.Statement.(type) {
+	case DeleteStatement:
+		w.WriteKeyword("DELETE")
+	case UpdateStatement:
+		w.WriteKeyword("UPDATE")
+		w.WriteBlank()
+		w.WriteKeyword("SET")
+		w.WriteBlank()
+
+		compact := w.Compact
+		w.Compact = true
+		defer func() {
+			w.Compact = compact
+		}()
+		if err := w.FormatAssignment(stmt.List); err != nil {
+			return err
+		}
+	case InsertStatement:
+		w.WriteKeyword("INSERT")
+		w.WriteBlank()
+		if len(stmt.Columns) > 0 {
+			w.WriteString("(")
+			for i := range stmt.Columns {
+				if i > 0 {
+					w.WriteString(",")
+					w.WriteBlank()
+				}
+				w.WriteString(stmt.Columns[i])
 			}
+			w.WriteString(")")
+			w.WriteBlank()
 		}
-		w.WriteBlank()
-		w.WriteKeyword("THEN")
-		w.WriteNL()
-		w.Enter()
-		w.WritePrefix()
-		switch m.Statement.(type) {
-		case DeleteStatement:
-			w.WriteKeyword("DELETE")
-		case UpdateStatement:
-			w.WriteKeyword("UPDATE")
-		case InsertStatement:
-			w.WriteKeyword("INSERT")
-		default:
-			return w.CanNotUse("merge", m.Statement)
+		values, ok := stmt.Values.(ValuesStatement)
+		if !ok {
+			return w.CanNotUse("merge", stmt.Values)
 		}
-		w.Leave()
+		compact := w.Compact
+		w.Compact = true
+		defer func() {
+			w.Compact = compact
+		}()
+		if err := w.FormatValues(values); err != nil {
+			return err
+		}
+	default:
+		return w.CanNotUse("merge", stmt)
 	}
 	return nil
 }
