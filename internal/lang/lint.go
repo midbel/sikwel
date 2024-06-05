@@ -307,18 +307,15 @@ func (i Linter) lintValues(stmt ValuesStatement) ([]LintMessage, error) {
 	}
 	var (
 		list  []LintMessage
-		count int
+		count int = 1
 	)
 	others, err := i.LintStatement(stmt.List[0])
 	if err != nil {
 		return nil, err
 	}
 	list = append(list, others...)
-	switch vs := stmt.List[0].(type) {
-	case List:
+	if vs, ok := stmt.List[0].(List); ok {
 		count = len(vs.Values)
-	default:
-		count++
 	}
 	for _, vs := range stmt.List[1:] {
 		others, err := i.LintStatement(vs)
@@ -326,15 +323,13 @@ func (i Linter) lintValues(stmt ValuesStatement) ([]LintMessage, error) {
 			return nil, err
 		}
 		list = append(list, others...)
-		switch vs := vs.(type) {
-		case List:
-			if count != len(vs.Values) {
-				list = append(list, columnsCountMismatched())
-			}
-		default:
-			if count != 1 {
-				list = append(list, columnsCountMismatched())
-			}
+
+		n := 1
+		if vs, ok := vs.(List); ok {
+			n = len(vs.Values)
+		}
+		if count != n {
+			list = append(list, columnsCountMismatched())
 		}
 	}
 	return list, nil
