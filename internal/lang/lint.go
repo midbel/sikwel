@@ -307,7 +307,7 @@ func (i Linter) lintValues(stmt ValuesStatement) ([]LintMessage, error) {
 	}
 	var (
 		list  []LintMessage
-		count int = 1
+		count 1
 	)
 	others, err := i.LintStatement(stmt.List[0])
 	if err != nil {
