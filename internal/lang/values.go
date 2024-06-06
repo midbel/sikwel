@@ -215,13 +215,10 @@ func (w *Writer) FormatAlias(alias Alias) error {
 		if !w.Compact {
 			w.WriteNL()
 		}
-		w.WritePrefix()
 		err = w.FormatStatement(alias.Statement)
 		if err == nil {
-			if !w.Compact {
-				w.WriteNL()
-				w.WritePrefix()
-			}
+			w.WriteNL()
+			w.WritePrefix()
 			w.WriteString(")")
 		}
 	} else {
@@ -244,6 +241,40 @@ func (w *Writer) FormatAlias(alias Alias) error {
 	}
 	w.WriteString(str)
 	return nil
+}
+
+func (w *Writer) FormatLiteral(literal string) {
+	if literal == "NULL" || literal == "DEFAULT" || literal == "TRUE" || literal == "FALSE" || literal == "*" {
+		if w.withColor() {
+			w.WriteString(keywordColor)
+		}
+		w.WriteKeyword(literal)
+		if w.withColor() {
+			w.WriteString(resetCode)
+		}
+		return
+	}
+	if _, err := strconv.Atoi(literal); err == nil {
+		if w.withColor() {
+			w.WriteString(numberColor)
+		}
+		w.WriteString(literal)
+		if w.withColor() {
+			w.WriteString(resetCode)
+		}
+		return
+	}
+	if _, err := strconv.ParseFloat(literal, 64); err == nil {
+		if w.withColor() {
+			w.WriteString(numberColor)
+		}
+		w.WriteString(literal)
+		if w.withColor() {
+			w.WriteString(resetCode)
+		}
+		return
+	}
+	w.WriteQuoted(literal)
 }
 
 func (w *Writer) FormatRow(stmt Row, nl bool) error {

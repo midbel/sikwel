@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"strings"
 )
 
@@ -185,7 +184,7 @@ func (w *Writer) FormatExpr(stmt Statement, nl bool) error {
 	case Name:
 		w.FormatName(stmt)
 	case Value:
-		w.formatValue(stmt.Literal)
+		w.FormatLiteral(stmt.Literal)
 	case Row:
 		err = w.FormatRow(stmt, nl)
 	case Alias:
@@ -452,6 +451,7 @@ func (w *Writer) formatRelation(stmt Binary, nl bool) error {
 	}
 	w.WriteNL()
 	w.WritePrefix()
+	w.WriteBlank()
 	w.WriteKeyword(stmt.Op)
 	w.WriteBlank()
 	return w.FormatExpr(stmt.Right, false)
@@ -496,40 +496,6 @@ func (w *Writer) WriteCall(call string) {
 	if w.withColor() {
 		w.WriteString(resetCode)
 	}
-}
-
-func (w *Writer) formatValue(literal string) {
-	if literal == "NULL" || literal == "DEFAULT" || literal == "TRUE" || literal == "FALSE" || literal == "*" {
-		if w.withColor() {
-			w.WriteString(keywordColor)
-		}
-		w.WriteKeyword(literal)
-		if w.withColor() {
-			w.WriteString(resetCode)
-		}
-		return
-	}
-	if _, err := strconv.Atoi(literal); err == nil {
-		if w.withColor() {
-			w.WriteString(numberColor)
-		}
-		w.WriteString(literal)
-		if w.withColor() {
-			w.WriteString(resetCode)
-		}
-		return
-	}
-	if _, err := strconv.ParseFloat(literal, 64); err == nil {
-		if w.withColor() {
-			w.WriteString(numberColor)
-		}
-		w.WriteString(literal)
-		if w.withColor() {
-			w.WriteString(resetCode)
-		}
-		return
-	}
-	w.WriteQuoted(literal)
 }
 
 func (w *Writer) WriteString(str string) {
@@ -653,7 +619,7 @@ func (w *Writer) Enter() {
 }
 
 func (w *Writer) Leave() {
-	if w.Compact {
+	if w.Compact || w.currDepth == {
 		return
 	}
 	w.currDepth--

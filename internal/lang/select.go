@@ -702,7 +702,13 @@ func (w *Writer) FormatSelect(stmt SelectStatement) error {
 func (w *Writer) FormatSelectColumns(columns []Statement) error {
 	w.Enter()
 	defer w.Leave()
-	return w.formatStmtSlice(columns)
+	for i, v := range columns {
+		w.WriteComma(i)
+		if err := w.FormatExpr(v, false); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (w *Writer) FormatWhere(stmt Statement) error {
@@ -784,7 +790,9 @@ func (w *Writer) FormatFrom(list []Statement) error {
 		case Name:
 			w.FormatName(s)
 		case Alias:
+			w.Leave()
 			err = w.FormatAlias(s)
+			w.Enter()
 		case Join:
 			err = w.formatFromJoin(s)
 		case Row:

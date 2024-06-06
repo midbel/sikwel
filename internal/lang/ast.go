@@ -923,7 +923,7 @@ func substituteQueries(list []Statement, stmt Statement) Statement {
 
 func substituteSelect(stmt SelectStatement, queries map[string]Statement) Statement {
 	for i, t := range stmt.Tables {
-		ident := getIdentFromStatement(t)
+		ident, alias := getIdentFromStatement(t)
 		if ident == "" {
 			continue
 		}
@@ -931,22 +931,23 @@ func substituteSelect(stmt SelectStatement, queries map[string]Statement) Statem
 		if ok {
 			stmt.Tables[i] = Alias{
 				Statement: q,
-				Alias:     ident,
+				Alias:     alias,
 			}
 		}
 	}
 	return stmt
 }
 
-func getIdentFromStatement(stmt Statement) string {
+func getIdentFromStatement(stmt Statement) (string, string) {
 	switch s := stmt.(type) {
 	case Name:
-		return s.Ident()
+		return s.Ident(), s.Ident()
 	case Alias:
-		return getIdentFromStatement(s.Statement)
+		ident, _ := getIdentFromStatement(s.Statement)
+		return ident, s.Alias
 	case Join:
 		return getIdentFromStatement(s.Table)
 	default:
-		return ""
+		return "", ""
 	}
 }
