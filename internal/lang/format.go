@@ -619,7 +619,7 @@ func (w *Writer) Enter() {
 }
 
 func (w *Writer) Leave() {
-	if w.Compact || w.currDepth == 0 {
+	if w.Compact || w.currDepth < 0 {
 		return
 	}
 	w.currDepth--
