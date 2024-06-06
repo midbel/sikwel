@@ -913,6 +913,13 @@ func substituteQueries(list []Statement, stmt Statement) Statement {
 		}
 		queries[c.Ident] = c.Statement
 	}
+	for n, q := range queries {
+		s, ok := q.(SelectStatement)
+		if !ok {
+			continue
+		}
+		queries[n] = substituteSelect(s, queries)
+	}
 	switch q := stmt.(type) {
 	case SelectStatement:
 		stmt = substituteSelect(q, queries)
