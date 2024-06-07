@@ -216,6 +216,10 @@ func (u Unary) GetNames() []string {
 	return getNamesFromStmt([]Statement{u.Right})
 }
 
+type Group struct {
+	Statement
+}
+
 type Binary struct {
 	Left  Statement
 	Right Statement

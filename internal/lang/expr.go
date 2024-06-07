@@ -463,7 +463,10 @@ func (p *Parser) parseGroupExpr() (Statement, error) {
 		return nil, p.Unexpected("group")
 	}
 	p.Next()
-	return stmt, nil
+	g := Group{
+		Statement: stmt,
+	}
+	return g, nil
 }
 
 func (p *Parser) currBinding() int {

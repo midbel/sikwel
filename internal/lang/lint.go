@@ -146,6 +146,8 @@ func (i Linter) LintStatement(stmt Statement) ([]LintMessage, error) {
 		list, err = i.LintStatement(stmt.Statement)
 	case Any:
 		list, err = i.LintStatement(stmt.Statement)
+	case Group:
+		list, err = i.LintStatement(stmt.Statement)
 	default:
 	}
 	return list, err

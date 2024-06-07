@@ -185,6 +185,8 @@ func (w *Writer) FormatExpr(stmt Statement, nl bool) error {
 		w.FormatName(stmt)
 	case Value:
 		w.FormatLiteral(stmt.Literal)
+	case Group:
+		err = w.formatGroup(stmt)
 	case Row:
 		err = w.FormatRow(stmt, nl)
 	case Alias:
@@ -432,26 +434,33 @@ func (w *Writer) formatUnary(stmt Unary, nl bool) error {
 	return w.FormatExpr(stmt.Right, nl)
 }
 
-func (w *Writer) formatRelation(stmt Binary, nl bool) error {
-	var (
-		bothSimple   = hasSimple(stmt.Left) && hasSimple(stmt.Right)
-		bothRelation = isRelation(stmt.Left) && isRelation(stmt.Right)
-	)
+func (w *Writer) formatGroup(stmt Group) error {
+	w.WriteString("(")
+	defer w.WriteString(")")
 
-	if bothSimple || bothRelation {
-		w.WriteString("(")
-		defer w.WriteString(")")
-	}
-	if bothSimple {
-		w.Enter()
-		defer w.Leave()
-	}
+	w.Enter()
+	defer w.Leave()
+	return w.FormatExpr(stmt.Statement, false)
+}
+
+func (w *Writer) formatRelation(stmt Binary, nl bool) error {
+	// var (
+	// 	bothSimple   = hasSimple(stmt.Left) && hasSimple(stmt.Right)
+	// 	bothRelation = isRelation(stmt.Left) && isRelation(stmt.Right)
+	// )
+	// if bothSimple || bothRelation {
+	// 	w.WriteString("(")
+	// 	defer w.WriteString(")")
+	// }
+	// if bothSimple {
+	// 	w.Enter()
+	// 	defer w.Leave()
+	// }
 	if err := w.FormatExpr(stmt.Left, false); err != nil {
 		return err
 	}
 	w.WriteNL()
 	w.WritePrefix()
-	w.WriteBlank()
 	w.WriteKeyword(stmt.Op)
 	w.WriteBlank()
 	return w.FormatExpr(stmt.Right, false)

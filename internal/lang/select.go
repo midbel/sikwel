@@ -748,15 +748,17 @@ func (w *Writer) formatFromJoin(join Join) error {
 	if err != nil {
 		return err
 	}
+	w.Enter()
+	defer w.Leave()
 	switch s := join.Where.(type) {
 	case Binary:
-		w.WriteBlank()
-		w.WriteKeyword("ON")
+		w.WriteNL()
+		w.WriteStatement("ON")
 		w.WriteBlank()
 		err = w.formatBinary(s, false)
 	case List:
-		w.WriteBlank()
-		w.WriteKeyword("USING")
+		w.WriteNL()
+		w.WriteStatement("USING")
 		w.WriteBlank()
 		err = w.formatList(s)
 	default:
@@ -769,8 +771,8 @@ func (w *Writer) FormatFrom(list []Statement) error {
 	w.WriteStatement("FROM")
 	w.WriteBlank()
 
-	w.Enter()
-	defer w.Leave()
+	// w.Enter()
+	// defer w.Leave()
 
 	withComma := func(stmt Statement) bool {
 		_, ok := stmt.(Join)
