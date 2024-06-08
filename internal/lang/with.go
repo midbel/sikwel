@@ -75,7 +75,7 @@ func (p *Parser) parseSubquery() (Statement, error) {
 }
 
 func (w *Writer) FormatWith(stmt WithStatement) error {
-	w.Enter()
+	// w.Enter()
 	// defer w.Leave()
 
 	kw, _ := stmt.Keyword()

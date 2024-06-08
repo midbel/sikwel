@@ -135,7 +135,7 @@ func (p *Parser) ParseAlterTable() (Statement, error) {
 			NotExists: notExists,
 		}
 	case p.IsKeyword("ADD CONSTRAINT"):
-		cst, err := p.parseConstraintWithKeyword("ADD CONSTRAINT", true, true)
+		cst, err := p.parseConstraintWithKeyword("ADD CONSTRAINT", true, false)
 		if err != nil {
 			return nil, err
 		}
@@ -143,6 +143,15 @@ func (p *Parser) ParseAlterTable() (Statement, error) {
 			Constraint: cst,
 		}
 	case p.IsKeyword("ALTER") || p.IsKeyword("ALTER COLUMN"):
+		p.Next()
+		var (
+			action AlterColumnAction
+			err    error
+		)
+		action.Name = p.GetCurrLiteral()
+		p.Next()
+		stmt.Action = action
+		return nil, err
 	case p.IsKeyword("DROP CONSTRAINT"):
 		p.Next()
 		var exists bool

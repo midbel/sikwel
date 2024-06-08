@@ -737,8 +737,7 @@ type AddColumnAction struct {
 }
 
 type AlterColumnAction struct {
-	Def       Statement
-	NotExists bool
+	Name string
 }
 
 type DropColumnAction struct {
