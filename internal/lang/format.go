@@ -102,6 +102,8 @@ func (w *Writer) FormatStatement(stmt Statement) error {
 		err = w.FormatRevoke(stmt)
 	case CreateTableStatement:
 		err = w.FormatCreateTable(stmt)
+	case AlterTableStatement:
+		err = w.FormatAlterTable(stmt)
 	case CreateViewStatement:
 		err = w.FormatCreateView(stmt)
 	case DropTableStatement:

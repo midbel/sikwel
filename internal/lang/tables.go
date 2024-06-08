@@ -33,8 +33,11 @@ func (p *Parser) ParseDropTable() (Statement, error) {
 		p.Next()
 
 	}
-	if p.IsKeyword("RESTRICT") || p.IsKeyword("CASCADE") {
-		stmt.Cascade = p.IsKeyword("CASCADE")
+	if p.IsKeyword("RESTRICT") {
+		stmt.Cascade = Restrict
+		p.Next()
+	} else if p.IsKeyword("CASCADE") {
+		stmt.Cascade = Cascade
 		p.Next()
 	}
 	return stmt, err
@@ -62,8 +65,11 @@ func (p *Parser) ParseDropView() (Statement, error) {
 		p.Next()
 
 	}
-	if p.IsKeyword("RESTRICT") || p.IsKeyword("CASCADE") {
-		stmt.Cascade = p.IsKeyword("CASCADE")
+	if p.IsKeyword("RESTRICT") {
+		stmt.Cascade = Restrict
+		p.Next()
+	} else if p.IsKeyword("CASCADE") {
+		stmt.Cascade = Cascade
 		p.Next()
 	}
 	return stmt, err
@@ -86,6 +92,20 @@ func (p *Parser) ParseAlterTable() (Statement, error) {
 			Name: p.GetCurrLiteral(),
 		}
 		p.Next()
+	case p.IsKeyword("RENAME CONSTRAINT"):
+		p.Next()
+		src := p.GetCurrLiteral()
+		p.Next()
+		if !p.IsKeyword("TO") {
+			return nil, p.Unexpected("alter table")
+		}
+		p.Next()
+		dst := p.GetCurrLiteral()
+		stmt.Action = RenameConstraintAction{
+			Old: src,
+			New: dst,
+		}
+		p.Next()
 	case p.IsKeyword("RENAME") || p.IsKeyword("RENAME COLUMN"):
 		p.Next()
 		src := p.GetCurrLiteral()
@@ -96,8 +116,8 @@ func (p *Parser) ParseAlterTable() (Statement, error) {
 		p.Next()
 		dst := p.GetCurrLiteral()
 		stmt.Action = RenameColumnAction{
-			Src: src,
-			Dst: dst,
+			Old: src,
+			New: dst,
 		}
 		p.Next()
 	case p.IsKeyword("ADD") || p.IsKeyword("ADD COLUMN"):
@@ -114,17 +134,53 @@ func (p *Parser) ParseAlterTable() (Statement, error) {
 			Def:       def,
 			NotExists: notExists,
 		}
+	case p.IsKeyword("ADD CONSTRAINT"):
+		cst, err := p.parseConstraintWithKeyword("ADD CONSTRAINT", true, true)
+		if err != nil {
+			return nil, err
+		}
+		stmt.Action = AddConstraintAction{
+			Constraint: cst,
+		}
+	case p.IsKeyword("ALTER") || p.IsKeyword("ALTER COLUMN"):
+	case p.IsKeyword("DROP CONSTRAINT"):
+		p.Next()
+		var exists bool
+		if exists = p.IsKeyword("IF EXISTS"); exists {
+			p.Next()
+		}
+		action := DropConstraintAction{
+			Name:   p.GetCurrLiteral(),
+			Exists: exists,
+		}
+		p.Next()
+		if p.IsKeyword("CASCADE") {
+			action.Cascade = Cascade
+			p.Next()
+		} else if p.IsKeyword("RESTRICT") {
+			action.Cascade = Restrict
+			p.Next()
+		}
+		stmt.Action = action
 	case p.IsKeyword("DROP") || p.IsKeyword("DROP COLUMN"):
 		p.Next()
 		var exists bool
 		if exists = p.IsKeyword("IF EXISTS"); exists {
 			p.Next()
 		}
-		stmt.Action = DropColumnAction{
+		action := DropColumnAction{
 			Name:   p.GetCurrLiteral(),
 			Exists: exists,
 		}
 		p.Next()
+		if p.IsKeyword("CASCADE") {
+			action.Cascade = Cascade
+			p.Next()
+		} else if p.IsKeyword("RESTRICT") {
+			action.Cascade = Restrict
+			p.Next()
+		}
+		stmt.Action = action
 	default:
 		return nil, p.Unexpected("alter table")
 	}
@@ -230,14 +286,20 @@ func (p *Parser) ParseColumnDef(ctp CreateTableParser) (Statement, error) {
 }
 
 func (p *Parser) ParseConstraint(column bool) (Statement, error) {
+	return p.parseConstraintWithKeyword("CONSTRAINT", false, column)
+}
+
+func (p *Parser) parseConstraintWithKeyword(keyword string, required, column bool) (Statement, error) {
 	var (
 		cst Constraint
 		err error
 	)
-	if p.IsKeyword("CONSTRAINT") {
+	if p.IsKeyword(keyword) {
 		p.Next()
 		cst.Name = p.GetCurrLiteral()
 		p.Next()
+	} else if required && !p.IsKeyword(keyword) {
+		return nil, p.Unexpected("constraint")
 	}
 	switch {
 	case p.IsKeyword("PRIMARY KEY"):
@@ -705,9 +767,75 @@ func (w *Writer) FormatGeneratedConstraint(cst GeneratedConstraint) error {
 	return nil
 }
 
+func (w *Writer) FormatAlterTable(stmt AlterTableStatement) error {
+	kw, _ := stmt.Keyword()
+	w.WriteStatement(kw)
+	w.WriteBlank()
+	if err := w.FormatExpr(stmt.Name, false); err != nil {
+		return err
+	}
+	w.WriteBlank()
+	switch action := stmt.Action.(type) {
+	case DropColumnAction:
+		w.WriteKeyword("DROP COLUMN")
+		if action.Exists {
+			w.WriteBlank()
+			w.WriteKeyword("IF EXISTS")
+		}
+		w.WriteBlank()
+		w.WriteString(action.Name)
+		if action.Cascade == Cascade {
+			w.WriteBlank()
+			w.WriteKeyword("CASCADE")
+		} else if action.Cascade == Restrict {
+			w.WriteBlank()
+			w.WriteKeyword("RESTRICT")
+		}
+	case AddColumnAction:
+		w.WriteKeyword("ADD COLUMN")
+		w.WriteBlank()
+		_, ok := action.Def.(ColumnDef)
+		if !ok {
+			return w.CanNotUse("add column", action.Def)
+		}
+	case AlterColumnAction:
+	case RenameColumnAction:
+		w.WriteKeyword("RENAME COLUMN")
+		w.WriteBlank()
+		w.WriteString(action.Old)
+		w.WriteBlank()
+		w.WriteKeyword("TO")
+		w.WriteBlank()
+		w.WriteString(action.New)
+	case AddConstraintAction:
+	case DropConstraintAction:
+	case RenameConstraintAction:
+		w.WriteKeyword("RENAME CONSTRAINT")
+		w.WriteBlank()
+		w.WriteString(action.Old)
+		w.WriteBlank()
+		w.WriteKeyword("TO")
+		w.WriteBlank()
+		w.WriteString(action.New)
+	case RenameTableAction:
+		w.WriteKeyword("RENAME")
+		w.WriteBlank()
+		w.WriteKeyword("TO")
+		w.WriteBlank()
+		w.WriteString(action.Name)
+	default:
+		return w.CanNotUse("alter table", action)
+	}
+	return nil
+}
+
 func (w *Writer) FormatDropView(stmt DropViewStatement) error {
 	kw, _ := stmt.Keyword()
 	w.WriteStatement(kw)
+	if stmt.Exists {
+		w.WriteBlank()
+		w.WriteKeyword("IF EXISTS")
+	}
 	w.WriteBlank()
 	for i, s := range stmt.Names {
 		if i > 0 {
@@ -718,9 +846,14 @@ func (w *Writer) FormatDropView(stmt DropViewStatement) error {
 			return err
 		}
 	}
-	if stmt.Cascade {
+	switch stmt.Cascade {
+	case Cascade:
 		w.WriteBlank()
 		w.WriteKeyword("CASCADE")
+	case Restrict:
+		w.WriteBlank()
+		w.WriteKeyword("RESTRICT")
+	default:
 	}
 	return nil
 }
@@ -728,6 +861,10 @@ func (w *Writer) FormatDropView(stmt DropViewStatement) error {
 func (w *Writer) FormatDropTable(stmt DropTableStatement) error {
 	kw, _ := stmt.Keyword()
 	w.WriteStatement(kw)
+	if stmt.Exists {
+		w.WriteBlank()
+		w.WriteKeyword("IF EXISTS")
+	}
 	w.WriteBlank()
 	for i, s := range stmt.Names {
 		if i > 0 {
@@ -738,9 +875,14 @@ func (w *Writer) FormatDropTable(stmt DropTableStatement) error {
 			return err
 		}
 	}
-	if stmt.Cascade {
+	switch stmt.Cascade {
+	case Cascade:
 		w.WriteBlank()
 		w.WriteKeyword("CASCADE")
+	case Restrict:
+		w.WriteBlank()
+		w.WriteKeyword("RESTRICT")
+	default:
 	}
 	return nil
 }

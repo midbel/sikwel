@@ -577,6 +577,13 @@ func (s UpdateStatement) Keyword() (string, error) {
 	return "UPDATE", nil
 }
 
+type CascadeMode int
+
+const (
+	Cascade CascadeMode = iota + 1
+	Restrict
+)
+
 type IdentityMode int
 
 const (
@@ -720,8 +727,8 @@ type RenameTableAction struct {
 }
 
 type RenameColumnAction struct {
-	Src string
-	Dst string
+	Old string
+	New string
 }
 
 type AddColumnAction struct {
@@ -729,9 +736,30 @@ type AddColumnAction struct {
 	NotExists bool
 }
 
+type AlterColumnAction struct {
+	Def       Statement
+	NotExists bool
+}
+
 type DropColumnAction struct {
-	Name   string
-	Exists bool
+	Name    string
+	Exists  bool
+	Cascade CascadeMode
+}
+
+type AddConstraintAction struct {
+	Constraint Statement
+}
+
+type DropConstraintAction struct {
+	Name    string
+	Exists  bool
+	Cascade CascadeMode
+}
+
+type RenameConstraintAction struct {
+	Old string
+	New string
 }
 
 type AlterTableStatement struct {
@@ -739,29 +767,27 @@ type AlterTableStatement struct {
 	Action Statement
 }
 
+func (s AlterTableStatement) Keyword() (string, error) {
+	return "ALTER TABLE", nil
+}
+
 type DropViewStatement struct {
 	Names   []Statement
 	Exists  bool
-	Cascade bool
+	Cascade CascadeMode
 }
 
 func (s DropViewStatement) Keyword() (string, error) {
-	if s.Exists {
-		return "DROP VIEW IF EXISTS", nil
-	}
 	return "DROP VIEW", nil
 }
 
 type DropTableStatement struct {
 	Names   []Statement
 	Exists  bool
-	Cascade bool
+	Cascade CascadeMode
 }
 
 func (s DropTableStatement) Keyword() (string, error) {
-	if s.Exists {
-		return "DROP TABLE IF EXISTS", nil
-	}
 	return "DROP TABLE", nil
 }
 
