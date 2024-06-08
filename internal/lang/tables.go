@@ -596,7 +596,7 @@ func (w *Writer) FormatTableName(stmt Statement) error {
 func (w *Writer) FormatColumnDef(ctf ConstraintFormatter, stmt Statement, size int) error {
 	def, ok := stmt.(ColumnDef)
 	if !ok {
-		return fmt.Errorf("%T can not be used as column definition", stmt)
+		return w.CanNotUse("column", stmt)
 	}
 	w.WritePrefix()
 	w.WriteString(def.Name)
@@ -618,12 +618,16 @@ func (w *Writer) FormatColumnDef(ctf ConstraintFormatter, stmt Statement, size i
 }
 
 func (w *Writer) FormatConstraint(stmt Statement) error {
+	return w.formatConstraint(stmt, "CONSTRAINT")
+}
+
+func (w *Writer) formatConstraint(stmt Statement, keyword string) error {
 	cst, ok := stmt.(Constraint)
 	if !ok {
-		return fmt.Errorf("%T can not be used as constraint", stmt)
+		return w.CanNotUse("constraint", stmt)
 	}
 	if cst.Name != "" {
-		w.WriteKeyword("CONSTRAINT")
+		w.WriteKeyword(keyword)
 		w.WriteBlank()
 		w.WriteString(cst.Name)
 		w.WriteBlank()
@@ -745,11 +749,9 @@ func (w *Writer) FormatCheckConstraint(cst CheckConstraint) error {
 	kw, _ := cst.Keyword()
 	w.WriteKeyword(kw)
 	w.WriteBlank()
-	w.WriteString("(")
 	if err := w.FormatExpr(cst.Expr, false); err != nil {
 		return err
 	}
-	w.WriteString(")")
 	return nil
 }
 
@@ -794,10 +796,23 @@ func (w *Writer) FormatAlterTable(stmt AlterTableStatement) error {
 	case AddColumnAction:
 		w.WriteKeyword("ADD COLUMN")
 		w.WriteBlank()
-		_, ok := action.Def.(ColumnDef)
+
+		def, ok := action.Def.(ColumnDef)
 		if !ok {
 			return w.CanNotUse("add column", action.Def)
 		}
+		w.WriteString(def.Name)
+		w.WriteBlank()
+		if err := w.FormatType(def.Type); err != nil {
+			return err
+		}
+		for _, c := range def.Constraints {
+			w.WriteBlank()
+			if err := w.FormatConstraint(c); err != nil {
+				return err
+			}
+		}
+		return nil
 	case AlterColumnAction:
 	case RenameColumnAction:
 		w.WriteKeyword("RENAME COLUMN")
@@ -808,7 +823,22 @@ func (w *Writer) FormatAlterTable(stmt AlterTableStatement) error {
 		w.WriteBlank()
 		w.WriteString(action.New)
 	case AddConstraintAction:
+		return w.formatConstraint(action.Constraint, "ADD CONSTRAINT")
 	case DropConstraintAction:
+		w.WriteKeyword("DROP CONSTRAINT")
+		if action.Exists {
+			w.WriteBlank()
+			w.WriteKeyword("IF EXISTS")
+		}
+		w.WriteBlank()
+		w.WriteString(action.Name)
+		if action.Cascade == Cascade {
+			w.WriteBlank()
+			w.WriteKeyword("CASCADE")
+		} else if action.Cascade == Restrict {
+			w.WriteBlank()
+			w.WriteKeyword("RESTRICT")
+		}
 	case RenameConstraintAction:
 		w.WriteKeyword("RENAME CONSTRAINT")
 		w.WriteBlank()
