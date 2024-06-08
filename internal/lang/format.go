@@ -104,6 +104,10 @@ func (w *Writer) FormatStatement(stmt Statement) error {
 		err = w.FormatCreateTable(stmt)
 	case CreateViewStatement:
 		err = w.FormatCreateView(stmt)
+	case DropTableStatement:
+		err = w.FormatDropTable(stmt)
+	case DropViewStatement:
+		err = w.FormatDropView(stmt)
 	case CreateProcedureStatement:
 		err = w.FormatCreateProcedure(stmt)
 	case SelectStatement:
@@ -444,18 +448,6 @@ func (w *Writer) formatGroup(stmt Group) error {
 }
 
 func (w *Writer) formatRelation(stmt Binary, nl bool) error {
-	// var (
-	// 	bothSimple   = hasSimple(stmt.Left) && hasSimple(stmt.Right)
-	// 	bothRelation = isRelation(stmt.Left) && isRelation(stmt.Right)
-	// )
-	// if bothSimple || bothRelation {
-	// 	w.WriteString("(")
-	// 	defer w.WriteString(")")
-	// }
-	// if bothSimple {
-	// 	w.Enter()
-	// 	defer w.Leave()
-	// }
 	if err := w.FormatExpr(stmt.Left, false); err != nil {
 		return err
 	}

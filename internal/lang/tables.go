@@ -704,3 +704,43 @@ func (w *Writer) FormatGeneratedConstraint(cst GeneratedConstraint) error {
 	w.WriteKeyword("STORED")
 	return nil
 }
+
+func (w *Writer) FormatDropView(stmt DropViewStatement) error {
+	kw, _ := stmt.Keyword()
+	w.WriteStatement(kw)
+	w.WriteBlank()
+	for i, s := range stmt.Names {
+		if i > 0 {
+			w.WriteString(",")
+			w.WriteBlank()
+		}
+		if err := w.FormatExpr(s, false); err != nil {
+			return err
+		}
+	}
+	if stmt.Cascade {
+		w.WriteBlank()
+		w.WriteKeyword("CASCADE")
+	}
+	return nil
+}
+
+func (w *Writer) FormatDropTable(stmt DropTableStatement) error {
+	kw, _ := stmt.Keyword()
+	w.WriteStatement(kw)
+	w.WriteBlank()
+	for i, s := range stmt.Names {
+		if i > 0 {
+			w.WriteString(",")
+			w.WriteBlank()
+		}
+		if err := w.FormatExpr(s, false); err != nil {
+			return err
+		}
+	}
+	if stmt.Cascade {
+		w.WriteBlank()
+		w.WriteKeyword("CASCADE")
+	}
+	return nil
+}
