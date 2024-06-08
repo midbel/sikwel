@@ -198,14 +198,19 @@ func (p *Parser) ParseRow() (Statement, error) {
 }
 
 func (w *Writer) FormatName(name Name) {
-	str := name.Ident()
-	if w.Upperize {
-		str = strings.ToUpper(str)
+	for i := range name.Parts {
+		if i > 0 {
+			w.WriteString(".")
+		}
+		str := name.Parts[i]
+		if w.Upperize {
+			str = strings.ToUpper(str)
+		}
+		if w.UseQuote && str != "*" {
+			str = fmt.Sprintf("\"%s\"", str)
+		}
+		w.WriteString(str)
 	}
-	if w.UseQuote && str != "*" {
-		str = fmt.Sprintf("\"%s\"", str)
-	}
-	w.WriteString(str)
 }
 
 func (w *Writer) FormatAlias(alias Alias) error {
