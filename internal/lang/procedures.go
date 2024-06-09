@@ -1,9 +1,5 @@
 package lang
 
-import (
-	"fmt"
-)
-
 func (p *Parser) ParseCreateProcedure() (Statement, error) {
 	var (
 		stmt CreateProcedureStatement
@@ -123,7 +119,7 @@ func (w *Writer) FormatCreateProcedure(stmt CreateProcedureStatement) error {
 		}
 		p, ok := s.(ProcedureParameter)
 		if !ok {
-			return fmt.Errorf("%T can not be used as procedure parameter", s)
+			return w.CanNotUse(s)
 		}
 		w.WriteNL()
 		w.WritePrefix()
