@@ -24,21 +24,6 @@ func (p *Parser) ParseCreateProcedure() (Statement, error) {
 	}
 	p.Next()
 
-	// p.RegisterParseFunc("CASE", p.parseCase)
-	// p.RegisterParseFunc("IF", p.parseIf)
-	// p.RegisterParseFunc("WHILE", p.parseWhile)
-	// p.RegisterParseFunc("DECLARE", p.parseDeclare)
-	// p.RegisterParseFunc("SET", p.parseSet)
-	// p.RegisterParseFunc("RETURN", p.parseReturn)
-
-	// defer func() {
-	// 	p.UnregisterParseFunc("CASE")
-	// 	p.UnregisterParseFunc("IF")
-	// 	p.UnregisterParseFunc("WHILE")
-	// 	p.UnregisterParseFunc("DECLARE")
-	// 	p.UnregisterParseFunc("RETURN")
-	// }()
-
 	stmt.Body, err = p.ParseBody(func() bool {
 		return p.IsKeyword("END")
 	})
@@ -52,7 +37,6 @@ func (p *Parser) ParseProcedureParameters() ([]Statement, error) {
 	if err := p.Expect("procedure", Lparen); err != nil {
 		return nil, err
 	}
-	p.Next()
 	var list []Statement
 	for !p.Done() && !p.Is(Rparen) {
 		stmt, err := p.ParseProcedureParameter()
@@ -111,44 +95,21 @@ func (w *Writer) FormatCreateProcedure(stmt CreateProcedureStatement) error {
 	w.WriteBlank()
 	w.WriteString(stmt.Name)
 	w.WriteString("(")
+	w.WriteNL()
 
-	w.Enter()
 	for i, s := range stmt.Parameters {
 		if i > 0 {
 			w.WriteString(",")
+			w.WriteNL()
 		}
 		p, ok := s.(ProcedureParameter)
 		if !ok {
-			return w.CanNotUse(s)
+			return w.CanNotUse("create procedure", s)
 		}
-		w.WriteNL()
-		w.WritePrefix()
-		switch p.Mode {
-		case ModeIn:
-			w.WriteKeyword("IN")
-		case ModeOut:
-			w.WriteKeyword("OUT")
-		case ModeInOut:
-			w.WriteKeyword("INOUT")
-		}
-		if p.Mode != 0 {
-			w.WriteBlank()
-		}
-		w.WriteString(p.Name)
-		w.WriteBlank()
-		if err := w.FormatType(p.Type); err != nil {
+		if err := w.formatParamter(p); err != nil {
 			return err
 		}
-		if p.Default != nil {
-			w.WriteBlank()
-			w.WriteKeyword("DEFAULT")
-			w.WriteBlank()
-			if err := w.FormatExpr(p.Default, false); err != nil {
-				return err
-			}
-		}
 	}
-	w.Leave()
 	w.WriteNL()
 	w.WriteString(")")
 	w.WriteNL()
@@ -166,5 +127,37 @@ func (w *Writer) FormatCreateProcedure(stmt CreateProcedureStatement) error {
 	}
 	w.Leave()
 	w.WriteKeyword("END")
+	return nil
+}
+
+func (w *Writer) formatParamter(param ProcedureParameter) error {
+	w.Enter()
+	defer w.Leave()
+
+	w.WritePrefix()
+	switch param.Mode {
+	case ModeIn:
+		w.WriteKeyword("IN")
+	case ModeOut:
+		w.WriteKeyword("OUT")
+	case ModeInOut:
+		w.WriteKeyword("INOUT")
+	}
+	if param.Mode != 0 {
+		w.WriteBlank()
+	}
+	w.WriteString(param.Name)
+	w.WriteBlank()
+	if err := w.FormatType(param.Type); err != nil {
+		return err
+	}
+	if param.Default != nil {
+		w.WriteBlank()
+		w.WriteKeyword("DEFAULT")
+		w.WriteBlank()
+		if err := w.FormatExpr(param.Default, false); err != nil {
+			return err
+		}
+	}
 	return nil
 }

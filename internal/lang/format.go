@@ -209,8 +209,8 @@ func (w *Writer) FormatStatement(stmt Statement) error {
 }
 
 func (w *Writer) FormatBody(list List) error {
-	w.Enter()
-	defer w.Leave()
+	// w.Enter()
+	// defer w.Leave()
 	for _, v := range list.Values {
 		if err := w.FormatStatement(v); err != nil {
 			return err
