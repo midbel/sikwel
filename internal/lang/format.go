@@ -9,6 +9,41 @@ import (
 	"strings"
 )
 
+type SqlFormatter interface {
+	Quote(string) string
+}
+
+func GetDialectFormatter(name string) (SqlFormatter, error) {
+	switch name {
+	case "my", "mysql":
+		return mysqlFormatter{}, nil
+	case "mssql":
+		return tsqlFormatter{}, nil
+	case "ansi", "pg", "postgres", "sqlite", "lite":
+		return ansiFormatter{}, nil
+	default:
+		return nil, fmt.Errorf("%s unsupported dialect", name)
+	}
+}
+
+type mysqlFormatter struct{}
+
+func (_ mysqlFormatter) Quote(str string) string {
+	return fmt.Sprintf("`%s`", str)
+}
+
+type ansiFormatter struct{}
+
+func (_ ansiFormatter) Quote(str string) string {
+	return fmt.Sprintf("\"%s\"", str)
+}
+
+type tsqlFormatter struct{}
+
+func (_ tsqlFormatter) Quote(str string) string {
+	return fmt.Sprintf("[%s]", str)
+}
+
 type Writer struct {
 	inner *bufio.Writer
 
@@ -32,13 +67,16 @@ type Writer struct {
 	noColor       bool
 	currExprDepth int
 	currDepth     int
+
+	SqlFormatter
 }
 
 func NewWriter(w io.Writer) *Writer {
 	ws := Writer{
-		inner:     bufio.NewWriter(w),
-		UseIndent: 4,
-		UseSpace:  true,
+		inner:        bufio.NewWriter(w),
+		UseIndent:    4,
+		UseSpace:     true,
+		SqlFormatter: ansiFormatter{},
 	}
 	if w != os.Stdout {
 		ws.noColor = true

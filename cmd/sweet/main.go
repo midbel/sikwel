@@ -31,13 +31,11 @@ func main() {
 
 func runFormat(args []string) error {
 	var (
-		set     = flag.NewFlagSet("format", flag.ExitOnError)
-		writer  = lang.NewWriter(os.Stdout)
-		dialect string
-		config  string
+		set    = flag.NewFlagSet("format", flag.ExitOnError)
+		writer = lang.NewWriter(os.Stdout)
+		config string
 	)
 	set.StringVar(&config, "config", "", "formatter configuration")
-	set.StringVar(&dialect, "dialect", "lang", "SQL dialect")
 	set.BoolVar(&writer.Compact, "compact", writer.Compact, "produces compact SQL queries")
 	set.BoolVar(&writer.UseAs, "use-as", writer.UseAs, "always use as to define alias")
 	set.BoolVar(&writer.UseQuote, "use-quote", writer.UseQuote, "quote all identifier")
@@ -52,6 +50,25 @@ func runFormat(args []string) error {
 	set.BoolVar(&writer.Upperize, "upper", writer.Upperize, "write all keywords and identifiers to uppercase")
 	set.BoolVar(&writer.UpperizeK, "upper-keywords", writer.UpperizeK, "write all keywords to uppercase")
 	set.BoolVar(&writer.UpperizeF, "upper-functions", writer.UpperizeF, "write all function names to uppercase")
+
+	set.Func("dialect", "SQL dialect", func(value string) error {
+		formatter, err := lang.GetDialectFormatter(value)
+		if err == nil {
+			writer.SqlFormatter = formatter
+		}
+		return err
+	})
+	set.Func("upperize", "upperize mode", func(value string) error {
+		switch value {
+		case "all", "":
+		case "keyword":
+		case "function":
+		case "identifier":
+		default:
+		}
+		return nil
+	})
+
 	if err := set.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 

@@ -1,7 +1,6 @@
 package lang
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 )
@@ -207,7 +206,8 @@ func (w *Writer) FormatName(name Name) {
 			str = strings.ToUpper(str)
 		}
 		if w.UseQuote && str != "*" {
-			str = fmt.Sprintf("\"%s\"", str)
+			str = w.Quote(str)
+			// str = fmt.Sprintf("\"%s\"", str)
 		}
 		w.WriteString(str)
 	}
@@ -246,7 +246,7 @@ func (w *Writer) FormatAlias(alias Alias) error {
 		str = strings.ToUpper(str)
 	}
 	if w.UseQuote {
-		str = fmt.Sprintf("\"%s\"", str)
+		str = w.Quote(str)
 	}
 	w.WriteString(str)
 	return nil
