@@ -27,7 +27,7 @@ func (p *Parser) parseDeclare() (Statement, error) {
 	if !p.Is(Ident) {
 		return nil, p.Unexpected("declare")
 	}
-	stmt.Ident = p.curr.Literal
+	stmt.Ident = p.GetCurrLiteral()
 	p.Next()
 
 	stmt.Type, err = p.ParseType()
@@ -140,8 +140,6 @@ func (p *Parser) parseReturn() (Statement, error) {
 }
 
 func (w *Writer) FormatIf(stmt IfStatement) error {
-	w.Enter()
-	defer w.Leave()
 	if err := w.formatIf(stmt, "IF"); err != nil {
 		return err
 	}
@@ -158,9 +156,13 @@ func (w *Writer) formatIf(stmt IfStatement, kw string) error {
 	w.WriteBlank()
 	w.WriteKeyword("THEN")
 	w.WriteNL()
+
+	w.Enter()
 	if err := w.FormatStatement(stmt.Csq); err != nil {
 		return err
 	}
+	w.Leave()
+
 	var err error
 	if stmt.Alt != nil {
 		if s, ok := stmt.Alt.(IfStatement); ok {
@@ -168,6 +170,8 @@ func (w *Writer) formatIf(stmt IfStatement, kw string) error {
 		} else {
 			w.WriteStatement("ELSE")
 			w.WriteNL()
+			w.Enter()
+			defer w.Leave()
 			err = w.FormatStatement(stmt.Alt)
 		}
 	}
