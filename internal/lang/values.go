@@ -88,7 +88,7 @@ func (p *Parser) ParseCase() (Statement, error) {
 			return nil, err
 		}
 		p.Next()
-		when.Body, err = p.StartExpression()
+		when.Body, err = p.ParseStatement()
 		if err = wrapError("then", err); err != nil {
 			return nil, err
 		}
@@ -96,7 +96,7 @@ func (p *Parser) ParseCase() (Statement, error) {
 	}
 	if p.IsKeyword("ELSE") {
 		p.Next()
-		stmt.Else, err = p.StartExpression()
+		stmt.Else, err = p.ParseStatement()
 		if err = wrapError("else", err); err != nil {
 			return nil, err
 		}

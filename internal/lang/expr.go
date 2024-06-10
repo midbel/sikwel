@@ -20,7 +20,7 @@ func (p *Parser) stopExpression(pow int) bool {
 	if p.Is(Comma) {
 		return true
 	}
-	if p.IsKeyword("AS") {
+	if p.IsKeyword("AS") && !isExpressionKeyword(p.GetCurrLiteral()) {
 		return true
 	}
 	return p.currBinding() <= pow
@@ -518,20 +518,29 @@ var bindings = map[symbol]int{
 	symbolFor(Keyword, "ILIKE"):   powCmp,
 	symbolFor(Keyword, "BETWEEN"): powCmp,
 	symbolFor(Keyword, "IN"):      powCmp,
-	symbolFor(Keyword, "AS"):      powKw,
 	symbolFor(Keyword, "IS"):      powKw,
 	symbolFor(Keyword, "ISNULL"):  powKw,
 	symbolFor(Keyword, "NOTNULL"): powKw,
-	symbolFor(Lt, ""):             powCmp,
-	symbolFor(Le, ""):             powCmp,
-	symbolFor(Gt, ""):             powCmp,
-	symbolFor(Ge, ""):             powCmp,
-	symbolFor(Eq, ""):             powCmp,
-	symbolFor(Ne, ""):             powCmp,
-	symbolFor(Plus, ""):           powAdd,
-	symbolFor(Minus, ""):          powAdd,
-	symbolFor(Star, ""):           powMul,
-	symbolFor(Slash, ""):          powMul,
-	symbolFor(Lparen, ""):         powCall,
-	symbolFor(Concat, ""):         powConcat,
+	// symbolFor(Keyword, "AS"):      powKw,
+	symbolFor(Lt, ""):     powCmp,
+	symbolFor(Le, ""):     powCmp,
+	symbolFor(Gt, ""):     powCmp,
+	symbolFor(Ge, ""):     powCmp,
+	symbolFor(Eq, ""):     powCmp,
+	symbolFor(Ne, ""):     powCmp,
+	symbolFor(Plus, ""):   powAdd,
+	symbolFor(Minus, ""):  powAdd,
+	symbolFor(Star, ""):   powMul,
+	symbolFor(Slash, ""):  powMul,
+	symbolFor(Lparen, ""): powCall,
+	symbolFor(Concat, ""): powConcat,
+}
+
+func isExpressionKeyword(kw string) bool {
+	for k := range bindings {
+		if k.Type == Keyword && k.Literal == kw {
+			return true
+		}
+	}
+	return false
 }
