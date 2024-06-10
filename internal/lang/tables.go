@@ -505,8 +505,11 @@ func (w *Writer) FormatCreateView(stmt CreateViewStatement) error {
 				w.WriteString(",")
 				w.WriteBlank()
 			}
-			if w.Upperize {
+			if w.Upperize.Identifier() || w.Upperize.All() {
 				s = strings.ToUpper(s)
+			}
+			if w.UseQuote {
+				s = w.Quote(s)
 			}
 			w.WriteString(s)
 		}

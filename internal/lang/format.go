@@ -44,6 +44,36 @@ func (_ tsqlFormatter) Quote(str string) string {
 	return fmt.Sprintf("[%s]", str)
 }
 
+type UpperMode uint8
+
+const (
+	UpperNone UpperMode = 1 << iota
+	UpperKw
+	UpperFn
+	UpperId
+	UpperType
+)
+
+func (u UpperMode) All() bool {
+	return u.Identifier() && u.Function() && u.Keyword() && u.Type()
+}
+
+func (u UpperMode) Identifier() bool {
+	return (u & UpperId) != 0
+}
+
+func (u UpperMode) Function() bool {
+	return (u & UpperFn) != 0
+}
+
+func (u UpperMode) Keyword() bool {
+	return (u & UpperKw) != 0
+}
+
+func (u UpperMode) Type() bool {
+	return (u & UpperType) != 0
+}
+
 type Writer struct {
 	inner *bufio.Writer
 
@@ -58,9 +88,7 @@ type Writer struct {
 	UseCrlf      bool
 	PrependComma bool
 	KeepComment  bool
-	Upperize     bool
-	UpperizeK    bool
-	UpperizeF    bool
+	Upperize     UpperMode
 
 	UseNames bool
 
@@ -530,7 +558,7 @@ func (w *Writer) WriteCall(call string) {
 	if w.withColor() {
 		w.WriteString(callColor)
 	}
-	if w.UpperizeF || w.Upperize {
+	if w.Upperize.Function() || w.Upperize.All() {
 		call = strings.ToUpper(call)
 	}
 	w.WriteString(call)
@@ -616,7 +644,7 @@ func (w *Writer) WriteKeyword(kw string) {
 		w.WriteString(kw)
 		return
 	}
-	if w.UpperizeK || w.Upperize {
+	if w.Upperize.Keyword() || w.Upperize.All() {
 		kw = strings.ToUpper(kw)
 	} else {
 		kw = strings.ToLower(kw)

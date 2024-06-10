@@ -103,7 +103,7 @@ func (w *Writer) FormatCte(stmt CteStatement) error {
 
 	w.WritePrefix()
 	ident := stmt.Ident
-	if w.Upperize {
+	if w.Upperize.Identifier() {
 		ident = strings.ToUpper(ident)
 	}
 	w.WriteString(ident)
@@ -119,8 +119,11 @@ func (w *Writer) FormatCte(stmt CteStatement) error {
 				w.WriteString(",")
 				w.WriteBlank()
 			}
-			if w.Upperize {
+			if w.Upperize.Identifier() {
 				s = strings.ToUpper(s)
+			}
+			if w.UseQuote {
+				s = w.Quote(s)
 			}
 			w.WriteString(s)
 		}

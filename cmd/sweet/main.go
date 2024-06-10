@@ -47,9 +47,6 @@ func runFormat(args []string) error {
 	set.BoolVar(&writer.UseCrlf, "use-crlf", writer.UseCrlf, "use crlf for newline")
 	set.BoolVar(&writer.PrependComma, "prepend-comma", writer.PrependComma, "write comma before expressions")
 	set.BoolVar(&writer.KeepComment, "keep-comment", writer.KeepComment, "keep comments")
-	set.BoolVar(&writer.Upperize, "upper", writer.Upperize, "write all keywords and identifiers to uppercase")
-	set.BoolVar(&writer.UpperizeK, "upper-keywords", writer.UpperizeK, "write all keywords to uppercase")
-	set.BoolVar(&writer.UpperizeF, "upper-functions", writer.UpperizeF, "write all function names to uppercase")
 
 	set.Func("dialect", "SQL dialect", func(value string) error {
 		formatter, err := lang.GetDialectFormatter(value)
@@ -58,12 +55,20 @@ func runFormat(args []string) error {
 		}
 		return err
 	})
-	set.Func("upperize", "upperize mode", func(value string) error {
+	set.Func("upper", "upperize mode", func(value string) error {
 		switch value {
 		case "all", "":
-		case "keyword":
-		case "function":
-		case "identifier":
+			writer.Upperize |= lang.UpperId | lang.UpperKw | lang.UpperFn
+		case "keyword", "kw":
+			writer.Upperize |= lang.UpperKw
+		case "function", "fn":
+			writer.Upperize |= lang.UpperFn
+		case "identifier", "ident", "id":
+			writer.Upperize |= lang.UpperId
+		case "type":
+			writer.Upperize |= lang.UpperType
+		case "none":
+			writer.Upperize = lang.UpperNone
 		default:
 		}
 		return nil

@@ -1,5 +1,9 @@
 package lang
 
+import (
+	"strings"
+)
+
 func (p *Parser) ParseCreateProcedure() (Statement, error) {
 	var (
 		stmt CreateProcedureStatement
@@ -145,6 +149,9 @@ func (w *Writer) formatParamter(param ProcedureParameter) error {
 	}
 	if param.Mode != 0 {
 		w.WriteBlank()
+	}
+	if w.Upperize.Identifier() || w.Upperize.All() {
+		param.Name = strings.ToUpper(param.Name)
 	}
 	w.WriteString(param.Name)
 	w.WriteBlank()

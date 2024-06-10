@@ -202,7 +202,7 @@ func (w *Writer) FormatName(name Name) {
 			w.WriteString(".")
 		}
 		str := name.Parts[i]
-		if w.Upperize {
+		if w.Upperize.Identifier() || w.Upperize.All() {
 			str = strings.ToUpper(str)
 		}
 		if w.UseQuote && str != "*" {
@@ -242,7 +242,7 @@ func (w *Writer) FormatAlias(alias Alias) error {
 		w.WriteBlank()
 	}
 	str := alias.Alias
-	if w.Upperize {
+	if w.Upperize.Identifier() || w.Upperize.All() {
 		str = strings.ToUpper(str)
 	}
 	if w.UseQuote {
@@ -367,6 +367,9 @@ func (w *Writer) FormatCast(stmt Cast, _ bool) error {
 }
 
 func (w *Writer) FormatType(dt Type) error {
+	if w.Upperize.Type() || w.Upperize.All() {
+		dt.Name = strings.ToUpper(dt.Name)
+	}
 	w.WriteString(dt.Name)
 	if dt.Length <= 0 {
 		return nil
