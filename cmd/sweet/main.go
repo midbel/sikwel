@@ -54,7 +54,7 @@ func runFormat(args []string) error {
 	set.Func("dialect", "SQL dialect", func(value string) error {
 		formatter, err := lang.GetDialectFormatter(value)
 		if err == nil {
-			writer.SqlFormatter = formatter
+			writer.Formatter = formatter
 		}
 		return err
 	})

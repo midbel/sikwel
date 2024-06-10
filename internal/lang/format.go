@@ -9,11 +9,11 @@ import (
 	"strings"
 )
 
-type SqlFormatter interface {
+type Formatter interface {
 	Quote(string) string
 }
 
-func GetDialectFormatter(name string) (SqlFormatter, error) {
+func GetDialectFormatter(name string) (Formatter, error) {
 	switch name {
 	case "my", "mysql":
 		return mysqlFormatter{}, nil
@@ -68,15 +68,15 @@ type Writer struct {
 	currExprDepth int
 	currDepth     int
 
-	SqlFormatter
+	Formatter
 }
 
 func NewWriter(w io.Writer) *Writer {
 	ws := Writer{
-		inner:        bufio.NewWriter(w),
-		UseIndent:    4,
-		UseSpace:     true,
-		SqlFormatter: ansiFormatter{},
+		inner:     bufio.NewWriter(w),
+		UseIndent: 4,
+		UseSpace:  true,
+		Formatter: ansiFormatter{},
 	}
 	if w != os.Stdout {
 		ws.noColor = true

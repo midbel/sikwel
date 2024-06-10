@@ -687,7 +687,7 @@ func (w *Writer) FormatInsertValues(values Statement) error {
 	var err error
 	switch stmt := values.(type) {
 	case ValuesStatement:
-		err = w.FormatValues(stmt)
+		err = w.formatValues(stmt, true)
 	case SelectStatement:
 		w.WriteNL()
 		err = w.FormatSelect(stmt)
