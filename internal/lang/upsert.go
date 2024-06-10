@@ -1,9 +1,5 @@
 package lang
 
-import (
-	"fmt"
-)
-
 func (p *Parser) ParseMerge() (Statement, error) {
 	p.Next()
 	var (
@@ -692,7 +688,7 @@ func (w *Writer) FormatInsertValues(values Statement) error {
 		w.WriteNL()
 		err = w.FormatSelect(stmt)
 	default:
-		err = fmt.Errorf("values: unexpected statement type(%T)", values)
+		err = w.CanNotUse("values", values)
 	}
 	return err
 }
