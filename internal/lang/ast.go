@@ -44,6 +44,19 @@ func wrapWithParens(st Statement) bool {
 	return true
 }
 
+func isQuery(stmt Statement) bool {
+	switch stmt.(type) {
+	case InsertStatement:
+	case DeleteStatement:
+	case UpdateStatement:
+	case TruncateStatement:
+	case SelectStatement:
+	default:
+		return false
+	}
+	return true
+}
+
 type Commented struct {
 	Before []string
 	After  string

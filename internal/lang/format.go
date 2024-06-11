@@ -239,10 +239,17 @@ func (w *Writer) FormatStatement(stmt Statement) error {
 }
 
 func (w *Writer) FormatBody(list List) error {
-	// w.Enter()
-	// defer w.Leave()
+	doFmt := func(stmt Statement) error {
+		if isQuery(stmt) {
+			w.Leave()
+			defer w.Enter()
+		}
+		return w.FormatStatement(stmt)
+	}
+	w.Enter()
+	defer w.Leave()
 	for _, v := range list.Values {
-		if err := w.FormatStatement(v); err != nil {
+		if err := doFmt(v); err != nil {
 			return err
 		}
 		w.WriteEOL()

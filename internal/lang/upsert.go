@@ -631,14 +631,10 @@ func (w *Writer) FormatUpdateWithKeyword(kw string, stmt UpdateStatement) error 
 }
 
 func (w *Writer) FormatInsert(stmt InsertStatement) error {
-	kw, _ := stmt.Keyword()
-	return w.FormatInsertWithKeyword(kw, stmt)
-}
-
-func (w *Writer) FormatInsertWithKeyword(kw string, stmt InsertStatement) error {
 	w.Enter()
 	defer w.Leave()
 
+	kw, _ := stmt.Keyword()
 	w.WriteStatement(kw)
 	w.WriteBlank()
 

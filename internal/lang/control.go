@@ -157,11 +157,9 @@ func (w *Writer) formatIf(stmt IfStatement, kw string) error {
 	w.WriteKeyword("THEN")
 	w.WriteNL()
 
-	w.Enter()
 	if err := w.FormatStatement(stmt.Csq); err != nil {
 		return err
 	}
-	w.Leave()
 
 	var err error
 	if stmt.Alt != nil {
@@ -170,8 +168,6 @@ func (w *Writer) formatIf(stmt IfStatement, kw string) error {
 		} else {
 			w.WriteStatement("ELSE")
 			w.WriteNL()
-			w.Enter()
-			defer w.Leave()
 			err = w.FormatStatement(stmt.Alt)
 		}
 	}

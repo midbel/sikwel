@@ -125,11 +125,9 @@ func (w *Writer) FormatCreateProcedure(stmt CreateProcedureStatement) error {
 	}
 	w.WriteKeyword("BEGIN")
 	w.WriteNL()
-	w.Enter()
 	if err := w.FormatStatement(stmt.Body); err != nil {
 		return err
 	}
-	w.Leave()
 	w.WriteKeyword("END")
 	return nil
 }
