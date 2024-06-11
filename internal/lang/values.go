@@ -311,13 +311,12 @@ func (w *Writer) FormatRow(stmt Row, nl bool) error {
 }
 
 func (w *Writer) FormatCase(stmt CaseStatement) error {
-	w.WriteKeyword("CASE")
+	w.WriteStatement("CASE")
 	if stmt.Cdt != nil {
 		w.WriteBlank()
 		w.FormatExpr(stmt.Cdt, false)
 	}
 	w.WriteBlank()
-	w.Enter()
 	for _, s := range stmt.Body {
 		w.WriteNL()
 		if err := w.FormatExpr(s, false); err != nil {
@@ -328,11 +327,14 @@ func (w *Writer) FormatCase(stmt CaseStatement) error {
 		w.WriteNL()
 		w.WriteStatement("ELSE")
 		w.WriteBlank()
-		if err := w.FormatExpr(stmt.Else, false); err != nil {
+
+		err := w.zero(func() error {
+			return w.FormatExpr(stmt.Else, false)
+		})
+		if err != nil {
 			return err
 		}
 	}
-	w.Leave()
 	w.WriteNL()
 	w.WriteStatement("END")
 	return nil
@@ -347,7 +349,10 @@ func (w *Writer) FormatWhen(stmt WhenStatement) error {
 	w.WriteBlank()
 	w.WriteKeyword("THEN")
 	w.WriteBlank()
-	return w.FormatExpr(stmt.Body, false)
+
+	return w.zero(func() error {
+		return w.FormatExpr(stmt.Body, false)
+	})
 }
 
 func (w *Writer) FormatCast(stmt Cast, _ bool) error {

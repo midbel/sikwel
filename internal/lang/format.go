@@ -696,6 +696,15 @@ func (w *Writer) Leave() {
 	w.currDepth--
 }
 
+func (w *Writer) zero(fn func() error) error {
+	depth := w.currDepth
+	defer func() {
+		w.currDepth = depth
+	}()
+	w.Reset()
+	return fn()
+}
+
 func (w *Writer) getCurrDepth() int {
 	if w.currDepth < 0 {
 		return 0
