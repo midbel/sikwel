@@ -87,8 +87,15 @@ func (p *Parser) ParseCase() (Statement, error) {
 		if err = wrapError("when", err); err != nil {
 			return nil, err
 		}
+		if !p.IsKeyword("THEN") {
+			return nil, p.Unexpected("case")
+		}
 		p.Next()
-		when.Body, err = p.ParseStatement()
+		if p.Is(Keyword) {
+			when.Body, err = p.ParseStatement()
+		} else {
+			when.Body, err = p.StartExpression()
+		}
 		if err = wrapError("then", err); err != nil {
 			return nil, err
 		}
@@ -96,7 +103,7 @@ func (p *Parser) ParseCase() (Statement, error) {
 	}
 	if p.IsKeyword("ELSE") {
 		p.Next()
-		stmt.Else, err = p.ParseStatement()
+		stmt.Else, err = p.StartExpression()
 		if err = wrapError("else", err); err != nil {
 			return nil, err
 		}
@@ -311,7 +318,7 @@ func (w *Writer) FormatRow(stmt Row, nl bool) error {
 }
 
 func (w *Writer) FormatCase(stmt Case) error {
-	w.WriteStatement("CASE")
+	w.WriteKeyword("CASE")
 	if stmt.Cdt != nil {
 		w.WriteBlank()
 		w.FormatExpr(stmt.Cdt, false)

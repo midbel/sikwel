@@ -104,9 +104,7 @@ func measureWhen(stmt When) int {
 
 func measureJoin(stmt Join) int {
 	var total int
-	if _, ok := stmt.Table.(Name); ok {
-		total++
-	} else if a, ok := stmt.Table.(Alias); ok {
+	if a, ok := stmt.Table.(Alias); ok {
 		stmt.Table = a.Statement
 		return measureJoin(stmt)
 	} else {
