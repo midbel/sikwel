@@ -71,7 +71,7 @@ func (p *Parser) ParseAlias(stmt Statement) (Statement, error) {
 func (p *Parser) ParseCase() (Statement, error) {
 	p.Next()
 	var (
-		stmt CaseStatement
+		stmt Case
 		err  error
 	)
 	if !p.IsKeyword("WHEN") {
@@ -81,7 +81,7 @@ func (p *Parser) ParseCase() (Statement, error) {
 		}
 	}
 	for p.IsKeyword("WHEN") {
-		var when WhenStatement
+		var when When
 		p.Next()
 		when.Cdt, err = p.StartExpression()
 		if err = wrapError("when", err); err != nil {
@@ -310,7 +310,7 @@ func (w *Writer) FormatRow(stmt Row, nl bool) error {
 	return nil
 }
 
-func (w *Writer) FormatCase(stmt CaseStatement) error {
+func (w *Writer) FormatCase(stmt Case) error {
 	w.WriteStatement("CASE")
 	if stmt.Cdt != nil {
 		w.WriteBlank()
@@ -340,7 +340,7 @@ func (w *Writer) FormatCase(stmt CaseStatement) error {
 	return nil
 }
 
-func (w *Writer) FormatWhen(stmt WhenStatement) error {
+func (w *Writer) FormatWhen(stmt When) error {
 	w.WriteStatement("WHEN")
 	w.WriteBlank()
 	if err := w.FormatExpr(stmt.Cdt, false); err != nil {

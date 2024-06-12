@@ -21,6 +21,8 @@ func main() {
 		err = runLint(args[1:])
 	case "debug", "ast":
 		err = runDebug(args[1:])
+	case "cyclo", "measure":
+		err = runCyclo(args[1:])
 	default:
 		err = fmt.Errorf("unknown command %s", n)
 	}
@@ -138,6 +140,26 @@ func runLint(args []string) error {
 }
 
 func runInit() error {
+	return nil
+}
+
+func runCyclo(files []string) error {
+	run := func(f string) (int, error) {
+		r, err := os.Open(f)
+		if err != nil {
+			return 0, err
+		}
+		defer r.Close()
+		return lang.Complexity(r)
+	}
+	for _, f := range files {
+		n, err := run(f)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s: %d", f, n)
+		fmt.Println()
+	}
 	return nil
 }
 

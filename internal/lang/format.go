@@ -230,7 +230,7 @@ func (w *Writer) FormatStatement(stmt Statement) error {
 		err = w.FormatIf(stmt)
 	case WhileStatement:
 		err = w.FormatWhile(stmt)
-	case CaseStatement:
+	case Case:
 		err = w.FormatCase(stmt)
 	default:
 		err = fmt.Errorf("unsupported statement type %T", stmt)
@@ -298,9 +298,9 @@ func (w *Writer) FormatExpr(stmt Statement, nl bool) error {
 		err = w.formatExists(stmt, nl)
 	case Not:
 		err = w.formatNot(stmt, nl)
-	case CaseStatement:
+	case Case:
 		err = w.FormatCase(stmt)
-	case WhenStatement:
+	case When:
 		err = w.FormatWhen(stmt)
 	default:
 		err = w.FormatStatement(stmt)

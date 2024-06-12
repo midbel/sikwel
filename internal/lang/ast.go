@@ -645,13 +645,13 @@ type IfStatement struct {
 	Alt Statement
 }
 
-type CaseStatement struct {
+type Case struct {
 	Cdt  Statement
 	Body []Statement
 	Else Statement
 }
 
-type WhenStatement struct {
+type When struct {
 	Cdt  Statement
 	Body Statement
 }
