@@ -3,18 +3,20 @@ package lang
 import (
 	"fmt"
 	"strings"
+
+	"github.com/midbel/sweet/internal/lang/ast"
 )
 
 type CreateTableParser interface {
-	ParseTableName() (Statement, error)
-	ParseConstraint(bool) (Statement, error)
-	ParseColumnDef(CreateTableParser) (Statement, error)
+	ParseTableName() (ast.Statement, error)
+	ParseConstraint(bool) (ast.Statement, error)
+	ParseColumnDef(CreateTableParser) (ast.Statement, error)
 }
 
-func (p *Parser) ParseDropTable() (Statement, error) {
+func (p *Parser) ParseDropTable() (ast.Statement, error) {
 	p.Next()
 	var (
-		stmt DropTableStatement
+		stmt ast.DropTableStatement
 		err  error
 	)
 	if p.IsKeyword("IF EXISTS") {
@@ -34,19 +36,19 @@ func (p *Parser) ParseDropTable() (Statement, error) {
 
 	}
 	if p.IsKeyword("RESTRICT") {
-		stmt.Cascade = Restrict
+		stmt.Cascade = ast.Restrict
 		p.Next()
 	} else if p.IsKeyword("CASCADE") {
-		stmt.Cascade = Cascade
+		stmt.Cascade = ast.Cascade
 		p.Next()
 	}
 	return stmt, err
 }
 
-func (p *Parser) ParseDropView() (Statement, error) {
+func (p *Parser) ParseDropView() (ast.Statement, error) {
 	p.Next()
 	var (
-		stmt DropViewStatement
+		stmt ast.DropViewStatement
 		err  error
 	)
 	if p.IsKeyword("IF EXISTS") {
@@ -66,19 +68,19 @@ func (p *Parser) ParseDropView() (Statement, error) {
 
 	}
 	if p.IsKeyword("RESTRICT") {
-		stmt.Cascade = Restrict
+		stmt.Cascade = ast.Restrict
 		p.Next()
 	} else if p.IsKeyword("CASCADE") {
-		stmt.Cascade = Cascade
+		stmt.Cascade = ast.Cascade
 		p.Next()
 	}
 	return stmt, err
 }
 
-func (p *Parser) ParseAlterTable() (Statement, error) {
+func (p *Parser) ParseAlterTable() (ast.Statement, error) {
 	p.Next()
 	var (
-		stmt AlterTableStatement
+		stmt ast.AlterTableStatement
 		err  error
 	)
 	stmt.Name, err = p.ParseIdentifier()
@@ -88,7 +90,7 @@ func (p *Parser) ParseAlterTable() (Statement, error) {
 	switch {
 	case p.IsKeyword("RENAME TO"):
 		p.Next()
-		stmt.Action = RenameTableAction{
+		stmt.Action = ast.RenameTableAction{
 			Name: p.GetCurrLiteral(),
 		}
 		p.Next()
@@ -101,7 +103,7 @@ func (p *Parser) ParseAlterTable() (Statement, error) {
 		}
 		p.Next()
 		dst := p.GetCurrLiteral()
-		stmt.Action = RenameConstraintAction{
+		stmt.Action = ast.RenameConstraintAction{
 			Old: src,
 			New: dst,
 		}
@@ -115,7 +117,7 @@ func (p *Parser) ParseAlterTable() (Statement, error) {
 		}
 		p.Next()
 		dst := p.GetCurrLiteral()
-		stmt.Action = RenameColumnAction{
+		stmt.Action = ast.RenameColumnAction{
 			Old: src,
 			New: dst,
 		}
@@ -130,7 +132,7 @@ func (p *Parser) ParseAlterTable() (Statement, error) {
 		if err != nil {
 			return nil, err
 		}
-		stmt.Action = AddColumnAction{
+		stmt.Action = ast.AddColumnAction{
 			Def:       def,
 			NotExists: notExists,
 		}
@@ -139,13 +141,13 @@ func (p *Parser) ParseAlterTable() (Statement, error) {
 		if err != nil {
 			return nil, err
 		}
-		stmt.Action = AddConstraintAction{
+		stmt.Action = ast.AddConstraintAction{
 			Constraint: cst,
 		}
 	case p.IsKeyword("ALTER") || p.IsKeyword("ALTER COLUMN"):
 		p.Next()
 		var (
-			action AlterColumnAction
+			action ast.AlterColumnAction
 			err    error
 		)
 		action.Name = p.GetCurrLiteral()
@@ -158,16 +160,16 @@ func (p *Parser) ParseAlterTable() (Statement, error) {
 		if exists = p.IsKeyword("IF EXISTS"); exists {
 			p.Next()
 		}
-		action := DropConstraintAction{
+		action := ast.DropConstraintAction{
 			Name:   p.GetCurrLiteral(),
 			Exists: exists,
 		}
 		p.Next()
 		if p.IsKeyword("CASCADE") {
-			action.Cascade = Cascade
+			action.Cascade = ast.Cascade
 			p.Next()
 		} else if p.IsKeyword("RESTRICT") {
-			action.Cascade = Restrict
+			action.Cascade = ast.Restrict
 			p.Next()
 		}
 		stmt.Action = action
@@ -177,16 +179,16 @@ func (p *Parser) ParseAlterTable() (Statement, error) {
 		if exists = p.IsKeyword("IF EXISTS"); exists {
 			p.Next()
 		}
-		action := DropColumnAction{
+		action := ast.DropColumnAction{
 			Name:   p.GetCurrLiteral(),
 			Exists: exists,
 		}
 		p.Next()
 		if p.IsKeyword("CASCADE") {
-			action.Cascade = Cascade
+			action.Cascade = ast.Cascade
 			p.Next()
 		} else if p.IsKeyword("RESTRICT") {
-			action.Cascade = Restrict
+			action.Cascade = ast.Restrict
 			p.Next()
 		}
 		stmt.Action = action
@@ -196,14 +198,14 @@ func (p *Parser) ParseAlterTable() (Statement, error) {
 	return stmt, nil
 }
 
-func (p *Parser) ParseCreateTable() (Statement, error) {
+func (p *Parser) ParseCreateTable() (ast.Statement, error) {
 	return p.ParseCreateTableStatement(p)
 }
 
-func (p *Parser) ParseCreateTableStatement(ctp CreateTableParser) (Statement, error) {
+func (p *Parser) ParseCreateTableStatement(ctp CreateTableParser) (ast.Statement, error) {
 	p.Next()
 	var (
-		stmt CreateTableStatement
+		stmt ast.CreateTableStatement
 		err  error
 	)
 	if p.IsKeyword("IF NOT EXISTS") {
@@ -239,10 +241,10 @@ func (p *Parser) ParseCreateTableStatement(ctp CreateTableParser) (Statement, er
 	return stmt, p.Expect("create table", Rparen)
 }
 
-func (p *Parser) ParseCreateView() (Statement, error) {
+func (p *Parser) ParseCreateView() (ast.Statement, error) {
 	p.Next()
 	var (
-		stmt CreateViewStatement
+		stmt ast.CreateViewStatement
 		err  error
 	)
 	if p.IsKeyword("IF NOT EXISTS") {
@@ -267,13 +269,13 @@ func (p *Parser) ParseCreateView() (Statement, error) {
 	return stmt, err
 }
 
-func (p *Parser) ParseTableName() (Statement, error) {
+func (p *Parser) ParseTableName() (ast.Statement, error) {
 	return p.ParseIdentifier()
 }
 
-func (p *Parser) ParseColumnDef(ctp CreateTableParser) (Statement, error) {
+func (p *Parser) ParseColumnDef(ctp CreateTableParser) (ast.Statement, error) {
 	var (
-		def ColumnDef
+		def ast.ColumnDef
 		err error
 	)
 	def.Name = p.GetCurrLiteral()
@@ -294,13 +296,13 @@ func (p *Parser) ParseColumnDef(ctp CreateTableParser) (Statement, error) {
 	return def, err
 }
 
-func (p *Parser) ParseConstraint(column bool) (Statement, error) {
+func (p *Parser) ParseConstraint(column bool) (ast.Statement, error) {
 	return p.parseConstraintWithKeyword("CONSTRAINT", false, column)
 }
 
-func (p *Parser) parseConstraintWithKeyword(keyword string, required, column bool) (Statement, error) {
+func (p *Parser) parseConstraintWithKeyword(keyword string, required, column bool) (ast.Statement, error) {
 	var (
-		cst Constraint
+		cst ast.Constraint
 		err error
 	)
 	if p.IsKeyword(keyword) {
@@ -337,9 +339,9 @@ func (p *Parser) parseConstraintWithKeyword(keyword string, required, column boo
 	return cst, err
 }
 
-func (p *Parser) ParsePrimaryKeyConstraint(short bool) (Statement, error) {
+func (p *Parser) ParsePrimaryKeyConstraint(short bool) (ast.Statement, error) {
 	p.Next()
-	var cst PrimaryKeyConstraint
+	var cst ast.PrimaryKeyConstraint
 	if short {
 		return cst, nil
 	}
@@ -359,8 +361,8 @@ func (p *Parser) ParsePrimaryKeyConstraint(short bool) (Statement, error) {
 	return cst, p.Expect("primary key", Rparen)
 }
 
-func (p *Parser) ParseForeignKeyConstraint(short bool) (Statement, error) {
-	var cst ForeignKeyConstraint
+func (p *Parser) ParseForeignKeyConstraint(short bool) (ast.Statement, error) {
+	var cst ast.ForeignKeyConstraint
 	if p.IsKeyword("FOREIGN KEY") {
 		p.Next()
 		if err := p.Expect("foreign key", Lparen); err != nil {
@@ -405,9 +407,9 @@ func (p *Parser) ParseForeignKeyConstraint(short bool) (Statement, error) {
 	return cst, p.Expect("foreign key", Rparen)
 }
 
-func (p *Parser) ParseUniqueConstraint(short bool) (Statement, error) {
+func (p *Parser) ParseUniqueConstraint(short bool) (ast.Statement, error) {
 	p.Next()
-	var cst UniqueConstraint
+	var cst ast.UniqueConstraint
 	if short {
 		return cst, nil
 	}
@@ -427,9 +429,9 @@ func (p *Parser) ParseUniqueConstraint(short bool) (Statement, error) {
 	return cst, p.Expect("unique", Rparen)
 }
 
-func (p *Parser) ParseNotNullConstraint() (Statement, error) {
+func (p *Parser) ParseNotNullConstraint() (ast.Statement, error) {
 	p.Next()
-	var cst NotNullConstraint
+	var cst ast.NotNullConstraint
 	if !p.IsKeyword("NULL") {
 		return nil, p.Unexpected("not null")
 	}
@@ -437,27 +439,27 @@ func (p *Parser) ParseNotNullConstraint() (Statement, error) {
 	return cst, nil
 }
 
-func (p *Parser) ParseCheckConstraint() (Statement, error) {
+func (p *Parser) ParseCheckConstraint() (ast.Statement, error) {
 	p.Next()
 	var (
-		cst CheckConstraint
+		cst ast.CheckConstraint
 		err error
 	)
 	cst.Expr, err = p.StartExpression()
 	return cst, err
 }
 
-func (p *Parser) ParseDefaultConstraint() (Statement, error) {
+func (p *Parser) ParseDefaultConstraint() (ast.Statement, error) {
 	p.Next()
 	var (
-		cst DefaultConstraint
+		cst ast.DefaultConstraint
 		err error
 	)
 	cst.Expr, err = p.StartExpression()
 	return cst, err
 }
 
-func (p *Parser) ParseGeneratedAlwaysConstraint() (Statement, error) {
+func (p *Parser) ParseGeneratedAlwaysConstraint() (ast.Statement, error) {
 	if p.IsKeyword("GENERATED ALWAYS") {
 		p.Next()
 		if !p.IsKeyword("AS") {
@@ -466,7 +468,7 @@ func (p *Parser) ParseGeneratedAlwaysConstraint() (Statement, error) {
 	}
 	p.Next()
 	var (
-		cst GeneratedConstraint
+		cst ast.GeneratedConstraint
 		err error
 	)
 	cst.Expr, err = p.StartExpression()
@@ -480,7 +482,7 @@ func (p *Parser) ParseGeneratedAlwaysConstraint() (Statement, error) {
 	return cst, nil
 }
 
-func (w *Writer) FormatCreateView(stmt CreateViewStatement) error {
+func (w *Writer) FormatCreateView(stmt ast.CreateViewStatement) error {
 	kw, _ := stmt.Keyword()
 	w.WriteStatement(kw)
 	w.WriteBlank()
@@ -526,28 +528,28 @@ func (w *Writer) FormatCreateView(stmt CreateViewStatement) error {
 }
 
 type CreateTableFormatter interface {
-	FormatTableName(Statement) error
-	FormatColumnDef(ConstraintFormatter, Statement, int) error
+	FormatTableName(ast.Statement) error
+	FormatColumnDef(ConstraintFormatter, ast.Statement, int) error
 	ConstraintFormatter
 }
 
 type ConstraintFormatter interface {
-	FormatConstraint(Statement) error
+	FormatConstraint(ast.Statement) error
 
-	FormatPrimaryKeyConstraint(PrimaryKeyConstraint) error
-	FormatForeignKeyConstraint(ForeignKeyConstraint) error
-	FormatDefaultConstraint(DefaultConstraint) error
-	FormatNotNullConstraint(NotNullConstraint) error
-	FormatUniqueConstraint(UniqueConstraint) error
-	FormatCheckConstraint(CheckConstraint) error
-	FormatGeneratedConstraint(GeneratedConstraint) error
+	FormatPrimaryKeyConstraint(ast.PrimaryKeyConstraint) error
+	FormatForeignKeyConstraint(ast.ForeignKeyConstraint) error
+	FormatDefaultConstraint(ast.DefaultConstraint) error
+	FormatNotNullConstraint(ast.NotNullConstraint) error
+	FormatUniqueConstraint(ast.UniqueConstraint) error
+	FormatCheckConstraint(ast.CheckConstraint) error
+	FormatGeneratedConstraint(ast.GeneratedConstraint) error
 }
 
-func (w *Writer) FormatCreateTable(stmt CreateTableStatement) error {
+func (w *Writer) FormatCreateTable(stmt ast.CreateTableStatement) error {
 	return w.FormatCreateTableWithFormatter(w, stmt)
 }
 
-func (w *Writer) FormatCreateTableWithFormatter(ctf CreateTableFormatter, stmt CreateTableStatement) error {
+func (w *Writer) FormatCreateTableWithFormatter(ctf CreateTableFormatter, stmt ast.CreateTableStatement) error {
 	w.Enter()
 	defer w.Leave()
 
@@ -570,7 +572,7 @@ func (w *Writer) FormatCreateTableWithFormatter(ctf CreateTableFormatter, stmt C
 	var longest int
 	if !w.Compact {
 		for _, c := range stmt.Columns {
-			d, ok := c.(ColumnDef)
+			d, ok := c.(ast.ColumnDef)
 			if !ok {
 				continue
 			}
@@ -601,12 +603,12 @@ func (w *Writer) FormatCreateTableWithFormatter(ctf CreateTableFormatter, stmt C
 	return nil
 }
 
-func (w *Writer) FormatTableName(stmt Statement) error {
+func (w *Writer) FormatTableName(stmt ast.Statement) error {
 	return w.FormatExpr(stmt, false)
 }
 
-func (w *Writer) FormatColumnDef(ctf ConstraintFormatter, stmt Statement, size int) error {
-	def, ok := stmt.(ColumnDef)
+func (w *Writer) FormatColumnDef(ctf ConstraintFormatter, stmt ast.Statement, size int) error {
+	def, ok := stmt.(ast.ColumnDef)
 	if !ok {
 		return w.CanNotUse("column", stmt)
 	}
@@ -629,12 +631,12 @@ func (w *Writer) FormatColumnDef(ctf ConstraintFormatter, stmt Statement, size i
 	return nil
 }
 
-func (w *Writer) FormatConstraint(stmt Statement) error {
+func (w *Writer) FormatConstraint(stmt ast.Statement) error {
 	return w.formatConstraint(stmt, "CONSTRAINT")
 }
 
-func (w *Writer) formatConstraint(stmt Statement, keyword string) error {
-	cst, ok := stmt.(Constraint)
+func (w *Writer) formatConstraint(stmt ast.Statement, keyword string) error {
+	cst, ok := stmt.(ast.Constraint)
 	if !ok {
 		return w.CanNotUse("constraint", stmt)
 	}
@@ -645,26 +647,26 @@ func (w *Writer) formatConstraint(stmt Statement, keyword string) error {
 		w.WriteBlank()
 	}
 	switch stmt := cst.Statement.(type) {
-	case PrimaryKeyConstraint:
+	case ast.PrimaryKeyConstraint:
 		return w.FormatPrimaryKeyConstraint(stmt)
-	case ForeignKeyConstraint:
+	case ast.ForeignKeyConstraint:
 		return w.FormatForeignKeyConstraint(stmt)
-	case NotNullConstraint:
+	case ast.NotNullConstraint:
 		return w.FormatNotNullConstraint(stmt)
-	case UniqueConstraint:
+	case ast.UniqueConstraint:
 		return w.FormatUniqueConstraint(stmt)
-	case CheckConstraint:
+	case ast.CheckConstraint:
 		return w.FormatCheckConstraint(stmt)
-	case DefaultConstraint:
+	case ast.DefaultConstraint:
 		return w.FormatDefaultConstraint(stmt)
-	case GeneratedConstraint:
+	case ast.GeneratedConstraint:
 		return w.FormatGeneratedConstraint(stmt)
 	default:
 		return fmt.Errorf("%T: unsupported constraint type", cst.Statement)
 	}
 }
 
-func (w *Writer) FormatPrimaryKeyConstraint(cst PrimaryKeyConstraint) error {
+func (w *Writer) FormatPrimaryKeyConstraint(cst ast.PrimaryKeyConstraint) error {
 	kw, _ := cst.Keyword()
 	w.WriteKeyword(kw)
 	if len(cst.Columns) == 0 {
@@ -683,7 +685,7 @@ func (w *Writer) FormatPrimaryKeyConstraint(cst PrimaryKeyConstraint) error {
 	return nil
 }
 
-func (w *Writer) FormatForeignKeyConstraint(cst ForeignKeyConstraint) error {
+func (w *Writer) FormatForeignKeyConstraint(cst ast.ForeignKeyConstraint) error {
 	if len(cst.Locals) > 0 {
 		w.WriteKeyword("FOREIGN KEY")
 		w.WriteBlank()
@@ -715,13 +717,13 @@ func (w *Writer) FormatForeignKeyConstraint(cst ForeignKeyConstraint) error {
 	return nil
 }
 
-func (w *Writer) FormatNotNullConstraint(cst NotNullConstraint) error {
+func (w *Writer) FormatNotNullConstraint(cst ast.NotNullConstraint) error {
 	kw, _ := cst.Keyword()
 	w.WriteKeyword(kw)
 	return nil
 }
 
-func (w *Writer) FormatUniqueConstraint(cst UniqueConstraint) error {
+func (w *Writer) FormatUniqueConstraint(cst ast.UniqueConstraint) error {
 	kw, _ := cst.Keyword()
 	w.WriteKeyword(kw)
 	if len(cst.Columns) == 0 {
@@ -740,11 +742,11 @@ func (w *Writer) FormatUniqueConstraint(cst UniqueConstraint) error {
 	return nil
 }
 
-func (w *Writer) FormatDefaultConstraint(cst DefaultConstraint) error {
+func (w *Writer) FormatDefaultConstraint(cst ast.DefaultConstraint) error {
 	kw, _ := cst.Keyword()
 	w.WriteKeyword(kw)
 	w.WriteBlank()
-	_, ok := cst.Expr.(Value)
+	_, ok := cst.Expr.(ast.Value)
 	if !ok {
 		w.WriteString("(")
 	}
@@ -757,7 +759,7 @@ func (w *Writer) FormatDefaultConstraint(cst DefaultConstraint) error {
 	return nil
 }
 
-func (w *Writer) FormatCheckConstraint(cst CheckConstraint) error {
+func (w *Writer) FormatCheckConstraint(cst ast.CheckConstraint) error {
 	kw, _ := cst.Keyword()
 	w.WriteKeyword(kw)
 	w.WriteBlank()
@@ -767,7 +769,7 @@ func (w *Writer) FormatCheckConstraint(cst CheckConstraint) error {
 	return nil
 }
 
-func (w *Writer) FormatGeneratedConstraint(cst GeneratedConstraint) error {
+func (w *Writer) FormatGeneratedConstraint(cst ast.GeneratedConstraint) error {
 	kw, _ := cst.Keyword()
 	w.WriteKeyword(kw)
 	w.WriteBlank()
@@ -781,7 +783,7 @@ func (w *Writer) FormatGeneratedConstraint(cst GeneratedConstraint) error {
 	return nil
 }
 
-func (w *Writer) FormatAlterTable(stmt AlterTableStatement) error {
+func (w *Writer) FormatAlterTable(stmt ast.AlterTableStatement) error {
 	kw, _ := stmt.Keyword()
 	w.WriteStatement(kw)
 	w.WriteBlank()
@@ -790,7 +792,7 @@ func (w *Writer) FormatAlterTable(stmt AlterTableStatement) error {
 	}
 	w.WriteBlank()
 	switch action := stmt.Action.(type) {
-	case DropColumnAction:
+	case ast.DropColumnAction:
 		w.WriteKeyword("DROP COLUMN")
 		if action.Exists {
 			w.WriteBlank()
@@ -798,18 +800,18 @@ func (w *Writer) FormatAlterTable(stmt AlterTableStatement) error {
 		}
 		w.WriteBlank()
 		w.WriteString(action.Name)
-		if action.Cascade == Cascade {
+		if action.Cascade == ast.Cascade {
 			w.WriteBlank()
 			w.WriteKeyword("CASCADE")
-		} else if action.Cascade == Restrict {
+		} else if action.Cascade == ast.Restrict {
 			w.WriteBlank()
 			w.WriteKeyword("RESTRICT")
 		}
-	case AddColumnAction:
+	case ast.AddColumnAction:
 		w.WriteKeyword("ADD COLUMN")
 		w.WriteBlank()
 
-		def, ok := action.Def.(ColumnDef)
+		def, ok := action.Def.(ast.ColumnDef)
 		if !ok {
 			return w.CanNotUse("add column", action.Def)
 		}
@@ -825,8 +827,8 @@ func (w *Writer) FormatAlterTable(stmt AlterTableStatement) error {
 			}
 		}
 		return nil
-	case AlterColumnAction:
-	case RenameColumnAction:
+	case ast.AlterColumnAction:
+	case ast.RenameColumnAction:
 		w.WriteKeyword("RENAME COLUMN")
 		w.WriteBlank()
 		w.WriteString(action.Old)
@@ -834,9 +836,9 @@ func (w *Writer) FormatAlterTable(stmt AlterTableStatement) error {
 		w.WriteKeyword("TO")
 		w.WriteBlank()
 		w.WriteString(action.New)
-	case AddConstraintAction:
+	case ast.AddConstraintAction:
 		return w.formatConstraint(action.Constraint, "ADD CONSTRAINT")
-	case DropConstraintAction:
+	case ast.DropConstraintAction:
 		w.WriteKeyword("DROP CONSTRAINT")
 		if action.Exists {
 			w.WriteBlank()
@@ -844,14 +846,14 @@ func (w *Writer) FormatAlterTable(stmt AlterTableStatement) error {
 		}
 		w.WriteBlank()
 		w.WriteString(action.Name)
-		if action.Cascade == Cascade {
+		if action.Cascade == ast.Cascade {
 			w.WriteBlank()
 			w.WriteKeyword("CASCADE")
-		} else if action.Cascade == Restrict {
+		} else if action.Cascade == ast.Restrict {
 			w.WriteBlank()
 			w.WriteKeyword("RESTRICT")
 		}
-	case RenameConstraintAction:
+	case ast.RenameConstraintAction:
 		w.WriteKeyword("RENAME CONSTRAINT")
 		w.WriteBlank()
 		w.WriteString(action.Old)
@@ -859,7 +861,7 @@ func (w *Writer) FormatAlterTable(stmt AlterTableStatement) error {
 		w.WriteKeyword("TO")
 		w.WriteBlank()
 		w.WriteString(action.New)
-	case RenameTableAction:
+	case ast.RenameTableAction:
 		w.WriteKeyword("RENAME")
 		w.WriteBlank()
 		w.WriteKeyword("TO")
@@ -871,7 +873,7 @@ func (w *Writer) FormatAlterTable(stmt AlterTableStatement) error {
 	return nil
 }
 
-func (w *Writer) FormatDropView(stmt DropViewStatement) error {
+func (w *Writer) FormatDropView(stmt ast.DropViewStatement) error {
 	kw, _ := stmt.Keyword()
 	w.WriteStatement(kw)
 	if stmt.Exists {
@@ -889,10 +891,10 @@ func (w *Writer) FormatDropView(stmt DropViewStatement) error {
 		}
 	}
 	switch stmt.Cascade {
-	case Cascade:
+	case ast.Cascade:
 		w.WriteBlank()
 		w.WriteKeyword("CASCADE")
-	case Restrict:
+	case ast.Restrict:
 		w.WriteBlank()
 		w.WriteKeyword("RESTRICT")
 	default:
@@ -900,7 +902,7 @@ func (w *Writer) FormatDropView(stmt DropViewStatement) error {
 	return nil
 }
 
-func (w *Writer) FormatDropTable(stmt DropTableStatement) error {
+func (w *Writer) FormatDropTable(stmt ast.DropTableStatement) error {
 	kw, _ := stmt.Keyword()
 	w.WriteStatement(kw)
 	if stmt.Exists {
@@ -918,10 +920,10 @@ func (w *Writer) FormatDropTable(stmt DropTableStatement) error {
 		}
 	}
 	switch stmt.Cascade {
-	case Cascade:
+	case ast.Cascade:
 		w.WriteBlank()
 		w.WriteKeyword("CASCADE")
-	case Restrict:
+	case ast.Restrict:
 		w.WriteBlank()
 		w.WriteKeyword("RESTRICT")
 	default:

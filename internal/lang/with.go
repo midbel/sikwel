@@ -2,12 +2,14 @@ package lang
 
 import (
 	"strings"
+
+	"github.com/midbel/sweet/internal/lang/ast"
 )
 
-func (p *Parser) parseWith() (Statement, error) {
+func (p *Parser) parseWith() (ast.Statement, error) {
 	p.Next()
 	var (
-		stmt WithStatement
+		stmt ast.WithStatement
 		err  error
 	)
 	if p.IsKeyword("RECURSIVE") {
@@ -28,9 +30,9 @@ func (p *Parser) parseWith() (Statement, error) {
 	return stmt, wrapError("with", err)
 }
 
-func (p *Parser) parseSubquery() (Statement, error) {
+func (p *Parser) parseSubquery() (ast.Statement, error) {
 	var (
-		cte CteStatement
+		cte ast.CteStatement
 		err error
 	)
 	if !p.Is(Ident) {
@@ -49,14 +51,14 @@ func (p *Parser) parseSubquery() (Statement, error) {
 	p.Next()
 	if p.IsKeyword("MATERIALIZED") {
 		p.Next()
-		cte.Materialized = MaterializedCte
+		cte.Materialized = ast.MaterializedCte
 	} else if p.IsKeyword("NOT") {
 		p.Next()
 		if !p.IsKeyword("MATERIALIZED") {
 			return nil, p.Unexpected("subquery")
 		}
 		p.Next()
-		cte.Materialized = NotMaterializedCte
+		cte.Materialized = ast.NotMaterializedCte
 	}
 	if !p.Is(Lparen) {
 		return nil, p.Unexpected("subquery")
@@ -74,7 +76,7 @@ func (p *Parser) parseSubquery() (Statement, error) {
 	return cte, nil
 }
 
-func (w *Writer) FormatWith(stmt WithStatement) error {
+func (w *Writer) FormatWith(stmt ast.WithStatement) error {
 	kw, _ := stmt.Keyword()
 	w.WriteStatement(kw)
 	if stmt.Recursive {
@@ -97,7 +99,7 @@ func (w *Writer) FormatWith(stmt WithStatement) error {
 	return w.FormatStatement(stmt.Statement)
 }
 
-func (w *Writer) FormatCte(stmt CteStatement) error {
+func (w *Writer) FormatCte(stmt ast.CteStatement) error {
 	w.Enter()
 	defer w.Leave()
 

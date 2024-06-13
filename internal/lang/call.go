@@ -1,9 +1,13 @@
 package lang
 
-func (p *Parser) ParseCall() (Statement, error) {
+import (
+	"github.com/midbel/sweet/internal/lang/ast"
+)
+
+func (p *Parser) ParseCall() (ast.Statement, error) {
 	p.Next()
 	var (
-		stmt CallStatement
+		stmt ast.CallStatement
 		err  error
 	)
 	stmt.Ident, err = p.ParseIdentifier()
@@ -36,7 +40,7 @@ func (p *Parser) ParseCall() (Statement, error) {
 	return stmt, err
 }
 
-func (w *Writer) FormatCall(stmt CallStatement) error {
+func (w *Writer) FormatCall(stmt ast.CallStatement) error {
 	w.Enter()
 	defer w.Leave()
 

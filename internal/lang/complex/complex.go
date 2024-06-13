@@ -4,6 +4,8 @@ import (
 	"errors"
 	"io"
 	"slices"
+
+	"github.com/midbel/sweet/internal/lang/ast"
 )
 
 func Complexity(r io.Reader) (int, error) {
@@ -25,56 +27,56 @@ func Complexity(r io.Reader) (int, error) {
 	return total, nil
 }
 
-func measureQuery(stmt Statement) int {
+func measureQuery(stmt ast.Statement) int {
 	var total int
 	switch stmt := stmt.(type) {
-	case TruncateStatement:
+	case ast.TruncateStatement:
 		total++
-	case DeleteStatement:
-	case UpdateStatement:
-	case InsertStatement:
-	case MergeStatement:
-	case ValuesStatement:
-	case CallStatement:
-	case UnionStatement:
-	case ExceptStatement:
-	case IntersectStatement:
-	case SelectStatement:
+	case ast.DeleteStatement:
+	case ast.UpdateStatement:
+	case ast.InsertStatement:
+	case ast.MergeStatement:
+	case ast.ValuesStatement:
+	case ast.CallStatement:
+	case ast.UnionStatement:
+	case ast.ExceptStatement:
+	case ast.IntersectStatement:
+	case ast.SelectStatement:
 		total = measureSelect(stmt)
-	case WithStatement:
+	case ast.WithStatement:
 		total = measureWith(stmt)
-	case CteStatement:
+	case ast.CteStatement:
 		total = measureCte(stmt)
-	case SetStatement:
-	case IfStatement:
-	case WhileStatement:
-	case Return:
-	case Alias:
+	case ast.Set:
+	case ast.If:
+	case ast.While:
+	case ast.Return:
+	case ast.Alias:
 		total = measureQuery(stmt.Statement)
-	case Join:
+	case ast.Join:
 		total = measureJoin(stmt)
-	case Case:
+	case ast.Case:
 		total = measureCase(stmt)
-	case When:
+	case ast.When:
 		total = measureWhen(stmt)
-	case Group:
+	case ast.Group:
 		total = measureQuery(stmt.Statement)
-	case Binary:
+	case ast.Binary:
 		total = measureBinary(stmt)
-	case Unary:
+	case ast.Unary:
 		total = measureQuery(stmt.Right)
-	case Exists:
-	case Between:
-	case All:
-	case Any:
-	case Is:
+	case ast.Exists:
+	case ast.Between:
+	case ast.All:
+	case ast.Any:
+	case ast.Is:
 	default:
 		// pass
 	}
 	return total
 }
 
-func measureBinary(stmt Binary) int {
+func measureBinary(stmt ast.Binary) int {
 	var total int
 	if stmt.IsRelation() {
 		total++
@@ -85,7 +87,7 @@ func measureBinary(stmt Binary) int {
 
 }
 
-func measureCase(stmt Case) int {
+func measureCase(stmt ast.Case) int {
 	var total int
 	for _, q := range stmt.Body {
 		total++
@@ -98,13 +100,13 @@ func measureCase(stmt Case) int {
 	return total
 }
 
-func measureWhen(stmt When) int {
+func measureWhen(stmt ast.When) int {
 	return measureQuery(stmt.Cdt) + measureQuery(stmt.Body)
 }
 
-func measureJoin(stmt Join) int {
+func measureJoin(stmt ast.Join) int {
 	var total int
-	if a, ok := stmt.Table.(Alias); ok {
+	if a, ok := stmt.Table.(ast.Alias); ok {
 		stmt.Table = a.Statement
 		return measureJoin(stmt)
 	} else {
@@ -113,10 +115,10 @@ func measureJoin(stmt Join) int {
 	return total + measureQuery(stmt.Where)
 }
 
-func measureSelect(stmt SelectStatement) int {
+func measureSelect(stmt ast.SelectStatement) int {
 	var (
 		total int
-		list  []Statement
+		list  []ast.Statement
 	)
 	list = slices.Concat(list, stmt.Tables, stmt.Columns)
 	for _, q := range list {
@@ -125,10 +127,10 @@ func measureSelect(stmt SelectStatement) int {
 	return total + 1
 }
 
-func measureWith(stmt WithStatement) int {
+func measureWith(stmt ast.WithStatement) int {
 	return 0
 }
 
-func measureCte(stmt CteStatement) int {
+func measureCte(stmt ast.CteStatement) int {
 	return 0
 }

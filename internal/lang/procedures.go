@@ -2,11 +2,13 @@ package lang
 
 import (
 	"strings"
+
+	"github.com/midbel/sweet/internal/lang/ast"
 )
 
-func (p *Parser) ParseCreateProcedure() (Statement, error) {
+func (p *Parser) ParseCreateProcedure() (ast.Statement, error) {
 	var (
-		stmt CreateProcedureStatement
+		stmt ast.CreateProcedureStatement
 		err  error
 	)
 	if p.IsKeyword("CREATE OR REPLACE PROCEDURE") {
@@ -37,11 +39,11 @@ func (p *Parser) ParseCreateProcedure() (Statement, error) {
 	return stmt, err
 }
 
-func (p *Parser) ParseProcedureParameters() ([]Statement, error) {
+func (p *Parser) ParseProcedureParameters() ([]ast.Statement, error) {
 	if err := p.Expect("procedure", Lparen); err != nil {
 		return nil, err
 	}
-	var list []Statement
+	var list []ast.Statement
 	for !p.Done() && !p.Is(Rparen) {
 		stmt, err := p.ParseProcedureParameter()
 		if err != nil {
@@ -55,18 +57,18 @@ func (p *Parser) ParseProcedureParameters() ([]Statement, error) {
 	return list, p.Expect("procedure", Rparen)
 }
 
-func (p *Parser) ParseProcedureParameter() (Statement, error) {
+func (p *Parser) ParseProcedureParameter() (ast.Statement, error) {
 	var (
-		param ProcedureParameter
+		param ast.ProcedureParameter
 		err   error
 	)
 	switch {
 	case p.IsKeyword("IN"):
-		param.Mode = ModeIn
+		param.Mode = ast.ModeIn
 	case p.IsKeyword("OUT"):
-		param.Mode = ModeOut
+		param.Mode = ast.ModeOut
 	case p.IsKeyword("INOUT"):
-		param.Mode = ModeInOut
+		param.Mode = ast.ModeInOut
 	default:
 	}
 	if param.Mode != 0 {
@@ -90,7 +92,7 @@ func (p *Parser) ParseProcedureParameter() (Statement, error) {
 	return param, nil
 }
 
-func (w *Writer) FormatCreateProcedure(stmt CreateProcedureStatement) error {
+func (w *Writer) FormatCreateProcedure(stmt ast.CreateProcedureStatement) error {
 	w.Enter()
 	defer w.Leave()
 
@@ -106,7 +108,7 @@ func (w *Writer) FormatCreateProcedure(stmt CreateProcedureStatement) error {
 			w.WriteString(",")
 			w.WriteNL()
 		}
-		p, ok := s.(ProcedureParameter)
+		p, ok := s.(ast.ProcedureParameter)
 		if !ok {
 			return w.CanNotUse("create procedure", s)
 		}
@@ -132,17 +134,17 @@ func (w *Writer) FormatCreateProcedure(stmt CreateProcedureStatement) error {
 	return nil
 }
 
-func (w *Writer) formatParamter(param ProcedureParameter) error {
+func (w *Writer) formatParamter(param ast.ProcedureParameter) error {
 	w.Enter()
 	defer w.Leave()
 
 	w.WritePrefix()
 	switch param.Mode {
-	case ModeIn:
+	case ast.ModeIn:
 		w.WriteKeyword("IN")
-	case ModeOut:
+	case ast.ModeOut:
 		w.WriteKeyword("OUT")
-	case ModeInOut:
+	case ast.ModeInOut:
 		w.WriteKeyword("INOUT")
 	}
 	if param.Mode != 0 {

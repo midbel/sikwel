@@ -1,9 +1,13 @@
 package lang
 
-func (p *Parser) ParseGrant() (Statement, error) {
+import (
+	"github.com/midbel/sweet/internal/lang/ast"
+)
+
+func (p *Parser) ParseGrant() (ast.Statement, error) {
 	p.Next()
 	var (
-		stmt GrantStatement
+		stmt ast.GrantStatement
 		err  error
 	)
 	if stmt.Privileges, err = p.parsePrivileges(); err != nil {
@@ -28,10 +32,10 @@ func (p *Parser) ParseGrant() (Statement, error) {
 	return stmt, nil
 }
 
-func (p *Parser) ParseRevoke() (Statement, error) {
+func (p *Parser) ParseRevoke() (ast.Statement, error) {
 	p.Next()
 	var (
-		stmt RevokeStatement
+		stmt ast.RevokeStatement
 		err  error
 	)
 	if stmt.Privileges, err = p.parsePrivileges(); err != nil {
@@ -104,7 +108,7 @@ func (p *Parser) parsePrivileges() ([]string, error) {
 	return list, nil
 }
 
-func (w *Writer) FormatGrant(stmt GrantStatement) error {
+func (w *Writer) FormatGrant(stmt ast.GrantStatement) error {
 	kw, _ := stmt.Keyword()
 	w.WriteStatement(kw)
 	w.WriteBlank()
@@ -132,7 +136,7 @@ func (w *Writer) FormatGrant(stmt GrantStatement) error {
 	return nil
 }
 
-func (w *Writer) FormatRevoke(stmt RevokeStatement) error {
+func (w *Writer) FormatRevoke(stmt ast.RevokeStatement) error {
 	kw, _ := stmt.Keyword()
 	w.WriteStatement(kw)
 	w.WriteBlank()

@@ -1,8 +1,12 @@
 package lang
 
-import "fmt"
+import (
+	// "fmt"
 
-func (p *Parser) StartExpression() (Statement, error) {
+	"github.com/midbel/sweet/internal/lang/ast"
+)
+
+func (p *Parser) StartExpression() (ast.Statement, error) {
 	expr, err := p.parseExpression(powLowest)
 	if err != nil {
 		return nil, err
@@ -26,7 +30,7 @@ func (p *Parser) stopExpression(pow int) bool {
 	return p.currBinding() <= pow
 }
 
-func (p *Parser) parseExpression(pow int) (Statement, error) {
+func (p *Parser) parseExpression(pow int) (ast.Statement, error) {
 	fn, err := p.getPrefixExpr()
 	if err != nil {
 		return nil, err
@@ -47,8 +51,8 @@ func (p *Parser) parseExpression(pow int) (Statement, error) {
 	return left, nil
 }
 
-func (p *Parser) parseRelational(ident Statement) (Statement, error) {
-	stmt := Binary{
+func (p *Parser) parseRelational(ident ast.Statement) (ast.Statement, error) {
+	stmt := ast.Binary{
 		Left: ident,
 		Op:   p.GetCurrLiteral(),
 	}
@@ -61,8 +65,8 @@ func (p *Parser) parseRelational(ident Statement) (Statement, error) {
 	return stmt, err
 }
 
-func (p *Parser) parseLike(ident Statement) (Statement, error) {
-	stmt := Binary{
+func (p *Parser) parseLike(ident ast.Statement) (ast.Statement, error) {
+	stmt := ast.Binary{
 		Left: ident,
 		Op:   p.GetCurrLiteral(),
 	}
@@ -75,13 +79,13 @@ func (p *Parser) parseLike(ident Statement) (Statement, error) {
 	return stmt, err
 }
 
-func (p *Parser) parseIs(ident Statement) (Statement, error) {
+func (p *Parser) parseIs(ident ast.Statement) (ast.Statement, error) {
 	p.Next()
 	not := p.GetCurrLiteral() == "NOT" && p.Is(Keyword)
 	if not {
 		p.Next()
 	}
-	stmt := Is{
+	stmt := ast.Is{
 		Ident: ident,
 	}
 	val, err := p.ParseConstant()
@@ -90,48 +94,48 @@ func (p *Parser) parseIs(ident Statement) (Statement, error) {
 	}
 	stmt.Value = val
 	if not {
-		return Not{
+		return ast.Not{
 			Statement: stmt,
 		}, nil
 	}
 	return stmt, nil
 }
 
-func (p *Parser) parseIsNull(ident Statement) (Statement, error) {
+func (p *Parser) parseIsNull(ident ast.Statement) (ast.Statement, error) {
 	p.Next()
-	val := Value{
+	val := ast.Value{
 		Literal: "NULL",
 	}
-	stmt := Is{
+	stmt := ast.Is{
 		Ident: ident,
 		Value: val,
 	}
 	return stmt, nil
 }
 
-func (p *Parser) parseNotNull(ident Statement) (Statement, error) {
+func (p *Parser) parseNotNull(ident ast.Statement) (ast.Statement, error) {
 	p.Next()
-	val := Value{
+	val := ast.Value{
 		Literal: "NULL",
 	}
-	stmt := Is{
+	stmt := ast.Is{
 		Ident: ident,
 		Value: val,
 	}
-	not := Not{
+	not := ast.Not{
 		Statement: stmt,
 	}
 	return not, nil
 }
 
-func (p *Parser) parseExists() (Statement, error) {
+func (p *Parser) parseExists() (ast.Statement, error) {
 	p.Next()
 	if !p.Is(Lparen) {
 		return nil, p.Unexpected("expression")
 	}
 	p.Next()
 	var (
-		stmt Exists
+		stmt ast.Exists
 		err  error
 	)
 	stmt.Statement, err = p.ParseStatement()
@@ -145,9 +149,9 @@ func (p *Parser) parseExists() (Statement, error) {
 	return stmt, nil
 }
 
-func (p *Parser) parseBetween(ident Statement) (Statement, error) {
+func (p *Parser) parseBetween(ident ast.Statement) (ast.Statement, error) {
 	p.Next()
-	stmt := Between{
+	stmt := ast.Between{
 		Ident: ident,
 	}
 	left, err := p.parseExpression(powRel)
@@ -167,9 +171,9 @@ func (p *Parser) parseBetween(ident Statement) (Statement, error) {
 	return stmt, nil
 }
 
-func (p *Parser) parseIn(ident Statement) (Statement, error) {
+func (p *Parser) parseIn(ident ast.Statement) (ast.Statement, error) {
 	p.Next()
-	in := In{
+	in := ast.In{
 		Ident: ident,
 	}
 	var err error
@@ -178,8 +182,8 @@ func (p *Parser) parseIn(ident Statement) (Statement, error) {
 	} else if p.Is(Lparen) {
 		p.Next()
 		var (
-			list List
-			val  Statement
+			list ast.List
+			val  ast.Statement
 		)
 		for !p.Done() && !p.Is(Rparen) {
 			val, err = p.parseExpression(powLowest)
@@ -217,8 +221,8 @@ func (p *Parser) getInfixExpr() (infixFunc, error) {
 	return p.infix.Get(p.curr.asSymbol())
 }
 
-func (p *Parser) parseInfixExpr(left Statement) (Statement, error) {
-	stmt := Binary{
+func (p *Parser) parseInfixExpr(left ast.Statement) (ast.Statement, error) {
+	stmt := ast.Binary{
 		Left: left,
 	}
 	var (
@@ -238,9 +242,9 @@ func (p *Parser) parseInfixExpr(left Statement) (Statement, error) {
 	return stmt, wrapError("infix", err)
 }
 
-func (p *Parser) parseAllOrAny() (Statement, error) {
+func (p *Parser) parseAllOrAny() (ast.Statement, error) {
 	var (
-		expr Statement
+		expr ast.Statement
 		err  error
 		all  = p.IsKeyword("ALL")
 	)
@@ -253,8 +257,8 @@ func (p *Parser) parseAllOrAny() (Statement, error) {
 		expr, err = p.ParseStatement()
 	} else {
 		var (
-			list List
-			val  Statement
+			list ast.List
+			val  ast.Statement
 		)
 		for !p.Done() && !p.Is(Rparen) {
 			val, err = p.parseExpression(powLowest)
@@ -283,19 +287,19 @@ func (p *Parser) parseAllOrAny() (Statement, error) {
 		return nil, err
 	}
 	if all {
-		expr = All{
+		expr = ast.All{
 			Statement: expr,
 		}
 	} else {
-		expr = Any{
+		expr = ast.Any{
 			Statement: expr,
 		}
 	}
 	return expr, nil
 }
 
-func (p *Parser) parseCollateExpr(left Statement) (Statement, error) {
-	stmt := Collate{
+func (p *Parser) parseCollateExpr(left ast.Statement) (ast.Statement, error) {
+	stmt := ast.Collate{
 		Statement: left,
 	}
 	p.Next()
@@ -307,21 +311,21 @@ func (p *Parser) parseCollateExpr(left Statement) (Statement, error) {
 	return stmt, nil
 }
 
-func (p *Parser) parseKeywordExpr(left Statement) (Statement, error) {
-	reverse := func(stmt Statement) Statement { return stmt }
+func (p *Parser) parseKeywordExpr(left ast.Statement) (ast.Statement, error) {
+	reverse := func(stmt ast.Statement) ast.Statement { return stmt }
 	if p.GetCurrLiteral() == "NOT" && p.Is(Keyword) {
 		p.Next()
-		reverse = func(stmt Statement) Statement {
+		reverse = func(stmt ast.Statement) ast.Statement {
 			if stmt == nil {
 				return stmt
 			}
-			return Not{
+			return ast.Not{
 				Statement: stmt,
 			}
 		}
 	}
 	var (
-		stmt Statement
+		stmt ast.Statement
 		err  error
 	)
 	switch p.GetCurrLiteral() {
@@ -346,12 +350,12 @@ func (p *Parser) parseKeywordExpr(left Statement) (Statement, error) {
 	return reverse(stmt), wrapError("keyword", err)
 }
 
-func (p *Parser) parseCallExpr(left Statement) (Statement, error) {
-	if _, ok := left.(Name); !ok {
-		return nil, fmt.Errorf("call identifier should a valid SQL name")
+func (p *Parser) parseCallExpr(left ast.Statement) (ast.Statement, error) {
+	if _, ok := left.(ast.Name); !ok {
+		return nil, p.Unexpected("call")
 	}
 	p.Next()
-	stmt := Call{
+	stmt := ast.Call{
 		Ident:    left,
 		Distinct: p.IsKeyword("DISTINCT"),
 	}
@@ -400,7 +404,7 @@ func (p *Parser) parseCallExpr(left Statement) (Statement, error) {
 	return p.ParseAlias(stmt)
 }
 
-func (p *Parser) parseOver() (Statement, error) {
+func (p *Parser) parseOver() (ast.Statement, error) {
 	if !p.IsKeyword("OVER") {
 		return nil, nil
 	}
@@ -411,9 +415,9 @@ func (p *Parser) parseOver() (Statement, error) {
 	return p.ParseWindow()
 }
 
-func (p *Parser) parseUnary() (Statement, error) {
+func (p *Parser) parseUnary() (ast.Statement, error) {
 	var (
-		stmt Statement
+		stmt ast.Statement
 		err  error
 	)
 	switch {
@@ -423,7 +427,7 @@ func (p *Parser) parseUnary() (Statement, error) {
 		if err = wrapError("reverse", err); err != nil {
 			return nil, err
 		}
-		stmt = Unary{
+		stmt = ast.Unary{
 			Right: stmt,
 			Op:    "-",
 		}
@@ -433,7 +437,7 @@ func (p *Parser) parseUnary() (Statement, error) {
 		if err = wrapError("not", err); err != nil {
 			return nil, err
 		}
-		stmt = Not{
+		stmt = ast.Not{
 			Statement: stmt,
 		}
 	default:
@@ -442,7 +446,7 @@ func (p *Parser) parseUnary() (Statement, error) {
 	return stmt, nil
 }
 
-func (p *Parser) parseGroupExpr() (Statement, error) {
+func (p *Parser) parseGroupExpr() (ast.Statement, error) {
 	p.Next()
 	if p.IsKeyword("SELECT") || p.IsKeyword("VALUES") {
 		stmt, err := p.ParseStatement()
@@ -463,7 +467,7 @@ func (p *Parser) parseGroupExpr() (Statement, error) {
 		return nil, p.Unexpected("group")
 	}
 	p.Next()
-	g := Group{
+	g := ast.Group{
 		Statement: stmt,
 	}
 	return g, nil

@@ -2,9 +2,11 @@ package lang
 
 import (
 	"fmt"
+
+	"github.com/midbel/sweet/internal/lang/ast"
 )
 
-func (p *Parser) ParseBegin() (Statement, error) {
+func (p *Parser) ParseBegin() (ast.Statement, error) {
 	p.Next()
 	stmt, err := p.ParseBody(func() bool {
 		return p.Done() || p.IsKeyword("END")
@@ -15,23 +17,23 @@ func (p *Parser) ParseBegin() (Statement, error) {
 	return stmt, err
 }
 
-func (p *Parser) parseSetTransaction() (Statement, error) {
+func (p *Parser) parseSetTransaction() (ast.Statement, error) {
 	p.Next()
 	var (
-		stmt SetTransaction
+		stmt ast.SetTransaction
 		err  error
 	)
 	if p.IsKeyword("ISOLATION LEVEL") {
 		p.Next()
 		switch {
 		case p.IsKeyword("REPEATABLE READ"):
-			stmt.Level = LevelReadRepeat
+			stmt.Level = ast.LevelReadRepeat
 		case p.IsKeyword("READ COMMITTED"):
-			stmt.Level = LevelReadCommit
+			stmt.Level = ast.LevelReadCommit
 		case p.IsKeyword("READ UNCOMMITTED"):
-			stmt.Level = LevelReadUncommit
+			stmt.Level = ast.LevelReadUncommit
 		case p.IsKeyword("SERIALIZABLE"):
-			stmt.Level = LevelSerializable
+			stmt.Level = ast.LevelSerializable
 		default:
 			return nil, p.Unexpected("transaction")
 		}
@@ -39,10 +41,10 @@ func (p *Parser) parseSetTransaction() (Statement, error) {
 	}
 	switch {
 	case p.IsKeyword("READ ONLY"):
-		stmt.Mode = ModeReadOnly
+		stmt.Mode = ast.ModeReadOnly
 		p.Next()
 	case p.IsKeyword("READ WRITE"):
-		stmt.Mode = ModeReadWrite
+		stmt.Mode = ast.ModeReadWrite
 		p.Next()
 	case p.Is(EOL):
 	default:
@@ -51,28 +53,19 @@ func (p *Parser) parseSetTransaction() (Statement, error) {
 	return stmt, err
 }
 
-func (p *Parser) parseStartTransaction() (Statement, error) {
-	defer func() {
-		p.UnregisterParseFunc("SAVEPOINT")
-		p.UnregisterParseFunc("COMMIT")
-		p.UnregisterParseFunc("ROLLBACK")
-		p.UnregisterParseFunc("RELEASE")
-		p.UnregisterParseFunc("RELEASE SAVEPOINT")
-		p.UnregisterParseFunc("ROLLBACK TO SAVEPOINT")
-		p.UnregisterParseFunc("SET TRANSACTION")
-	}()
+func (p *Parser) parseStartTransaction() (ast.Statement, error) {
 	p.Next()
 
 	var (
-		stmt StartTransaction
+		stmt ast.StartTransaction
 		err  error
 	)
 	switch {
 	case p.IsKeyword("READ ONLY"):
-		stmt.Mode = ModeReadOnly
+		stmt.Mode = ast.ModeReadOnly
 		p.Next()
 	case p.IsKeyword("READ WRITE"):
-		stmt.Mode = ModeReadWrite
+		stmt.Mode = ast.ModeReadWrite
 		p.Next()
 	case p.Is(EOL):
 	default:
@@ -83,23 +76,15 @@ func (p *Parser) parseStartTransaction() (Statement, error) {
 	}
 	p.Next()
 
-	p.RegisterParseFunc("SAVEPOINT", p.parseSavepoint)
-	p.RegisterParseFunc("RELEASE", p.parseReleaseSavepoint)
-	p.RegisterParseFunc("RELEASE SAVEPOINT", p.parseReleaseSavepoint)
-	p.RegisterParseFunc("ROLLBACK TO SAVEPOINT", p.parseRollbackSavepoint)
-	p.RegisterParseFunc("COMMIT", p.parseCommit)
-	p.RegisterParseFunc("ROLLBACK", p.parseRollback)
-	p.RegisterParseFunc("SET TRANSACTION", p.parseSetTransaction)
-
 	stmt.Body, err = p.ParseBody(p.KwCheck("END", "COMMIT", "ROLLBACK"))
 	if err != nil {
 		return nil, err
 	}
 	switch {
 	case p.IsKeyword("END") || p.IsKeyword("COMMIT"):
-		stmt.End = Commit{}
+		stmt.End = ast.Commit{}
 	case p.IsKeyword("ROLLBACK"):
-		stmt.End = Rollback{}
+		stmt.End = ast.Rollback{}
 	default:
 		return nil, p.Unexpected("transaction")
 	}
@@ -107,10 +92,10 @@ func (p *Parser) parseStartTransaction() (Statement, error) {
 	return stmt, err
 }
 
-func (p *Parser) parseSavepoint() (Statement, error) {
+func (p *Parser) parseSavepoint() (ast.Statement, error) {
 	p.Next()
 	var (
-		stmt Savepoint
+		stmt ast.Savepoint
 		err  error
 	)
 	if p.Is(Ident) {
@@ -120,10 +105,10 @@ func (p *Parser) parseSavepoint() (Statement, error) {
 	return stmt, err
 }
 
-func (p *Parser) parseReleaseSavepoint() (Statement, error) {
+func (p *Parser) parseReleaseSavepoint() (ast.Statement, error) {
 	p.Next()
 	var (
-		stmt ReleaseSavepoint
+		stmt ast.ReleaseSavepoint
 		err  error
 	)
 	if !p.Is(Ident) {
@@ -134,10 +119,10 @@ func (p *Parser) parseReleaseSavepoint() (Statement, error) {
 	return stmt, err
 }
 
-func (p *Parser) parseRollbackSavepoint() (Statement, error) {
+func (p *Parser) parseRollbackSavepoint() (ast.Statement, error) {
 	p.Next()
 	var (
-		stmt RollbackSavepoint
+		stmt ast.RollbackSavepoint
 		err  error
 	)
 	if !p.Is(Ident) {
@@ -148,25 +133,25 @@ func (p *Parser) parseRollbackSavepoint() (Statement, error) {
 	return stmt, err
 }
 
-func (p *Parser) parseCommit() (Statement, error) {
+func (p *Parser) parseCommit() (ast.Statement, error) {
 	p.Next()
-	return Commit{}, nil
+	return ast.Commit{}, nil
 }
 
-func (p *Parser) parseRollback() (Statement, error) {
+func (p *Parser) parseRollback() (ast.Statement, error) {
 	p.Next()
-	return Rollback{}, nil
+	return ast.Rollback{}, nil
 }
 
-func (w *Writer) FormatStartTransaction(stmt StartTransaction) error {
+func (w *Writer) FormatStartTransaction(stmt ast.StartTransaction) error {
 	kw, _ := stmt.Keyword()
 	w.WriteStatement(kw)
 	if stmt.Mode > 0 {
 		w.WriteBlank()
 		switch stmt.Mode {
-		case ModeReadWrite:
+		case ast.ModeReadWrite:
 			w.WriteKeyword("READ WRITE")
-		case ModeReadOnly:
+		case ast.ModeReadOnly:
 			w.WriteKeyword("READ ONLY")
 		default:
 			return fmt.Errorf("unknown transaction mode")
@@ -184,7 +169,7 @@ func (w *Writer) FormatStartTransaction(stmt StartTransaction) error {
 	return w.FormatStatement(stmt.End)
 }
 
-func (w *Writer) FormatSetTransaction(stmt SetTransaction) error {
+func (w *Writer) FormatSetTransaction(stmt ast.SetTransaction) error {
 	kw, _ := stmt.Keyword()
 	w.WriteStatement(kw)
 	if stmt.Level > 0 {
@@ -195,9 +180,9 @@ func (w *Writer) FormatSetTransaction(stmt SetTransaction) error {
 	if stmt.Mode > 0 {
 		w.WriteBlank()
 		switch stmt.Mode {
-		case ModeReadWrite:
+		case ast.ModeReadWrite:
 			w.WriteKeyword("READ WRITE")
-		case ModeReadOnly:
+		case ast.ModeReadOnly:
 			w.WriteKeyword("READ ONLY")
 		default:
 			return fmt.Errorf("unknown transaction mode")
@@ -207,7 +192,7 @@ func (w *Writer) FormatSetTransaction(stmt SetTransaction) error {
 	return nil
 }
 
-func (w *Writer) FormatSavepoint(stmt Savepoint) error {
+func (w *Writer) FormatSavepoint(stmt ast.Savepoint) error {
 	w.Enter()
 	defer w.Leave()
 
@@ -220,7 +205,7 @@ func (w *Writer) FormatSavepoint(stmt Savepoint) error {
 	return nil
 }
 
-func (w *Writer) FormatReleaseSavepoint(stmt ReleaseSavepoint) error {
+func (w *Writer) FormatReleaseSavepoint(stmt ast.ReleaseSavepoint) error {
 	w.Enter()
 	defer w.Leave()
 
@@ -233,7 +218,7 @@ func (w *Writer) FormatReleaseSavepoint(stmt ReleaseSavepoint) error {
 	return nil
 }
 
-func (w *Writer) FormatRollbackSavepoint(stmt RollbackSavepoint) error {
+func (w *Writer) FormatRollbackSavepoint(stmt ast.RollbackSavepoint) error {
 	w.Enter()
 	defer w.Leave()
 
@@ -246,13 +231,13 @@ func (w *Writer) FormatRollbackSavepoint(stmt RollbackSavepoint) error {
 	return nil
 }
 
-func (w *Writer) FormatCommit(stmt Commit) error {
+func (w *Writer) FormatCommit(stmt ast.Commit) error {
 	kw, _ := stmt.Keyword()
 	w.WriteStatement(kw)
 	return nil
 }
 
-func (w *Writer) FormatRollback(stmt Rollback) error {
+func (w *Writer) FormatRollback(stmt ast.Rollback) error {
 	kw, _ := stmt.Keyword()
 	w.WriteStatement(kw)
 	return nil

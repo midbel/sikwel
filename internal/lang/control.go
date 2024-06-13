@@ -1,9 +1,13 @@
 package lang
 
-func (p *Parser) parseSet() (Statement, error) {
+import (
+	"github.com/midbel/sweet/internal/lang/ast"
+)
+
+func (p *Parser) parseSet() (ast.Statement, error) {
 	p.Next()
 	var (
-		stmt SetStatement
+		stmt ast.Set
 		err  error
 	)
 	stmt.Ident = p.GetCurrLiteral()
@@ -17,11 +21,11 @@ func (p *Parser) parseSet() (Statement, error) {
 	return stmt, err
 }
 
-func (p *Parser) parseDeclare() (Statement, error) {
+func (p *Parser) parseDeclare() (ast.Statement, error) {
 	p.Next()
 
 	var (
-		stmt Declare
+		stmt ast.Declare
 		err  error
 	)
 	if !p.Is(Ident) {
@@ -45,11 +49,11 @@ func (p *Parser) parseDeclare() (Statement, error) {
 	return stmt, nil
 }
 
-func (p *Parser) parseIf() (Statement, error) {
+func (p *Parser) parseIf() (ast.Statement, error) {
 	p.Next()
 
 	var (
-		stmt IfStatement
+		stmt ast.If
 		err  error
 	)
 	if stmt.Cdt, err = p.StartExpression(); err != nil {
@@ -84,9 +88,9 @@ func (p *Parser) parseIf() (Statement, error) {
 	return stmt, nil
 }
 
-func (p *Parser) parseWhile() (Statement, error) {
+func (p *Parser) parseWhile() (ast.Statement, error) {
 	var (
-		stmt WhileStatement
+		stmt ast.While
 		err  error
 	)
 	p.Next()
@@ -110,8 +114,8 @@ func (p *Parser) parseWhile() (Statement, error) {
 	return stmt, nil
 }
 
-func (p *Parser) ParseBody(done func() bool) (Statement, error) {
-	var list List
+func (p *Parser) ParseBody(done func() bool) (ast.Statement, error) {
+	var list ast.List
 	for !p.Done() && !done() {
 		stmt, err := p.ParseStatement()
 		if err != nil {
@@ -129,17 +133,17 @@ func (p *Parser) ParseBody(done func() bool) (Statement, error) {
 	return list, nil
 }
 
-func (p *Parser) parseReturn() (Statement, error) {
+func (p *Parser) parseReturn() (ast.Statement, error) {
 	p.Next()
 	var (
-		ret Return
-		err error
+		stmt ast.Return
+		err  error
 	)
-	ret.Statement, err = p.StartExpression()
-	return ret, err
+	stmt.Statement, err = p.StartExpression()
+	return stmt, err
 }
 
-func (w *Writer) FormatIf(stmt IfStatement) error {
+func (w *Writer) FormatIf(stmt ast.If) error {
 	if err := w.formatIf(stmt, "IF"); err != nil {
 		return err
 	}
@@ -147,7 +151,7 @@ func (w *Writer) FormatIf(stmt IfStatement) error {
 	return nil
 }
 
-func (w *Writer) formatIf(stmt IfStatement, kw string) error {
+func (w *Writer) formatIf(stmt ast.If, kw string) error {
 	w.WriteStatement(kw)
 	w.WriteBlank()
 	if err := w.FormatExpr(stmt.Cdt, false); err != nil {
@@ -163,7 +167,7 @@ func (w *Writer) formatIf(stmt IfStatement, kw string) error {
 
 	var err error
 	if stmt.Alt != nil {
-		if s, ok := stmt.Alt.(IfStatement); ok {
+		if s, ok := stmt.Alt.(ast.If); ok {
 			err = w.formatIf(s, "ELSIF")
 		} else {
 			w.WriteStatement("ELSE")
@@ -174,7 +178,7 @@ func (w *Writer) formatIf(stmt IfStatement, kw string) error {
 	return err
 }
 
-func (w *Writer) FormatWhile(stmt WhileStatement) error {
+func (w *Writer) FormatWhile(stmt ast.While) error {
 	w.WriteStatement("WHILE")
 	w.WriteBlank()
 	if err := w.FormatExpr(stmt.Cdt, false); err != nil {
@@ -190,7 +194,7 @@ func (w *Writer) FormatWhile(stmt WhileStatement) error {
 	return nil
 }
 
-func (w *Writer) FormatSet(stmt SetStatement) error {
+func (w *Writer) FormatSet(stmt ast.Set) error {
 	w.WriteStatement("SET")
 	w.WriteBlank()
 	w.WriteString(stmt.Ident)
@@ -200,7 +204,7 @@ func (w *Writer) FormatSet(stmt SetStatement) error {
 	return w.FormatExpr(stmt.Expr, false)
 }
 
-func (w *Writer) FormatReturn(stmt Return) error {
+func (w *Writer) FormatReturn(stmt ast.Return) error {
 	w.WriteStatement("RETURN")
 	if stmt.Statement != nil {
 		w.WriteBlank()
@@ -211,7 +215,7 @@ func (w *Writer) FormatReturn(stmt Return) error {
 	return nil
 }
 
-func (w *Writer) FormatDeclare(stmt Declare) error {
+func (w *Writer) FormatDeclare(stmt ast.Declare) error {
 	w.WriteStatement("DECLARE")
 	w.WriteBlank()
 	w.WriteString(stmt.Ident)

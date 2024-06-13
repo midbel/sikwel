@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/midbel/sweet/internal/lang/ast"
 )
 
 type Parser struct {
@@ -15,15 +17,15 @@ type Parser struct {
 
 	level int
 
-	keywords map[string]func() (Statement, error)
+	keywords map[string]func() (ast.Statement, error)
 	infix    *stack[infixFunc]
 	prefix   *stack[prefixFunc]
 
 	inlineCte bool
 	withAlias bool
 
-	queries map[string]Statement
-	values  map[string]Statement
+	queries map[string]ast.Statement
+	values  map[string]ast.Statement
 }
 
 func NewParser(r io.Reader) (*Parser, error) {
@@ -38,8 +40,8 @@ func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 		return nil, err
 	}
 	p.frame = frame
-	p.queries = make(map[string]Statement)
-	p.values = make(map[string]Statement)
+	p.queries = make(map[string]ast.Statement)
+	p.values = make(map[string]ast.Statement)
 	p.infix = emptyStack[infixFunc]()
 	p.prefix = emptyStack[prefixFunc]()
 
@@ -67,7 +69,7 @@ func (p *Parser) SetInline(inline bool) {
 	p.inlineCte = inline
 }
 
-func (p *Parser) Parse() (Statement, error) {
+func (p *Parser) Parse() (ast.Statement, error) {
 	p.reset()
 	stmt, err := p.parse()
 	if err != nil {
@@ -76,7 +78,7 @@ func (p *Parser) Parse() (Statement, error) {
 	return stmt, err
 }
 
-func (p *Parser) ParseStatement() (Statement, error) {
+func (p *Parser) ParseStatement() (ast.Statement, error) {
 	p.Enter()
 	defer p.Leave()
 
@@ -151,9 +153,9 @@ func (p *Parser) restore() {
 	}
 }
 
-func (p *Parser) parse() (Statement, error) {
+func (p *Parser) parse() (ast.Statement, error) {
 	var (
-		com Commented
+		com ast.Commented
 		err error
 	)
 	for p.Is(Comment) {
@@ -181,7 +183,7 @@ func (p *Parser) parse() (Statement, error) {
 	return com.Statement, nil
 }
 
-func (p *Parser) RegisterParseFunc(kw string, fn func() (Statement, error)) {
+func (p *Parser) RegisterParseFunc(kw string, fn func() (ast.Statement, error)) {
 	kw = strings.ToUpper(kw)
 	p.keywords[kw] = fn
 }
@@ -192,7 +194,7 @@ func (p *Parser) UnregisterParseFunc(kw string) {
 }
 
 func (p *Parser) UnregisterAllParseFunc() {
-	p.keywords = make(map[string]func() (Statement, error))
+	p.keywords = make(map[string]func() (ast.Statement, error))
 }
 
 func (p *Parser) RegisterPrefix(literal string, kind rune, fn prefixFunc) {
@@ -297,7 +299,7 @@ func (p *Parser) KwCheck(str ...string) func() bool {
 }
 
 func (p *Parser) setParseFunc() {
-	p.keywords = make(map[string]func() (Statement, error))
+	p.keywords = make(map[string]func() (ast.Statement, error))
 	p.RegisterParseFunc("SELECT", p.ParseSelect)
 	p.RegisterParseFunc("VALUES", p.ParseValues)
 	p.RegisterParseFunc("DELETE FROM", p.ParseDelete)

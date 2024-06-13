@@ -3,17 +3,19 @@ package lang
 import (
 	"strconv"
 	"strings"
+
+	"github.com/midbel/sweet/internal/lang/ast"
 )
 
-func (p *Parser) ParseLiteral() (Statement, error) {
-	stmt := Value{
+func (p *Parser) ParseLiteral() (ast.Statement, error) {
+	stmt := ast.Value{
 		Literal: p.GetCurrLiteral(),
 	}
 	p.Next()
 	return stmt, nil
 }
 
-func (p *Parser) ParseConstant() (Statement, error) {
+func (p *Parser) ParseConstant() (ast.Statement, error) {
 	if !p.Is(Keyword) {
 		return nil, p.Unexpected("constant")
 	}
@@ -25,8 +27,8 @@ func (p *Parser) ParseConstant() (Statement, error) {
 	return p.ParseLiteral()
 }
 
-func (p *Parser) ParseIdentifier() (Statement, error) {
-	var name Name
+func (p *Parser) ParseIdentifier() (ast.Statement, error) {
+	var name ast.Name
 	for p.peekIs(Dot) {
 		name.Parts = append(name.Parts, p.GetCurrLiteral())
 		p.Next()
@@ -40,7 +42,7 @@ func (p *Parser) ParseIdentifier() (Statement, error) {
 	return name, nil
 }
 
-func (p *Parser) ParseIdent() (Statement, error) {
+func (p *Parser) ParseIdent() (ast.Statement, error) {
 	stmt, err := p.ParseIdentifier()
 	if err == nil {
 		stmt, err = p.ParseAlias(stmt)
@@ -48,14 +50,14 @@ func (p *Parser) ParseIdent() (Statement, error) {
 	return stmt, nil
 }
 
-func (p *Parser) ParseAlias(stmt Statement) (Statement, error) {
+func (p *Parser) ParseAlias(stmt ast.Statement) (ast.Statement, error) {
 	mandatory := p.IsKeyword("AS")
 	if mandatory {
 		p.Next()
 	}
 	switch p.curr.Type {
 	case Ident, Literal, Number:
-		stmt = Alias{
+		stmt = ast.Alias{
 			Statement: stmt,
 			Alias:     p.GetCurrLiteral(),
 		}
@@ -68,10 +70,10 @@ func (p *Parser) ParseAlias(stmt Statement) (Statement, error) {
 	return stmt, nil
 }
 
-func (p *Parser) ParseCase() (Statement, error) {
+func (p *Parser) ParseCase() (ast.Statement, error) {
 	p.Next()
 	var (
-		stmt Case
+		stmt ast.Case
 		err  error
 	)
 	if !p.IsKeyword("WHEN") {
@@ -81,7 +83,7 @@ func (p *Parser) ParseCase() (Statement, error) {
 		}
 	}
 	for p.IsKeyword("WHEN") {
-		var when When
+		var when ast.When
 		p.Next()
 		when.Cdt, err = p.StartExpression()
 		if err = wrapError("when", err); err != nil {
@@ -115,14 +117,14 @@ func (p *Parser) ParseCase() (Statement, error) {
 	return p.ParseAlias(stmt)
 }
 
-func (p *Parser) ParseCast() (Statement, error) {
+func (p *Parser) ParseCast() (ast.Statement, error) {
 	p.Next()
 	if !p.Is(Lparen) {
 		return nil, p.Unexpected("cast")
 	}
 	p.Next()
 	var (
-		cast Cast
+		cast ast.Cast
 		err  error
 	)
 	cast.Ident, err = p.ParseIdentifier()
@@ -143,8 +145,8 @@ func (p *Parser) ParseCast() (Statement, error) {
 	return cast, nil
 }
 
-func (p *Parser) ParseType() (Type, error) {
-	var t Type
+func (p *Parser) ParseType() (ast.Type, error) {
+	var t ast.Type
 	if !p.Is(Ident) {
 		return t, p.Unexpected("type")
 	}
@@ -175,7 +177,7 @@ func (p *Parser) ParseType() (Type, error) {
 	return t, nil
 }
 
-func (p *Parser) ParseRow() (Statement, error) {
+func (p *Parser) ParseRow() (ast.Statement, error) {
 	p.Next()
 	if !p.Is(Lparen) {
 		return nil, p.Unexpected("row")
@@ -185,7 +187,7 @@ func (p *Parser) ParseRow() (Statement, error) {
 	p.setDefaultFuncSet()
 	defer p.unsetFuncSet()
 
-	var row Row
+	var row ast.Row
 	for !p.Done() && !p.Is(Rparen) {
 		expr, err := p.StartExpression()
 		if err != nil {
@@ -203,7 +205,7 @@ func (p *Parser) ParseRow() (Statement, error) {
 	return row, nil
 }
 
-func (w *Writer) FormatName(name Name) {
+func (w *Writer) FormatName(name ast.Name) {
 	for i := range name.Parts {
 		if i > 0 {
 			w.WriteString(".")
@@ -220,9 +222,9 @@ func (w *Writer) FormatName(name Name) {
 	}
 }
 
-func (w *Writer) FormatAlias(alias Alias) error {
+func (w *Writer) FormatAlias(alias ast.Alias) error {
 	var err error
-	if wrapWithParens(alias.Statement) {
+	if ast.WrapWithParens(alias.Statement) {
 		w.WriteString("(")
 		if !w.Compact {
 			w.WriteNL()
@@ -293,7 +295,7 @@ func (w *Writer) FormatLiteral(literal string) {
 	w.WriteQuoted(literal)
 }
 
-func (w *Writer) FormatRow(stmt Row, nl bool) error {
+func (w *Writer) FormatRow(stmt ast.Row, nl bool) error {
 	kw, _ := stmt.Keyword()
 	w.WriteKeyword(kw)
 	w.WriteString("(")
@@ -317,7 +319,7 @@ func (w *Writer) FormatRow(stmt Row, nl bool) error {
 	return nil
 }
 
-func (w *Writer) FormatCase(stmt Case) error {
+func (w *Writer) FormatCase(stmt ast.Case) error {
 	w.WriteKeyword("CASE")
 	if stmt.Cdt != nil {
 		w.WriteBlank()
@@ -347,7 +349,7 @@ func (w *Writer) FormatCase(stmt Case) error {
 	return nil
 }
 
-func (w *Writer) FormatWhen(stmt When) error {
+func (w *Writer) FormatWhen(stmt ast.When) error {
 	w.WriteStatement("WHEN")
 	w.WriteBlank()
 	if err := w.FormatExpr(stmt.Cdt, false); err != nil {
@@ -362,7 +364,7 @@ func (w *Writer) FormatWhen(stmt When) error {
 	})
 }
 
-func (w *Writer) FormatCast(stmt Cast, _ bool) error {
+func (w *Writer) FormatCast(stmt ast.Cast, _ bool) error {
 	w.WriteKeyword("CAST")
 	w.WriteString("(")
 	if err := w.FormatExpr(stmt.Ident, false); err != nil {
@@ -378,7 +380,7 @@ func (w *Writer) FormatCast(stmt Cast, _ bool) error {
 	return nil
 }
 
-func (w *Writer) FormatType(dt Type) error {
+func (w *Writer) FormatType(dt ast.Type) error {
 	if w.Upperize.Type() || w.Upperize.All() {
 		dt.Name = strings.ToUpper(dt.Name)
 	}

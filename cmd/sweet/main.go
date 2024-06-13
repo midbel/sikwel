@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/midbel/sweet/internal/lang"
+	// "github.com/midbel/sweet/internal/lang/complex"
 )
 
 func main() {
@@ -22,7 +23,7 @@ func main() {
 	case "debug", "ast":
 		err = runDebug(args[1:])
 	case "cyclo", "measure":
-		err = runCyclo(args[1:])
+		// err = runCyclo(args[1:])
 	default:
 		err = fmt.Errorf("unknown command %s", n)
 	}
@@ -143,25 +144,25 @@ func runInit() error {
 	return nil
 }
 
-func runCyclo(files []string) error {
-	run := func(f string) (int, error) {
-		r, err := os.Open(f)
-		if err != nil {
-			return 0, err
-		}
-		defer r.Close()
-		return lang.Complexity(r)
-	}
-	for _, f := range files {
-		n, err := run(f)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("%s: %d", f, n)
-		fmt.Println()
-	}
-	return nil
-}
+// func runCyclo(files []string) error {
+// 	run := func(f string) (int, error) {
+// 		r, err := os.Open(f)
+// 		if err != nil {
+// 			return 0, err
+// 		}
+// 		defer r.Close()
+// 		return complex.Complexity(r)
+// 	}
+// 	for _, f := range files {
+// 		n, err := run(f)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		fmt.Printf("%s: %d", f, n)
+// 		fmt.Println()
+// 	}
+// 	return nil
+// }
 
 func runDebug(files []string) error {
 	for _, f := range files {
@@ -191,9 +192,7 @@ func printTree(file string) error {
 			}
 			return err
 		}
-		if err := lang.Print(stmt); err != nil {
-			return err
-		}
+		_ = stmt
 	}
 	return nil
 }

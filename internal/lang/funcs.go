@@ -2,6 +2,8 @@ package lang
 
 import (
 	"fmt"
+
+	"github.com/midbel/sweet/internal/lang/ast"
 )
 
 type stack[T prefixFunc | infixFunc] struct {
@@ -56,9 +58,9 @@ func (s *stack[T]) Get(sym symbol) (T, error) {
 	return s.values[n-1].Get(sym)
 }
 
-type prefixFunc func() (Statement, error)
+type prefixFunc func() (ast.Statement, error)
 
-type infixFunc func(Statement) (Statement, error)
+type infixFunc func(ast.Statement) (ast.Statement, error)
 
 type funcSet[T prefixFunc | infixFunc] struct {
 	disabled bool

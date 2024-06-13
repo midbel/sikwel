@@ -1,9 +1,13 @@
 package lang
 
-func (p *Parser) ParseMerge() (Statement, error) {
+import (
+	"github.com/midbel/sweet/internal/lang/ast"
+)
+
+func (p *Parser) ParseMerge() (ast.Statement, error) {
 	p.Next()
 	var (
-		stmt MergeStatement
+		stmt ast.MergeStatement
 		err  error
 	)
 	if stmt.Target, err = p.ParseIdent(); err != nil {
@@ -32,8 +36,8 @@ func (p *Parser) ParseMerge() (Statement, error) {
 	}
 	for !p.QueryEnds() && !p.Done() {
 		var (
-			parseAction func(Statement) (Statement, error)
-			cdt         Statement
+			parseAction func(ast.Statement) (ast.Statement, error)
+			cdt         ast.Statement
 			err         error
 		)
 		switch {
@@ -64,17 +68,17 @@ func (p *Parser) ParseMerge() (Statement, error) {
 	return stmt, nil
 }
 
-func (p *Parser) parseMergeMatched(cdt Statement) (Statement, error) {
+func (p *Parser) parseMergeMatched(cdt ast.Statement) (ast.Statement, error) {
 	var (
-		stmt Statement
+		stmt ast.Statement
 		err  error
 	)
 	switch {
 	case p.IsKeyword("DELETE"):
 		p.Next()
-		stmt = MatchStatement{
+		stmt = ast.MatchStatement{
 			Condition: cdt,
-			Statement: DeleteStatement{},
+			Statement: ast.DeleteStatement{},
 		}
 	case p.IsKeyword("UPDATE"):
 		p.Next()
@@ -82,7 +86,7 @@ func (p *Parser) parseMergeMatched(cdt Statement) (Statement, error) {
 			return nil, p.Unexpected("matched")
 		}
 		p.Next()
-		var upd UpdateStatement
+		var upd ast.UpdateStatement
 		for !p.QueryEnds() && !p.IsKeyword("WHEN MATCHED") && !p.IsKeyword("WHEN NOT MATCHED") {
 			s, err := p.parseAssignment()
 			if err != nil {
@@ -90,7 +94,7 @@ func (p *Parser) parseMergeMatched(cdt Statement) (Statement, error) {
 			}
 			upd.List = append(upd.List, s)
 		}
-		stmt = MatchStatement{
+		stmt = ast.MatchStatement{
 			Condition: cdt,
 			Statement: upd,
 		}
@@ -100,13 +104,13 @@ func (p *Parser) parseMergeMatched(cdt Statement) (Statement, error) {
 	return stmt, err
 }
 
-func (p *Parser) parseMergeNotMatched(cdt Statement) (Statement, error) {
+func (p *Parser) parseMergeNotMatched(cdt ast.Statement) (ast.Statement, error) {
 	if !p.IsKeyword("INSERT") {
 		return nil, p.Unexpected("match")
 	}
 	p.Next()
 	var (
-		ins InsertStatement
+		ins ast.InsertStatement
 		err error
 	)
 	if p.Is(Lparen) {
@@ -122,17 +126,17 @@ func (p *Parser) parseMergeNotMatched(cdt Statement) (Statement, error) {
 	if err != nil {
 		return nil, err
 	}
-	stmt := MatchStatement{
+	stmt := ast.MatchStatement{
 		Condition: cdt,
 		Statement: ins,
 	}
 	return stmt, nil
 }
 
-func (p *Parser) ParseDelete() (Statement, error) {
+func (p *Parser) ParseDelete() (ast.Statement, error) {
 	p.Next()
 	var (
-		stmt DeleteStatement
+		stmt ast.DeleteStatement
 		err  error
 	)
 	if !p.Is(Ident) {
@@ -150,9 +154,9 @@ func (p *Parser) ParseDelete() (Statement, error) {
 	return stmt, nil
 }
 
-func (p *Parser) ParseTruncate() (Statement, error) {
+func (p *Parser) ParseTruncate() (ast.Statement, error) {
 	p.Next()
-	var stmt TruncateStatement
+	var stmt ast.TruncateStatement
 	if p.Is(Star) {
 		p.Next()
 		return stmt, nil
@@ -173,33 +177,37 @@ func (p *Parser) ParseTruncate() (Statement, error) {
 		}
 	}
 	if p.IsKeyword("RESTART IDENTITY") || p.IsKeyword("CONTINUE IDENTITY") {
-		stmt.Identity = RestartIdentity
+		stmt.Identity = ast.RestartIdentity
 		if p.IsKeyword("CONTINUE IDENTITY") {
-			stmt.Identity = ContinueIdentity
+			stmt.Identity = ast.ContinueIdentity
 		}
 		p.Next()
 	}
-	if p.IsKeyword("RESTRICT") || p.IsKeyword("CASCADE") {
-		stmt.Cascade = p.IsKeyword("CASCADE")
+	if p.IsKeyword("RESTRICT") {
+		stmt.Cascade = ast.Restrict
+	} else if p.IsKeyword("CASCADE") {
+		stmt.Cascade = ast.Restrict
+	}
+	if stmt.Cascade != 0 {
 		p.Next()
 	}
 	return stmt, nil
 }
 
-func (p *Parser) ParseReturning() (Statement, error) {
+func (p *Parser) ParseReturning() (ast.Statement, error) {
 	if !p.IsKeyword("RETURNING") {
 		return nil, nil
 	}
 	p.Next()
 	if p.Is(Star) {
-		var stmt Name
+		var stmt ast.Name
 		p.Next()
 		if !p.QueryEnds() {
 			return nil, p.Unexpected("returning")
 		}
 		return stmt, nil
 	}
-	var list List
+	var list ast.List
 	for !p.Done() && !p.Is(EOL) {
 		stmt, err := p.StartExpression()
 		if err != nil {
@@ -213,10 +221,10 @@ func (p *Parser) ParseReturning() (Statement, error) {
 	return list, nil
 }
 
-func (p *Parser) ParseUpdate() (Statement, error) {
+func (p *Parser) ParseUpdate() (ast.Statement, error) {
 	p.Next()
 	var (
-		stmt UpdateStatement
+		stmt ast.UpdateStatement
 		err  error
 	)
 	stmt.Table, err = p.ParseIdent()
@@ -246,8 +254,8 @@ func (p *Parser) ParseUpdate() (Statement, error) {
 	return stmt, wrapError("update", err)
 }
 
-func (p *Parser) ParseUpdateList() ([]Statement, error) {
-	var list []Statement
+func (p *Parser) ParseUpdateList() ([]ast.Statement, error) {
+	var list []ast.Statement
 	for !p.Done() && !p.Is(EOL) && !p.IsKeyword("WHERE") && !p.IsKeyword("FROM") && !p.IsKeyword("RETURNING") {
 		stmt, err := p.parseAssignment()
 		if err != nil {
@@ -264,9 +272,9 @@ func (p *Parser) ParseUpdateList() ([]Statement, error) {
 	return list, nil
 }
 
-func (p *Parser) parseAssignment() (Statement, error) {
+func (p *Parser) parseAssignment() (ast.Statement, error) {
 	var (
-		ass Assignment
+		ass ast.Assignment
 		err error
 	)
 	switch {
@@ -277,7 +285,7 @@ func (p *Parser) parseAssignment() (Statement, error) {
 		}
 	case p.Is(Lparen):
 		p.Next()
-		var list List
+		var list ast.List
 		for !p.Done() && !p.Is(Rparen) {
 			stmt, err := p.ParseIdentifier()
 			if err != nil {
@@ -302,7 +310,7 @@ func (p *Parser) parseAssignment() (Statement, error) {
 	p.Next()
 	if p.Is(Lparen) {
 		p.Next()
-		var list List
+		var list ast.List
 		for !p.Done() && !p.Is(Rparen) {
 			expr, err := p.StartExpression()
 			if err != nil {
@@ -326,10 +334,10 @@ func (p *Parser) parseAssignment() (Statement, error) {
 	return ass, nil
 }
 
-func (p *Parser) ParseInsert() (Statement, error) {
+func (p *Parser) ParseInsert() (ast.Statement, error) {
 	p.Next()
 	var (
-		stmt InsertStatement
+		stmt ast.InsertStatement
 		err  error
 	)
 	stmt.Table, err = p.ParseIdentifier()
@@ -360,14 +368,14 @@ func (p *Parser) ParseInsert() (Statement, error) {
 	return stmt, wrapError("insert", err)
 }
 
-func (p *Parser) ParseUpsert() (Statement, error) {
+func (p *Parser) ParseUpsert() (ast.Statement, error) {
 	if !p.IsKeyword("ON CONFLICT") {
 		return nil, nil
 	}
 	p.Next()
 
 	var (
-		stmt Upsert
+		stmt ast.Upsert
 		err  error
 	)
 
@@ -400,8 +408,8 @@ func (p *Parser) ParseUpsert() (Statement, error) {
 	return stmt, wrapError("upsert", err)
 }
 
-func (p *Parser) ParseUpsertList() ([]Statement, error) {
-	var list []Statement
+func (p *Parser) ParseUpsertList() ([]ast.Statement, error) {
+	var list []ast.Statement
 	for !p.Done() && !p.Is(EOL) && !p.IsKeyword("WHERE") && !p.IsKeyword("RETURNING") {
 		stmt, err := p.parseAssignment()
 		if err != nil {
@@ -418,7 +426,7 @@ func (p *Parser) ParseUpsertList() ([]Statement, error) {
 	return list, nil
 }
 
-func (w *Writer) FormatMerge(stmt MergeStatement) error {
+func (w *Writer) FormatMerge(stmt ast.MergeStatement) error {
 	w.Enter()
 	defer w.Leave()
 
@@ -443,7 +451,7 @@ func (w *Writer) FormatMerge(stmt MergeStatement) error {
 		return err
 	}
 	for _, a := range stmt.Actions {
-		m, ok := a.(MatchStatement)
+		m, ok := a.(ast.MatchStatement)
 		if !ok {
 			return w.CanNotUse("merge", a)
 		}
@@ -456,15 +464,15 @@ func (w *Writer) FormatMerge(stmt MergeStatement) error {
 	return nil
 }
 
-func (w *Writer) FormatMatch(stmt MatchStatement) error {
+func (w *Writer) FormatMatch(stmt ast.MatchStatement) error {
 	w.WriteKeyword("WHEN")
 	w.WriteBlank()
 	switch stmt.Statement.(type) {
-	case DeleteStatement:
+	case ast.DeleteStatement:
 		w.WriteKeyword("MATCHED")
-	case UpdateStatement:
+	case ast.UpdateStatement:
 		w.WriteKeyword("MATCHED")
-	case InsertStatement:
+	case ast.InsertStatement:
 		w.WriteKeyword("NOT MATCHED")
 	default:
 		return w.CanNotUse("merge", stmt.Statement)
@@ -486,9 +494,9 @@ func (w *Writer) FormatMatch(stmt MatchStatement) error {
 	w.WritePrefix()
 
 	switch stmt := stmt.Statement.(type) {
-	case DeleteStatement:
+	case ast.DeleteStatement:
 		w.WriteKeyword("DELETE")
-	case UpdateStatement:
+	case ast.UpdateStatement:
 		w.WriteKeyword("UPDATE")
 		w.WriteBlank()
 		w.WriteKeyword("SET")
@@ -502,7 +510,7 @@ func (w *Writer) FormatMatch(stmt MatchStatement) error {
 		if err := w.FormatAssignment(stmt.List); err != nil {
 			return err
 		}
-	case InsertStatement:
+	case ast.InsertStatement:
 		w.WriteKeyword("INSERT")
 		w.WriteBlank()
 		if len(stmt.Columns) > 0 {
@@ -517,7 +525,7 @@ func (w *Writer) FormatMatch(stmt MatchStatement) error {
 			w.WriteString(")")
 			w.WriteBlank()
 		}
-		values, ok := stmt.Values.(ValuesStatement)
+		values, ok := stmt.Values.(ast.ValuesStatement)
 		if !ok {
 			return w.CanNotUse("merge", stmt.Values)
 		}
@@ -535,7 +543,7 @@ func (w *Writer) FormatMatch(stmt MatchStatement) error {
 	return nil
 }
 
-func (w *Writer) FormatTruncate(stmt TruncateStatement) error {
+func (w *Writer) FormatTruncate(stmt ast.TruncateStatement) error {
 	w.Enter()
 	defer w.Leave()
 
@@ -556,7 +564,7 @@ func (w *Writer) FormatTruncate(stmt TruncateStatement) error {
 	return nil
 }
 
-func (w *Writer) FormatDelete(stmt DeleteStatement) error {
+func (w *Writer) FormatDelete(stmt ast.DeleteStatement) error {
 	w.Enter()
 	defer w.Leave()
 
@@ -579,12 +587,12 @@ func (w *Writer) FormatDelete(stmt DeleteStatement) error {
 	return nil
 }
 
-func (w *Writer) FormatUpdate(stmt UpdateStatement) error {
+func (w *Writer) FormatUpdate(stmt ast.UpdateStatement) error {
 	kw, _ := stmt.Keyword()
 	return w.FormatUpdateWithKeyword(kw, stmt)
 }
 
-func (w *Writer) FormatUpdateWithKeyword(kw string, stmt UpdateStatement) error {
+func (w *Writer) FormatUpdateWithKeyword(kw string, stmt ast.UpdateStatement) error {
 	w.Enter()
 	defer w.Leave()
 
@@ -592,9 +600,9 @@ func (w *Writer) FormatUpdateWithKeyword(kw string, stmt UpdateStatement) error 
 	w.WriteBlank()
 
 	switch stmt := stmt.Table.(type) {
-	case Name:
+	case ast.Name:
 		w.FormatName(stmt)
-	case Alias:
+	case ast.Alias:
 		if err := w.FormatAlias(stmt); err != nil {
 			return err
 		}
@@ -630,7 +638,7 @@ func (w *Writer) FormatUpdateWithKeyword(kw string, stmt UpdateStatement) error 
 	return nil
 }
 
-func (w *Writer) FormatInsert(stmt InsertStatement) error {
+func (w *Writer) FormatInsert(stmt ast.InsertStatement) error {
 	w.Enter()
 	defer w.Leave()
 
@@ -672,15 +680,15 @@ func (w *Writer) FormatInsert(stmt InsertStatement) error {
 	return nil
 }
 
-func (w *Writer) FormatInsertValues(values Statement) error {
+func (w *Writer) FormatInsertValues(values ast.Statement) error {
 	if values == nil {
 		return nil
 	}
 	var err error
 	switch stmt := values.(type) {
-	case ValuesStatement:
+	case ast.ValuesStatement:
 		err = w.formatValues(stmt, true)
-	case SelectStatement:
+	case ast.SelectStatement:
 		w.WriteNL()
 		err = w.FormatSelect(stmt)
 	default:
@@ -689,11 +697,11 @@ func (w *Writer) FormatInsertValues(values Statement) error {
 	return err
 }
 
-func (w *Writer) FormatUpsert(stmt Statement) error {
+func (w *Writer) FormatUpsert(stmt ast.Statement) error {
 	if stmt == nil {
 		return nil
 	}
-	upsert, ok := stmt.(Upsert)
+	upsert, ok := stmt.(ast.Upsert)
 	if !ok {
 		return w.CanNotUse("insert(upsert)", stmt)
 	}
@@ -724,7 +732,7 @@ func (w *Writer) FormatUpsert(stmt Statement) error {
 	return w.FormatWhere(upsert.Where)
 }
 
-func (w *Writer) FormatAssignment(list []Statement) error {
+func (w *Writer) FormatAssignment(list []ast.Statement) error {
 	w.Enter()
 	defer w.Leave()
 
@@ -734,15 +742,15 @@ func (w *Writer) FormatAssignment(list []Statement) error {
 			w.WriteString(",")
 			w.WriteBlank()
 		}
-		ass, ok := s.(Assignment)
+		ass, ok := s.(ast.Assignment)
 		if !ok {
 			return w.CanNotUse("assignment", s)
 		}
 		w.WritePrefix()
 		switch field := ass.Field.(type) {
-		case Name:
+		case ast.Name:
 			w.FormatName(field)
-		case List:
+		case ast.List:
 			err = w.formatList(field)
 		default:
 			return w.CanNotUse("assignment", s)
@@ -752,7 +760,7 @@ func (w *Writer) FormatAssignment(list []Statement) error {
 		}
 		w.WriteString("=")
 		switch value := ass.Value.(type) {
-		case List:
+		case ast.List:
 			err = w.formatList(value)
 		default:
 			err = w.FormatExpr(value, false)
@@ -764,14 +772,14 @@ func (w *Writer) FormatAssignment(list []Statement) error {
 	return err
 }
 
-func (w *Writer) FormatReturning(stmt Statement) error {
+func (w *Writer) FormatReturning(stmt ast.Statement) error {
 	if stmt == nil {
 		return nil
 	}
 	w.WriteStatement("RETURNING")
 	w.WriteBlank()
 
-	list, ok := stmt.(List)
+	list, ok := stmt.(ast.List)
 	if !ok {
 		return w.FormatExpr(stmt, false)
 	}

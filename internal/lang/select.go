@@ -3,23 +3,25 @@ package lang
 import (
 	"fmt"
 	"strconv"
+
+	"github.com/midbel/sweet/internal/lang/ast"
 )
 
 type SelectParser interface {
-	ParseColumns() ([]Statement, error)
-	ParseFrom() ([]Statement, error)
-	ParseWhere() (Statement, error)
-	ParseGroupBy() ([]Statement, error)
-	ParseHaving() (Statement, error)
-	ParseOrderBy() ([]Statement, error)
-	ParseWindows() ([]Statement, error)
-	ParseLimit() (Statement, error)
+	ParseColumns() ([]ast.Statement, error)
+	ParseFrom() ([]ast.Statement, error)
+	ParseWhere() (ast.Statement, error)
+	ParseGroupBy() ([]ast.Statement, error)
+	ParseHaving() (ast.Statement, error)
+	ParseOrderBy() ([]ast.Statement, error)
+	ParseWindows() ([]ast.Statement, error)
+	ParseLimit() (ast.Statement, error)
 }
 
-func (p *Parser) ParseValues() (Statement, error) {
+func (p *Parser) ParseValues() (ast.Statement, error) {
 	p.Next()
 	var (
-		stmt ValuesStatement
+		stmt ast.ValuesStatement
 		err  error
 	)
 	if !p.Is(Lparen) {
@@ -40,7 +42,7 @@ func (p *Parser) ParseValues() (Statement, error) {
 			return nil, p.Unexpected("values")
 		}
 		p.Next()
-		var list List
+		var list ast.List
 		for !p.Done() && !p.Is(Rparen) {
 			v, err := p.StartExpression()
 			if err != nil {
@@ -71,14 +73,14 @@ func (p *Parser) ParseValues() (Statement, error) {
 	return stmt, err
 }
 
-func (p *Parser) ParseSelect() (Statement, error) {
+func (p *Parser) ParseSelect() (ast.Statement, error) {
 	return p.ParseSelectStatement(p)
 }
 
-func (p *Parser) ParseSelectStatement(sp SelectParser) (Statement, error) {
+func (p *Parser) ParseSelectStatement(sp SelectParser) (ast.Statement, error) {
 	p.Next()
 	var (
-		stmt SelectStatement
+		stmt ast.SelectStatement
 		err  error
 	)
 	if p.IsKeyword("DISTINCT") {
@@ -122,21 +124,21 @@ func (p *Parser) ParseSelectStatement(sp SelectParser) (Statement, error) {
 	}
 	switch {
 	case p.IsKeyword("UNION"):
-		u := UnionStatement{
+		u := ast.UnionStatement{
 			Left: stmt,
 		}
 		u.All, u.Distinct = allDistinct()
 		u.Right, err = p.ParseSelectStatement(sp)
 		return u, err
 	case p.IsKeyword("INTERSECT"):
-		i := IntersectStatement{
+		i := ast.IntersectStatement{
 			Left: stmt,
 		}
 		i.All, i.Distinct = allDistinct()
 		i.Right, err = p.ParseSelectStatement(sp)
 		return i, err
 	case p.IsKeyword("EXCEPT"):
-		e := ExceptStatement{
+		e := ast.ExceptStatement{
 			Left: stmt,
 		}
 		e.All, e.Distinct = allDistinct()
@@ -147,8 +149,8 @@ func (p *Parser) ParseSelectStatement(sp SelectParser) (Statement, error) {
 	}
 }
 
-func (p *Parser) ParseColumns() ([]Statement, error) {
-	var list []Statement
+func (p *Parser) ParseColumns() ([]ast.Statement, error) {
+	var list []ast.Statement
 	for !p.Done() && !p.IsKeyword("FROM") {
 		stmt, err := p.StartExpression()
 		if err = wrapError("fields", err); err != nil {
@@ -172,7 +174,7 @@ func (p *Parser) ParseColumns() ([]Statement, error) {
 	return list, nil
 }
 
-func (p *Parser) ParseFrom() ([]Statement, error) {
+func (p *Parser) ParseFrom() ([]ast.Statement, error) {
 	if !p.IsKeyword("FROM") {
 		return nil, p.Unexpected("from")
 	}
@@ -182,11 +184,11 @@ func (p *Parser) ParseFrom() ([]Statement, error) {
 	defer p.unsetFuncSet()
 
 	var (
-		list []Statement
+		list []ast.Statement
 		err  error
 	)
 	for !p.Done() && !p.QueryEnds() {
-		var stmt Statement
+		var stmt ast.Statement
 		stmt, err = p.StartExpression()
 		if err != nil {
 			return nil, err
@@ -201,7 +203,7 @@ func (p *Parser) ParseFrom() ([]Statement, error) {
 		}
 	}
 	for !p.Done() && !p.QueryEnds() && isJoin(p.curr) {
-		j := Join{
+		j := ast.Join{
 			Type: p.GetCurrLiteral(),
 		}
 		p.Next()
@@ -225,7 +227,7 @@ func (p *Parser) ParseFrom() ([]Statement, error) {
 	return list, nil
 }
 
-func (p *Parser) ParseJoinOn() (Statement, error) {
+func (p *Parser) ParseJoinOn() (ast.Statement, error) {
 	p.Next()
 	p.setDefaultFuncSet()
 	p.UnregisterInfix("AS", Keyword)
@@ -233,14 +235,14 @@ func (p *Parser) ParseJoinOn() (Statement, error) {
 	return p.StartExpression()
 }
 
-func (p *Parser) ParseJoinUsing() (Statement, error) {
+func (p *Parser) ParseJoinUsing() (ast.Statement, error) {
 	p.Next()
 	if !p.Is(Lparen) {
 		return nil, p.Unexpected("using")
 	}
 	p.Next()
 
-	var list List
+	var list ast.List
 	for !p.Done() && !p.Is(Rparen) {
 		stmt, err := p.ParseIdentifier()
 		if err = wrapError("using", err); err != nil {
@@ -258,7 +260,7 @@ func (p *Parser) ParseJoinUsing() (Statement, error) {
 	return list, nil
 }
 
-func (p *Parser) ParseWhere() (Statement, error) {
+func (p *Parser) ParseWhere() (ast.Statement, error) {
 	if !p.IsKeyword("WHERE") {
 		return nil, nil
 	}
@@ -268,17 +270,17 @@ func (p *Parser) ParseWhere() (Statement, error) {
 	return p.StartExpression()
 }
 
-func (p *Parser) ParseGroupBy() ([]Statement, error) {
+func (p *Parser) ParseGroupBy() ([]ast.Statement, error) {
 	if !p.IsKeyword("GROUP BY") {
 		return nil, nil
 	}
 	p.Next()
 	var (
-		list []Statement
+		list []ast.Statement
 		err  error
 	)
 	for !p.Done() && !p.QueryEnds() {
-		var stmt Statement
+		var stmt ast.Statement
 		stmt, err = p.ParseIdentifier()
 		if err != nil {
 			return nil, err
@@ -295,7 +297,7 @@ func (p *Parser) ParseGroupBy() ([]Statement, error) {
 	return list, err
 }
 
-func (p *Parser) ParseHaving() (Statement, error) {
+func (p *Parser) ParseHaving() (ast.Statement, error) {
 	if !p.IsKeyword("HAVING") {
 		return nil, nil
 	}
@@ -305,17 +307,17 @@ func (p *Parser) ParseHaving() (Statement, error) {
 	return p.StartExpression()
 }
 
-func (p *Parser) ParseWindows() ([]Statement, error) {
+func (p *Parser) ParseWindows() ([]ast.Statement, error) {
 	if !p.IsKeyword("WINDOW") {
 		return nil, nil
 	}
 	p.Next()
 	var (
-		list []Statement
+		list []ast.Statement
 		err  error
 	)
 	for !p.Done() && !p.QueryEnds() {
-		var win WindowDefinition
+		var win ast.WindowDefinition
 		if win.Ident, err = p.ParseIdentifier(); err != nil {
 			return nil, err
 		}
@@ -338,9 +340,9 @@ func (p *Parser) ParseWindows() ([]Statement, error) {
 	return list, err
 }
 
-func (p *Parser) ParseWindow() (Statement, error) {
+func (p *Parser) ParseWindow() (ast.Statement, error) {
 	var (
-		stmt Window
+		stmt ast.Window
 		err  error
 	)
 	if !p.Is(Lparen) {
@@ -386,7 +388,7 @@ func (p *Parser) ParseWindow() (Statement, error) {
 	return stmt, err
 }
 
-func (p *Parser) parseFrameSpec() (Statement, error) {
+func (p *Parser) parseFrameSpec() (ast.Statement, error) {
 	switch {
 	case p.IsKeyword("RANGE"):
 	case p.IsKeyword("ROWS"):
@@ -395,23 +397,23 @@ func (p *Parser) parseFrameSpec() (Statement, error) {
 		return nil, nil
 	}
 	p.Next()
-	var stmt BetweenFrameSpec
+	var stmt ast.BetweenFrameSpec
 	if !p.IsKeyword("BETWEEN") {
-		stmt.Right.Row = RowCurrent
+		stmt.Right.Row = ast.RowCurrent
 	}
 	p.Next()
 
 	switch {
 	case p.IsKeyword("CURRENT ROW"):
-		stmt.Left.Row = RowCurrent
+		stmt.Left.Row = ast.RowCurrent
 	case p.IsKeyword("UNBOUNDED PRECEDING"):
-		stmt.Left.Row = RowPreceding | RowUnbounded
+		stmt.Left.Row = ast.RowPreceding | ast.RowUnbounded
 	default:
 		expr, err := p.StartExpression()
 		if err != nil {
 			return nil, err
 		}
-		stmt.Left.Row = RowPreceding
+		stmt.Left.Row = ast.RowPreceding
 		stmt.Left.Expr = expr
 		if !p.IsKeyword("PRECEDING") && !p.IsKeyword("FOLLOWING") {
 			return nil, p.Unexpected("frame spec")
@@ -425,15 +427,15 @@ func (p *Parser) parseFrameSpec() (Statement, error) {
 		p.Next()
 		switch {
 		case p.IsKeyword("CURRENT ROW"):
-			stmt.Right.Row = RowCurrent
+			stmt.Right.Row = ast.RowCurrent
 		case p.IsKeyword("UNBOUNDED FOLLOWING"):
-			stmt.Right.Row = RowFollowing | RowUnbounded
+			stmt.Right.Row = ast.RowFollowing | ast.RowUnbounded
 		default:
 			expr, err := p.StartExpression()
 			if err != nil {
 				return nil, err
 			}
-			stmt.Right.Row = RowFollowing
+			stmt.Right.Row = ast.RowFollowing
 			stmt.Right.Expr = expr
 			if !p.IsKeyword("PRECEDING") && !p.IsKeyword("FOLLOWING") {
 				return nil, p.Unexpected("frame spec")
@@ -443,13 +445,13 @@ func (p *Parser) parseFrameSpec() (Statement, error) {
 	}
 	switch {
 	case p.IsKeyword("EXCLUDE NO OTHERS"):
-		stmt.Exclude = ExcludeNoOthers
+		stmt.Exclude = ast.ExcludeNoOthers
 	case p.IsKeyword("EXCLUDE CURRENT ROW"):
-		stmt.Exclude = ExcludeCurrent
+		stmt.Exclude = ast.ExcludeCurrent
 	case p.IsKeyword("EXCLUDE GROUP"):
-		stmt.Exclude = ExcludeGroup
+		stmt.Exclude = ast.ExcludeGroup
 	case p.IsKeyword("EXCLUDE TIES"):
-		stmt.Exclude = ExcludeTies
+		stmt.Exclude = ast.ExcludeTies
 	default:
 	}
 	if stmt.Exclude > 0 {
@@ -458,22 +460,22 @@ func (p *Parser) parseFrameSpec() (Statement, error) {
 	return stmt, nil
 }
 
-func (p *Parser) ParseOrderBy() ([]Statement, error) {
+func (p *Parser) ParseOrderBy() ([]ast.Statement, error) {
 	if !p.IsKeyword("ORDER BY") {
 		return nil, nil
 	}
 	p.Next()
 	var (
-		list []Statement
+		list []ast.Statement
 		err  error
 	)
 	for !p.Done() && !p.QueryEnds() {
-		var stmt Statement
+		var stmt ast.Statement
 		stmt, err = p.ParseIdentifier()
 		if err != nil {
 			return nil, err
 		}
-		order := Order{
+		order := ast.Order{
 			Statement: stmt,
 			Dir:       "ASC",
 		}
@@ -501,11 +503,11 @@ func (p *Parser) ParseOrderBy() ([]Statement, error) {
 	return list, err
 }
 
-func (p *Parser) ParseLimit() (Statement, error) {
+func (p *Parser) ParseLimit() (ast.Statement, error) {
 	switch {
 	case p.IsKeyword("LIMIT"):
 		var (
-			lim Limit
+			lim ast.Limit
 			err error
 		)
 		p.Next()
@@ -531,9 +533,9 @@ func (p *Parser) ParseLimit() (Statement, error) {
 	}
 }
 
-func (p *Parser) ParseFetch() (Statement, error) {
+func (p *Parser) ParseFetch() (ast.Statement, error) {
 	var (
-		stmt Offset
+		stmt ast.Offset
 		err  error
 	)
 	if p.IsKeyword("OFFSET") {
@@ -576,7 +578,7 @@ func (p *Parser) ParseFetch() (Statement, error) {
 	return stmt, err
 }
 
-func (w *Writer) FormatUnion(stmt UnionStatement) error {
+func (w *Writer) FormatUnion(stmt ast.UnionStatement) error {
 	if err := w.FormatStatement(stmt.Left); err != nil {
 		return err
 	}
@@ -594,7 +596,7 @@ func (w *Writer) FormatUnion(stmt UnionStatement) error {
 	return w.FormatStatement(stmt.Right)
 }
 
-func (w *Writer) FormatExcept(stmt ExceptStatement) error {
+func (w *Writer) FormatExcept(stmt ast.ExceptStatement) error {
 	if err := w.FormatStatement(stmt.Left); err != nil {
 		return err
 	}
@@ -612,7 +614,7 @@ func (w *Writer) FormatExcept(stmt ExceptStatement) error {
 	return w.FormatStatement(stmt.Right)
 }
 
-func (w *Writer) FormatIntersect(stmt IntersectStatement) error {
+func (w *Writer) FormatIntersect(stmt ast.IntersectStatement) error {
 	if err := w.FormatStatement(stmt.Left); err != nil {
 		return err
 	}
@@ -630,11 +632,11 @@ func (w *Writer) FormatIntersect(stmt IntersectStatement) error {
 	return w.FormatStatement(stmt.Right)
 }
 
-func (w *Writer) FormatValues(stmt ValuesStatement) error {
+func (w *Writer) FormatValues(stmt ast.ValuesStatement) error {
 	return w.formatValues(stmt, false)
 }
 
-func (w *Writer) formatValues(stmt ValuesStatement, inline bool) error {
+func (w *Writer) formatValues(stmt ast.ValuesStatement, inline bool) error {
 	kw, _ := stmt.Keyword()
 	if inline {
 		w.WriteKeyword(kw)
@@ -654,7 +656,7 @@ func (w *Writer) formatValues(stmt ValuesStatement, inline bool) error {
 	return nil
 }
 
-func (w *Writer) FormatSelect(stmt SelectStatement) error {
+func (w *Writer) FormatSelect(stmt ast.SelectStatement) error {
 	w.Enter()
 	defer w.Leave()
 
@@ -707,7 +709,7 @@ func (w *Writer) FormatSelect(stmt SelectStatement) error {
 	return nil
 }
 
-func (w *Writer) FormatSelectColumns(columns []Statement) error {
+func (w *Writer) FormatSelectColumns(columns []ast.Statement) error {
 	w.Enter()
 	defer w.Leave()
 	for i, v := range columns {
@@ -719,7 +721,7 @@ func (w *Writer) FormatSelectColumns(columns []Statement) error {
 	return nil
 }
 
-func (w *Writer) FormatWhere(stmt Statement) error {
+func (w *Writer) FormatWhere(stmt ast.Statement) error {
 	if stmt == nil {
 		return nil
 	}
@@ -736,17 +738,17 @@ func (w *Writer) FormatWhere(stmt Statement) error {
 	return w.FormatExpr(stmt, true)
 }
 
-func (w *Writer) formatFromJoin(join Join) error {
+func (w *Writer) formatFromJoin(join ast.Join) error {
 	w.WriteString(join.Type)
 	w.WriteBlank()
 
 	var err error
 	switch s := join.Table.(type) {
-	case Name:
+	case ast.Name:
 		w.FormatName(s)
-	case Alias:
+	case ast.Alias:
 		err = w.FormatAlias(s)
-	case SelectStatement:
+	case ast.SelectStatement:
 		w.WriteString("(")
 		err = w.FormatSelect(s)
 		w.WriteString(")")
@@ -759,12 +761,12 @@ func (w *Writer) formatFromJoin(join Join) error {
 	w.Enter()
 	defer w.Leave()
 	switch s := join.Where.(type) {
-	case Binary:
+	case ast.Binary:
 		w.WriteNL()
 		w.WriteStatement("ON")
 		w.WriteBlank()
 		err = w.formatBinary(s, false)
-	case List:
+	case ast.List:
 		w.WriteNL()
 		w.WriteStatement("USING")
 		w.WriteBlank()
@@ -775,15 +777,12 @@ func (w *Writer) formatFromJoin(join Join) error {
 	return err
 }
 
-func (w *Writer) FormatFrom(list []Statement) error {
+func (w *Writer) FormatFrom(list []ast.Statement) error {
 	w.WriteStatement("FROM")
 	w.WriteBlank()
 
-	// w.Enter()
-	// defer w.Leave()
-
-	withComma := func(stmt Statement) bool {
-		_, ok := stmt.(Join)
+	withComma := func(stmt ast.Statement) bool {
+		_, ok := stmt.(ast.Join)
 		return !ok
 	}
 
@@ -797,17 +796,17 @@ func (w *Writer) FormatFrom(list []Statement) error {
 			w.WritePrefix()
 		}
 		switch s := s.(type) {
-		case Name:
+		case ast.Name:
 			w.FormatName(s)
-		case Alias:
+		case ast.Alias:
 			w.Leave()
 			err = w.FormatAlias(s)
 			w.Enter()
-		case Join:
+		case ast.Join:
 			err = w.formatFromJoin(s)
-		case Row:
+		case ast.Row:
 			err = w.FormatRow(s, true)
-		case SelectStatement:
+		case ast.SelectStatement:
 			w.WriteString("(")
 			w.WriteNL()
 			err = w.FormatStatement(s)
@@ -824,7 +823,7 @@ func (w *Writer) FormatFrom(list []Statement) error {
 	return nil
 }
 
-func (w *Writer) FormatGroupBy(groups []Statement) error {
+func (w *Writer) FormatGroupBy(groups []ast.Statement) error {
 	if len(groups) == 0 {
 		return nil
 	}
@@ -835,7 +834,7 @@ func (w *Writer) FormatGroupBy(groups []Statement) error {
 			w.WriteString(",")
 			w.WriteBlank()
 		}
-		n, ok := s.(Name)
+		n, ok := s.(ast.Name)
 		if !ok {
 			return w.CanNotUse("group by", s)
 		}
@@ -844,7 +843,7 @@ func (w *Writer) FormatGroupBy(groups []Statement) error {
 	return nil
 }
 
-func (w *Writer) FormatWindows(windows []Statement) error {
+func (w *Writer) FormatWindows(windows []ast.Statement) error {
 	w.WriteStatement("WINDOW")
 
 	w.Enter()
@@ -858,7 +857,7 @@ func (w *Writer) FormatWindows(windows []Statement) error {
 	}
 
 	for i, c := range windows {
-		def, ok := c.(WindowDefinition)
+		def, ok := c.(ast.WindowDefinition)
 		if !ok {
 			return fmt.Errorf("window: unexpected statement type %T", c)
 		}
@@ -874,7 +873,7 @@ func (w *Writer) FormatWindows(windows []Statement) error {
 		w.WriteKeyword("AS")
 		w.WriteBlank()
 		w.WriteString("(")
-		win, ok := def.Window.(Window)
+		win, ok := def.Window.(ast.Window)
 		if !ok {
 			return fmt.Errorf("window: unexpected statement type %T", def.Window)
 		}
@@ -900,7 +899,7 @@ func (w *Writer) FormatWindows(windows []Statement) error {
 					w.WriteString(",")
 					w.WriteBlank()
 				}
-				order, ok := s.(Order)
+				order, ok := s.(ast.Order)
 				if !ok {
 					return w.CanNotUse("order by", s)
 				}
@@ -914,7 +913,7 @@ func (w *Writer) FormatWindows(windows []Statement) error {
 	return nil
 }
 
-func (w *Writer) FormatHaving(having Statement) error {
+func (w *Writer) FormatHaving(having ast.Statement) error {
 	w.Enter()
 	defer w.Leave()
 
@@ -926,7 +925,7 @@ func (w *Writer) FormatHaving(having Statement) error {
 	return w.FormatExpr(having, true)
 }
 
-func (w *Writer) FormatOrderBy(orders []Statement) error {
+func (w *Writer) FormatOrderBy(orders []ast.Statement) error {
 	if len(orders) == 0 {
 		return nil
 	}
@@ -937,7 +936,7 @@ func (w *Writer) FormatOrderBy(orders []Statement) error {
 			w.WriteString(",")
 			w.WriteBlank()
 		}
-		order, ok := s.(Order)
+		order, ok := s.(ast.Order)
 		if !ok {
 			return w.CanNotUse("order by", s)
 		}
@@ -948,8 +947,8 @@ func (w *Writer) FormatOrderBy(orders []Statement) error {
 	return nil
 }
 
-func (w *Writer) formatOrder(order Order) error {
-	n, ok := order.Statement.(Name)
+func (w *Writer) formatOrder(order ast.Order) error {
+	n, ok := order.Statement.(ast.Name)
 	if !ok {
 		return w.CanNotUse("order by", order.Statement)
 	}
@@ -967,11 +966,11 @@ func (w *Writer) formatOrder(order Order) error {
 	return nil
 }
 
-func (w *Writer) FormatLimit(limit Statement) error {
+func (w *Writer) FormatLimit(limit ast.Statement) error {
 	if limit == nil {
 		return nil
 	}
-	lim, ok := limit.(Limit)
+	lim, ok := limit.(ast.Limit)
 	if !ok {
 		return w.FormatOffset(limit)
 	}
@@ -987,8 +986,8 @@ func (w *Writer) FormatLimit(limit Statement) error {
 	return nil
 }
 
-func (w *Writer) FormatOffset(limit Statement) error {
-	lim, ok := limit.(Offset)
+func (w *Writer) FormatOffset(limit ast.Statement) error {
+	lim, ok := limit.(ast.Offset)
 	if !ok {
 		return w.CanNotUse("fetch", limit)
 	}

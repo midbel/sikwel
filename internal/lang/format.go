@@ -7,6 +7,8 @@ import (
 	"io"
 	"os"
 	"strings"
+
+	"github.com/midbel/sweet/internal/lang/ast"
 )
 
 type Formatter interface {
@@ -132,11 +134,11 @@ func (w *Writer) Format(r io.Reader) error {
 	return nil
 }
 
-func (w *Writer) startStatement(stmt Statement) error {
+func (w *Writer) startStatement(stmt ast.Statement) error {
 	defer w.Flush()
 
 	w.Reset()
-	com, ok := stmt.(Commented)
+	com, ok := stmt.(ast.Commented)
 	if ok {
 		if w.KeepComment {
 			for _, s := range com.Before {
@@ -152,85 +154,85 @@ func (w *Writer) startStatement(stmt Statement) error {
 	return err
 }
 
-func (w *Writer) FormatStatement(stmt Statement) error {
+func (w *Writer) FormatStatement(stmt ast.Statement) error {
 	if w.UseSubQuery {
-		with, ok := stmt.(WithStatement)
+		with, ok := stmt.(ast.WithStatement)
 		if ok {
-			stmt := substituteQueries(with.Queries, with.Statement)
+			stmt := ast.SubstituteQueries(with.Queries, with.Statement)
 			return w.FormatStatement(stmt)
 		}
 	}
 	var err error
 	switch stmt := stmt.(type) {
-	case GrantStatement:
+	case ast.GrantStatement:
 		err = w.FormatGrant(stmt)
-	case RevokeStatement:
+	case ast.RevokeStatement:
 		err = w.FormatRevoke(stmt)
-	case CreateTableStatement:
+	case ast.CreateTableStatement:
 		err = w.FormatCreateTable(stmt)
-	case AlterTableStatement:
+	case ast.AlterTableStatement:
 		err = w.FormatAlterTable(stmt)
-	case CreateViewStatement:
+	case ast.CreateViewStatement:
 		err = w.FormatCreateView(stmt)
-	case DropTableStatement:
+	case ast.DropTableStatement:
 		err = w.FormatDropTable(stmt)
-	case DropViewStatement:
+	case ast.DropViewStatement:
 		err = w.FormatDropView(stmt)
-	case CreateProcedureStatement:
+	case ast.CreateProcedureStatement:
 		err = w.FormatCreateProcedure(stmt)
-	case SelectStatement:
+	case ast.SelectStatement:
 		err = w.FormatSelect(stmt)
-	case ValuesStatement:
+	case ast.ValuesStatement:
 		err = w.FormatValues(stmt)
-	case UnionStatement:
+	case ast.UnionStatement:
 		err = w.FormatUnion(stmt)
-	case IntersectStatement:
+	case ast.IntersectStatement:
 		err = w.FormatIntersect(stmt)
-	case ExceptStatement:
+	case ast.ExceptStatement:
 		err = w.FormatExcept(stmt)
-	case InsertStatement:
+	case ast.InsertStatement:
 		err = w.FormatInsert(stmt)
-	case UpdateStatement:
+	case ast.UpdateStatement:
 		err = w.FormatUpdate(stmt)
-	case DeleteStatement:
+	case ast.DeleteStatement:
 		err = w.FormatDelete(stmt)
-	case TruncateStatement:
+	case ast.TruncateStatement:
 		err = w.FormatTruncate(stmt)
-	case MergeStatement:
+	case ast.MergeStatement:
 		err = w.FormatMerge(stmt)
-	case WithStatement:
+	case ast.WithStatement:
 		err = w.FormatWith(stmt)
-	case CteStatement:
+	case ast.CteStatement:
 		err = w.FormatCte(stmt)
-	case CallStatement:
+	case ast.CallStatement:
 		err = w.FormatCall(stmt)
-	case Commit:
+	case ast.Commit:
 		err = w.FormatCommit(stmt)
-	case Rollback:
+	case ast.Rollback:
 		err = w.FormatRollback(stmt)
-	case StartTransaction:
+	case ast.StartTransaction:
 		err = w.FormatStartTransaction(stmt)
-	case SetTransaction:
+	case ast.SetTransaction:
 		err = w.FormatSetTransaction(stmt)
-	case Savepoint:
+	case ast.Savepoint:
 		err = w.FormatSavepoint(stmt)
-	case ReleaseSavepoint:
+	case ast.ReleaseSavepoint:
 		err = w.FormatReleaseSavepoint(stmt)
-	case RollbackSavepoint:
+	case ast.RollbackSavepoint:
 		err = w.FormatRollbackSavepoint(stmt)
-	case List:
+	case ast.List:
 		err = w.FormatBody(stmt)
-	case Declare:
+	case ast.Declare:
 		err = w.FormatDeclare(stmt)
-	case Return:
+	case ast.Return:
 		err = w.FormatReturn(stmt)
-	case SetStatement:
+	case ast.Set:
 		err = w.FormatSet(stmt)
-	case IfStatement:
+	case ast.If:
 		err = w.FormatIf(stmt)
-	case WhileStatement:
+	case ast.While:
 		err = w.FormatWhile(stmt)
-	case Case:
+	case ast.Case:
 		err = w.FormatCase(stmt)
 	default:
 		err = fmt.Errorf("unsupported statement type %T", stmt)
@@ -238,9 +240,9 @@ func (w *Writer) FormatStatement(stmt Statement) error {
 	return err
 }
 
-func (w *Writer) FormatBody(list List) error {
-	doFmt := func(stmt Statement) error {
-		if isQuery(stmt) {
+func (w *Writer) FormatBody(list ast.List) error {
+	doFmt := func(stmt ast.Statement) error {
+		if ast.IsQuery(stmt) {
 			w.Leave()
 			defer w.Enter()
 		}
@@ -257,50 +259,50 @@ func (w *Writer) FormatBody(list List) error {
 	return nil
 }
 
-func (w *Writer) FormatExpr(stmt Statement, nl bool) error {
+func (w *Writer) FormatExpr(stmt ast.Statement, nl bool) error {
 	w.enterExpr()
 	defer w.leaveExpr()
 	var err error
 	switch stmt := stmt.(type) {
-	case Name:
+	case ast.Name:
 		w.FormatName(stmt)
-	case Value:
+	case ast.Value:
 		w.FormatLiteral(stmt.Literal)
-	case Group:
+	case ast.Group:
 		err = w.formatGroup(stmt)
-	case Row:
+	case ast.Row:
 		err = w.FormatRow(stmt, nl)
-	case Alias:
+	case ast.Alias:
 		err = w.FormatAlias(stmt)
-	case Call:
+	case ast.Call:
 		err = w.formatCall(stmt)
-	case List:
+	case ast.List:
 		err = w.formatList(stmt)
-	case Binary:
+	case ast.Binary:
 		err = w.formatBinary(stmt, nl)
-	case All:
+	case ast.All:
 		err = w.formatAll(stmt, nl)
-	case Any:
+	case ast.Any:
 		err = w.formatAny(stmt, nl)
-	case Unary:
+	case ast.Unary:
 		err = w.formatUnary(stmt, nl)
-	case Between:
+	case ast.Between:
 		err = w.formatBetween(stmt, false, nl)
-	case Is:
+	case ast.Is:
 		err = w.formatIs(stmt, false, nl)
-	case In:
+	case ast.In:
 		err = w.formatIn(stmt, false, nl)
-	case Collate:
+	case ast.Collate:
 		err = w.formatCollate(stmt, nl)
-	case Cast:
+	case ast.Cast:
 		err = w.FormatCast(stmt, nl)
-	case Exists:
+	case ast.Exists:
 		err = w.formatExists(stmt, nl)
-	case Not:
+	case ast.Not:
 		err = w.formatNot(stmt, nl)
-	case Case:
+	case ast.Case:
 		err = w.FormatCase(stmt)
-	case When:
+	case ast.When:
 		err = w.FormatWhen(stmt)
 	default:
 		err = w.FormatStatement(stmt)
@@ -308,13 +310,13 @@ func (w *Writer) FormatExpr(stmt Statement, nl bool) error {
 	return err
 }
 
-func (w *Writer) formatNot(stmt Not, _ bool) error {
+func (w *Writer) formatNot(stmt ast.Not, _ bool) error {
 	switch stmt := stmt.Statement.(type) {
-	case Between:
+	case ast.Between:
 		return w.formatBetween(stmt, true, false)
-	case Is:
+	case ast.Is:
 		return w.formatIs(stmt, true, false)
-	case In:
+	case ast.In:
 		return w.formatIn(stmt, true, false)
 	default:
 		w.WriteKeyword("NOT")
@@ -323,7 +325,7 @@ func (w *Writer) formatNot(stmt Not, _ bool) error {
 	}
 }
 
-func (w *Writer) formatExists(stmt Exists, _ bool) error {
+func (w *Writer) formatExists(stmt ast.Exists, _ bool) error {
 	compact := w.Compact
 	defer func() {
 		w.Compact = compact
@@ -338,7 +340,7 @@ func (w *Writer) formatExists(stmt Exists, _ bool) error {
 	return nil
 }
 
-func (w *Writer) formatCollate(stmt Collate, _ bool) error {
+func (w *Writer) formatCollate(stmt ast.Collate, _ bool) error {
 	if err := w.FormatExpr(stmt.Statement, false); err != nil {
 		return err
 	}
@@ -349,7 +351,7 @@ func (w *Writer) formatCollate(stmt Collate, _ bool) error {
 	return nil
 }
 
-func (w *Writer) formatStmtSlice(values []Statement) error {
+func (w *Writer) formatStmtSlice(values []ast.Statement) error {
 	for i, v := range values {
 		w.WriteComma(i)
 		if err := w.FormatExpr(v, false); err != nil {
@@ -359,7 +361,7 @@ func (w *Writer) formatStmtSlice(values []Statement) error {
 	return nil
 }
 
-func (w *Writer) formatList(stmt List) error {
+func (w *Writer) formatList(stmt ast.List) error {
 	w.WriteString("(")
 	defer w.WriteString(")")
 	for i, v := range stmt.Values {
@@ -374,8 +376,8 @@ func (w *Writer) formatList(stmt List) error {
 	return nil
 }
 
-func (w *Writer) formatCall(call Call) error {
-	n, ok := call.Ident.(Name)
+func (w *Writer) formatCall(call ast.Call) error {
+	n, ok := call.Ident.(ast.Name)
 	if !ok {
 		return w.CanNotUse("call", call.Ident)
 	}
@@ -411,10 +413,10 @@ func (w *Writer) formatCall(call Call) error {
 		w.WriteKeyword("OVER")
 		w.WriteBlank()
 		switch over := call.Over.(type) {
-		case Name:
+		case ast.Name:
 			w.WriteBlank()
 			return w.FormatExpr(over, false)
-		case Window:
+		case ast.Window:
 			w.WriteString("(")
 			if over.Ident != nil {
 				if err := w.FormatExpr(over.Ident, false); err != nil {
@@ -437,7 +439,7 @@ func (w *Writer) formatCall(call Call) error {
 						w.WriteString(",")
 						w.WriteBlank()
 					}
-					o, ok := s.(Order)
+					o, ok := s.(ast.Order)
 					if !ok {
 						return w.CanNotUse("over", s)
 					}
@@ -454,7 +456,7 @@ func (w *Writer) formatCall(call Call) error {
 	return nil
 }
 
-func (w *Writer) formatIs(stmt Is, not, nl bool) error {
+func (w *Writer) formatIs(stmt ast.Is, not, nl bool) error {
 	if err := w.FormatExpr(stmt.Ident, nl); err != nil {
 		return err
 	}
@@ -468,7 +470,7 @@ func (w *Writer) formatIs(stmt Is, not, nl bool) error {
 	return w.FormatExpr(stmt.Value, false)
 }
 
-func (w *Writer) formatIn(stmt In, not, nl bool) error {
+func (w *Writer) formatIn(stmt ast.In, not, nl bool) error {
 	if err := w.FormatExpr(stmt.Ident, nl); err != nil {
 		return err
 	}
@@ -480,7 +482,7 @@ func (w *Writer) formatIn(stmt In, not, nl bool) error {
 	w.WriteKeyword("IN")
 	w.WriteBlank()
 
-	if stmt, ok := stmt.Value.(SelectStatement); ok {
+	if stmt, ok := stmt.Value.(ast.SelectStatement); ok {
 		w.WriteString("(")
 		err := w.FormatSelect(stmt)
 		w.WriteString(")")
@@ -489,7 +491,7 @@ func (w *Writer) formatIn(stmt In, not, nl bool) error {
 	return w.FormatExpr(stmt.Value, false)
 }
 
-func (w *Writer) formatBetween(stmt Between, not, nl bool) error {
+func (w *Writer) formatBetween(stmt ast.Between, not, nl bool) error {
 	if err := w.FormatExpr(stmt.Ident, nl); err != nil {
 		return err
 	}
@@ -509,13 +511,13 @@ func (w *Writer) formatBetween(stmt Between, not, nl bool) error {
 	return w.FormatExpr(stmt.Upper, false)
 }
 
-func (w *Writer) formatUnary(stmt Unary, nl bool) error {
+func (w *Writer) formatUnary(stmt ast.Unary, nl bool) error {
 	w.WriteString(stmt.Op)
 	w.WriteBlank()
 	return w.FormatExpr(stmt.Right, nl)
 }
 
-func (w *Writer) formatGroup(stmt Group) error {
+func (w *Writer) formatGroup(stmt ast.Group) error {
 	w.WriteString("(")
 	defer w.WriteString(")")
 
@@ -524,7 +526,7 @@ func (w *Writer) formatGroup(stmt Group) error {
 	return w.FormatExpr(stmt.Statement, false)
 }
 
-func (w *Writer) formatRelation(stmt Binary, nl bool) error {
+func (w *Writer) formatRelation(stmt ast.Binary, nl bool) error {
 	if err := w.FormatExpr(stmt.Left, false); err != nil {
 		return err
 	}
@@ -535,19 +537,19 @@ func (w *Writer) formatRelation(stmt Binary, nl bool) error {
 	return w.FormatExpr(stmt.Right, false)
 }
 
-func (w *Writer) formatAll(stmt All, _ bool) error {
+func (w *Writer) formatAll(stmt ast.All, _ bool) error {
 	w.WriteKeyword("ALL")
 	w.WriteBlank()
 	return w.FormatExpr(stmt.Statement, false)
 }
 
-func (w *Writer) formatAny(stmt Any, _ bool) error {
+func (w *Writer) formatAny(stmt ast.Any, _ bool) error {
 	w.WriteKeyword("ANY")
 	w.WriteBlank()
 	return w.FormatExpr(stmt.Statement, false)
 }
 
-func (w *Writer) formatBinary(stmt Binary, nl bool) error {
+func (w *Writer) formatBinary(stmt ast.Binary, nl bool) error {
 	if stmt.IsRelation() {
 		return w.formatRelation(stmt, nl)
 	}
@@ -727,7 +729,7 @@ func (w *Writer) leaveExpr() {
 	w.currExprDepth--
 }
 
-func (w *Writer) CanNotUse(ctx string, stmt Statement) error {
+func (w *Writer) CanNotUse(ctx string, stmt ast.Statement) error {
 	return fmt.Errorf("%T can not be used as statement in %s", stmt, ctx)
 }
 

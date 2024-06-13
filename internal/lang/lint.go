@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"slices"
+
+	"github.com/midbel/sweet/internal/lang/ast"
 )
 
 type Level int
@@ -79,40 +81,40 @@ func (i Linter) Lint(r io.Reader) ([]LintMessage, error) {
 	return list, nil
 }
 
-func (i Linter) LintStatement(stmt Statement) ([]LintMessage, error) {
+func (i Linter) LintStatement(stmt ast.Statement) ([]LintMessage, error) {
 	var (
 		list []LintMessage
 		err  error
 	)
 	switch stmt := stmt.(type) {
-	case CreateViewStatement:
-	case WithStatement:
+	case ast.CreateViewStatement:
+	case ast.WithStatement:
 		list, err = i.lintWith(stmt)
-	case CteStatement:
+	case ast.CteStatement:
 		list, err = i.lintCte(stmt)
-	case ValuesStatement:
+	case ast.ValuesStatement:
 		list, err = i.lintValues(stmt)
-	case SelectStatement:
+	case ast.SelectStatement:
 		list, err = i.lintSelect(stmt)
-	case InsertStatement:
+	case ast.InsertStatement:
 		list, err = i.lintInsert(stmt)
-	case UpdateStatement:
+	case ast.UpdateStatement:
 		list, err = i.lintUpdate(stmt)
-	case DeleteStatement:
+	case ast.DeleteStatement:
 		list, err = i.lintDelete(stmt)
-	case MergeStatement:
+	case ast.MergeStatement:
 		list, err = i.lintMerge(stmt)
-	case UnionStatement:
+	case ast.UnionStatement:
 		list, err = i.lintUnion(stmt)
-	case IntersectStatement:
+	case ast.IntersectStatement:
 		list, err = i.lintIntersect(stmt)
-	case ExceptStatement:
+	case ast.ExceptStatement:
 		list, err = i.lintExcept(stmt)
-	case List:
+	case ast.List:
 		list, err = i.lintList(stmt)
-	case Unary:
+	case ast.Unary:
 		list, err = i.LintStatement(stmt.Right)
-	case Binary:
+	case ast.Binary:
 		l1, err1 := i.LintStatement(stmt.Left)
 		l2, err2 := i.LintStatement(stmt.Right)
 		list = append(list, l1...)
@@ -123,7 +125,7 @@ func (i Linter) LintStatement(stmt Statement) ([]LintMessage, error) {
 		if err2 != nil {
 			err = err2
 		}
-	case Between:
+	case ast.Between:
 		l1, err1 := i.LintStatement(stmt.Lower)
 		l2, err2 := i.LintStatement(stmt.Upper)
 		list = append(list, l1...)
@@ -134,26 +136,26 @@ func (i Linter) LintStatement(stmt Statement) ([]LintMessage, error) {
 		if err2 != nil {
 			err = err2
 		}
-	case In:
+	case ast.In:
 		list, err = i.LintStatement(stmt.Value)
-	case Is:
+	case ast.Is:
 		list, err = i.LintStatement(stmt.Value)
-	case Not:
+	case ast.Not:
 		list, err = i.LintStatement(stmt.Statement)
-	case Exists:
+	case ast.Exists:
 		list, err = i.LintStatement(stmt.Statement)
-	case All:
+	case ast.All:
 		list, err = i.LintStatement(stmt.Statement)
-	case Any:
+	case ast.Any:
 		list, err = i.LintStatement(stmt.Statement)
-	case Group:
+	case ast.Group:
 		list, err = i.LintStatement(stmt.Statement)
 	default:
 	}
 	return list, err
 }
 
-func (i Linter) lintList(stmt List) ([]LintMessage, error) {
+func (i Linter) lintList(stmt ast.List) ([]LintMessage, error) {
 	var list []LintMessage
 	for _, v := range stmt.Values {
 		others, err := i.LintStatement(v)
@@ -165,20 +167,20 @@ func (i Linter) lintList(stmt List) ([]LintMessage, error) {
 	return list, nil
 }
 
-func (i Linter) lintInsert(stmt InsertStatement) ([]LintMessage, error) {
+func (i Linter) lintInsert(stmt ast.InsertStatement) ([]LintMessage, error) {
 	var (
 		list  []LintMessage
 		count = len(stmt.Columns)
 	)
 	if count > 0 {
 		switch stmt := stmt.Values.(type) {
-		case SelectStatement:
+		case ast.SelectStatement:
 			if stmt.ColumnsCount() != count {
 				list = append(list, columnsCountMismatched())
 			}
-		case List:
+		case ast.List:
 			for i := range stmt.Values {
-				vs, ok := stmt.Values[i].(List)
+				vs, ok := stmt.Values[i].(ast.List)
 				if !ok {
 					return nil, fmt.Errorf("values expected with insert statement")
 				}
@@ -198,55 +200,55 @@ func (i Linter) lintInsert(stmt InsertStatement) ([]LintMessage, error) {
 	return list, nil
 }
 
-func (i Linter) lintMerge(stmt MergeStatement) ([]LintMessage, error) {
+func (i Linter) lintMerge(stmt ast.MergeStatement) ([]LintMessage, error) {
 	return nil, nil
 }
 
-func (i Linter) lintUpdate(stmt UpdateStatement) ([]LintMessage, error) {
+func (i Linter) lintUpdate(stmt ast.UpdateStatement) ([]LintMessage, error) {
 	return nil, nil
 }
 
-func (i Linter) lintDelete(stmt DeleteStatement) ([]LintMessage, error) {
+func (i Linter) lintDelete(stmt ast.DeleteStatement) ([]LintMessage, error) {
 	return nil, nil
 }
 
-func (i Linter) lintUnion(stmt UnionStatement) ([]LintMessage, error) {
-	s1, ok := stmt.Left.(SelectStatement)
+func (i Linter) lintUnion(stmt ast.UnionStatement) ([]LintMessage, error) {
+	s1, ok := stmt.Left.(ast.SelectStatement)
 	if !ok {
 		return nil, fmt.Errorf("select expected on left side of union")
 	}
-	s2, ok := stmt.Right.(SelectStatement)
+	s2, ok := stmt.Right.(ast.SelectStatement)
 	if !ok {
 		return nil, fmt.Errorf("select expected on right side of union")
 	}
 	return i.lintSets(s1, s2)
 }
 
-func (i Linter) lintIntersect(stmt IntersectStatement) ([]LintMessage, error) {
-	s1, ok := stmt.Left.(SelectStatement)
+func (i Linter) lintIntersect(stmt ast.IntersectStatement) ([]LintMessage, error) {
+	s1, ok := stmt.Left.(ast.SelectStatement)
 	if !ok {
 		return nil, fmt.Errorf("select expected on left side of union")
 	}
-	s2, ok := stmt.Right.(SelectStatement)
+	s2, ok := stmt.Right.(ast.SelectStatement)
 	if !ok {
 		return nil, fmt.Errorf("select expected on right side of union")
 	}
 	return i.lintSets(s1, s2)
 }
 
-func (i Linter) lintExcept(stmt ExceptStatement) ([]LintMessage, error) {
-	s1, ok := stmt.Left.(SelectStatement)
+func (i Linter) lintExcept(stmt ast.ExceptStatement) ([]LintMessage, error) {
+	s1, ok := stmt.Left.(ast.SelectStatement)
 	if !ok {
 		return nil, fmt.Errorf("select expected on left side of union")
 	}
-	s2, ok := stmt.Right.(SelectStatement)
+	s2, ok := stmt.Right.(ast.SelectStatement)
 	if !ok {
 		return nil, fmt.Errorf("select expected on right side of union")
 	}
 	return i.lintSets(s1, s2)
 }
 
-func (i Linter) lintSets(s1, s2 SelectStatement) ([]LintMessage, error) {
+func (i Linter) lintSets(s1, s2 ast.SelectStatement) ([]LintMessage, error) {
 	var (
 		list   []LintMessage
 		others []LintMessage
@@ -268,7 +270,7 @@ func (i Linter) lintSets(s1, s2 SelectStatement) ([]LintMessage, error) {
 	return list, nil
 }
 
-func (i Linter) lintCte(stmt CteStatement) ([]LintMessage, error) {
+func (i Linter) lintCte(stmt ast.CteStatement) ([]LintMessage, error) {
 	var list []LintMessage
 	if z := len(stmt.Columns); z != 0 {
 		if c, ok := stmt.Statement.(interface{ ColumnsCount() int }); ok {
@@ -286,7 +288,7 @@ func (i Linter) lintCte(stmt CteStatement) ([]LintMessage, error) {
 	return list, nil
 }
 
-func (i Linter) lintWith(stmt WithStatement) ([]LintMessage, error) {
+func (i Linter) lintWith(stmt ast.WithStatement) ([]LintMessage, error) {
 	var list []LintMessage
 	for _, q := range stmt.Queries {
 		others, err := i.LintStatement(q)
@@ -303,7 +305,7 @@ func (i Linter) lintWith(stmt WithStatement) ([]LintMessage, error) {
 	return list, nil
 }
 
-func (i Linter) lintValues(stmt ValuesStatement) ([]LintMessage, error) {
+func (i Linter) lintValues(stmt ast.ValuesStatement) ([]LintMessage, error) {
 	if len(stmt.List) <= 1 {
 		return nil, nil
 	}
@@ -316,7 +318,7 @@ func (i Linter) lintValues(stmt ValuesStatement) ([]LintMessage, error) {
 		return nil, err
 	}
 	list = append(list, others...)
-	if vs, ok := stmt.List[0].(List); ok {
+	if vs, ok := stmt.List[0].(ast.List); ok {
 		count = len(vs.Values)
 	}
 	for _, vs := range stmt.List[1:] {
@@ -327,7 +329,7 @@ func (i Linter) lintValues(stmt ValuesStatement) ([]LintMessage, error) {
 		list = append(list, others...)
 
 		n := 1
-		if vs, ok := vs.(List); ok {
+		if vs, ok := vs.(ast.List); ok {
 			n = len(vs.Values)
 		}
 		if count != n {
@@ -337,15 +339,15 @@ func (i Linter) lintValues(stmt ValuesStatement) ([]LintMessage, error) {
 	return list, nil
 }
 
-func (i Linter) lintSelect(stmt SelectStatement) ([]LintMessage, error) {
+func (i Linter) lintSelect(stmt ast.SelectStatement) ([]LintMessage, error) {
 	// check subqueries
 	var (
 		list    []LintMessage
-		queries []Statement
+		queries []ast.Statement
 	)
 	queries = slices.Concat(slices.Clone(stmt.Columns), slices.Clone(stmt.Tables))
 	for _, c := range queries {
-		if c, ok := c.(SelectStatement); ok {
+		if c, ok := c.(ast.SelectStatement); ok {
 			others, err := i.lintSelect(c)
 			if err != nil {
 				return nil, err
@@ -361,10 +363,10 @@ func (i Linter) lintSelect(stmt SelectStatement) ([]LintMessage, error) {
 	return list, nil
 }
 
-func checkFieldsFromSubqueries(stmt SelectStatement) []LintMessage {
+func checkFieldsFromSubqueries(stmt ast.SelectStatement) []LintMessage {
 	var list []LintMessage
 	for _, c := range stmt.Columns {
-		s, ok := c.(SelectStatement)
+		s, ok := c.(ast.SelectStatement)
 		if !ok {
 			continue
 		}
@@ -375,35 +377,35 @@ func checkFieldsFromSubqueries(stmt SelectStatement) []LintMessage {
 	return nil
 }
 
-func checkColumnUsedInGroup(stmt SelectStatement) []LintMessage {
+func checkColumnUsedInGroup(stmt ast.SelectStatement) []LintMessage {
 	if len(stmt.Groups) == 0 {
 		return nil
 	}
 	var (
-		groups = getNamesFromStmt(stmt.Groups)
+		groups = ast.GetNamesFromStmt(stmt.Groups)
 		list   []LintMessage
 	)
 	for _, c := range stmt.Columns {
 		switch c := c.(type) {
-		case Alias:
-			call, ok := c.Statement.(Call)
+		case ast.Alias:
+			call, ok := c.Statement.(ast.Call)
 			if ok {
 				if ok = call.IsAggregate(); !ok {
 					list = append(list, aggregateFunctionExpected(call.GetIdent()))
 				}
 			}
-			name, ok := c.Statement.(Name)
+			name, ok := c.Statement.(ast.Name)
 			if !ok {
 				list = append(list, unexpectedExprType("", "GROUP BY"))
 			}
 			if ok = slices.Contains(groups, name.Ident()); !ok {
 				list = append(list, fieldNotInGroup(name.Ident()))
 			}
-		case Call:
+		case ast.Call:
 			if ok := c.IsAggregate(); !ok {
 				list = append(list, aggregateFunctionExpected(c.GetIdent()))
 			}
-		case Name:
+		case ast.Name:
 			ok := slices.Contains(groups, c.Name())
 			if !ok {
 				list = append(list, fieldNotInGroup(c.Name()))
@@ -415,10 +417,10 @@ func checkColumnUsedInGroup(stmt SelectStatement) []LintMessage {
 	return list
 }
 
-func checkUniqueAlias(stmt SelectStatement) []LintMessage {
+func checkUniqueAlias(stmt ast.SelectStatement) []LintMessage {
 	var (
-		columns  = getAliasFromStmt(stmt.Columns)
-		tables   = getAliasFromStmt(stmt.Tables)
+		columns  = ast.GetAliasFromStmt(stmt.Columns)
+		tables   = ast.GetAliasFromStmt(stmt.Tables)
 		contains = func(list []string, str string) bool {
 			return slices.Contains(list, str)
 		}
@@ -437,18 +439,18 @@ func checkUniqueAlias(stmt SelectStatement) []LintMessage {
 	return nil
 }
 
-func checkUndefinedAlias(stmt SelectStatement) []LintMessage {
+func checkUndefinedAlias(stmt ast.SelectStatement) []LintMessage {
 	var (
-		alias  = getAliasFromStmt(stmt.Tables)
-		names  = getNamesFromStmt(stmt.Tables)
+		alias  = ast.GetAliasFromStmt(stmt.Tables)
+		names  = ast.GetNamesFromStmt(stmt.Tables)
 		values = slices.Concat(alias, names)
 		list   []LintMessage
 	)
 	for _, c := range stmt.Columns {
-		if a, ok := c.(Alias); ok {
+		if a, ok := c.(ast.Alias); ok {
 			c = a.Statement
 		}
-		n, ok := c.(Name)
+		n, ok := c.(ast.Name)
 		if !ok {
 			continue
 		}
@@ -459,19 +461,19 @@ func checkUndefinedAlias(stmt SelectStatement) []LintMessage {
 	return list
 }
 
-func checkMissingAlias(stmt SelectStatement) []LintMessage {
+func checkMissingAlias(stmt ast.SelectStatement) []LintMessage {
 	var list []LintMessage
 	for _, s := range stmt.Columns {
-		if _, ok := s.(SelectStatement); ok {
+		if _, ok := s.(ast.SelectStatement); ok {
 			list = append(list, missingAlias())
 		}
 	}
 	for _, s := range stmt.Tables {
 		switch s := s.(type) {
-		case SelectStatement:
+		case ast.SelectStatement:
 			list = append(list, missingAlias())
-		case Join:
-			if _, ok := s.Table.(SelectStatement); ok {
+		case ast.Join:
+			if _, ok := s.Table.(ast.SelectStatement); ok {
 				list = append(list, missingAlias())
 			}
 		default:
@@ -480,12 +482,12 @@ func checkMissingAlias(stmt SelectStatement) []LintMessage {
 	return nil
 }
 
-func checkAliasUsedInWhere(stmt SelectStatement) []LintMessage {
+func checkAliasUsedInWhere(stmt ast.SelectStatement) []LintMessage {
 	var (
-		names = getNamesFromStmt([]Statement{stmt.Where, stmt.Having})
+		names = ast.GetNamesFromStmt([]ast.Statement{stmt.Where, stmt.Having})
 		list  []LintMessage
 	)
-	for _, a := range getAliasFromStmt(stmt.Columns) {
+	for _, a := range ast.GetAliasFromStmt(stmt.Columns) {
 		ok := slices.Contains(names, a)
 		if ok {
 			list = append(list, unexpectedAlias(a))
