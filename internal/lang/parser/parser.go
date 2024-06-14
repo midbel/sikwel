@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/midbel/sweet/internal/keywords"
 	"github.com/midbel/sweet/internal/lang"
 	"github.com/midbel/sweet/internal/lang/ast"
 	"github.com/midbel/sweet/internal/lang/scanner"
@@ -400,14 +401,14 @@ func (p *Parser) unsetFuncSet() {
 
 type frame struct {
 	scan *scanner.Scanner
-	set  lang.KeywordSet
+	set  keywords.Set
 
 	base string
 	curr token.Token
 	peek token.Token
 }
 
-func createFrame(r io.Reader, set lang.KeywordSet) (*frame, error) {
+func createFrame(r io.Reader, set keywords.Set) (*frame, error) {
 	scan, err := scanner.Scan(r, set)
 	if err != nil {
 		return nil, err

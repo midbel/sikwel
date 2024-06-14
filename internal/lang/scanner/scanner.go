@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/midbel/sweet/internal/lang"
+	"github.com/midbel/sweet/internal/keywords"
 	"github.com/midbel/sweet/internal/token"
 )
 
@@ -15,11 +15,11 @@ type Scanner struct {
 	cursor
 	old cursor
 
-	keywords lang.KeywordSet
+	keywords keywords.Set
 	str      bytes.Buffer
 }
 
-func Scan(r io.Reader, keywords lang.KeywordSet) (*Scanner, error) {
+func Scan(r io.Reader, keywords keywords.Set) (*Scanner, error) {
 	buf, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
