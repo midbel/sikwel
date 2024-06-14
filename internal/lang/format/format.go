@@ -8,32 +8,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/midbel/sweet/internal/lang"
 	"github.com/midbel/sweet/internal/lang/ast"
 	"github.com/midbel/sweet/internal/lang/parser"
 )
-
-type Formatter interface {
-	Quote(string) string
-}
-
-func GetDialectFormatter(name string) (Formatter, error) {
-	switch name {
-	case "my", "mysql":
-		return mysqlFormatter{}, nil
-	case "mssql":
-		return tsqlFormatter{}, nil
-	case "ansi", "pg", "postgres", "sqlite", "lite":
-		return ansiFormatter{}, nil
-	default:
-		return nil, fmt.Errorf("%s unsupported dialect", name)
-	}
-}
-
-type mysqlFormatter struct{}
-
-func (_ mysqlFormatter) Quote(str string) string {
-	return fmt.Sprintf("`%s`", str)
-}
 
 type ansiFormatter struct{}
 
@@ -41,10 +19,8 @@ func (_ ansiFormatter) Quote(str string) string {
 	return fmt.Sprintf("\"%s\"", str)
 }
 
-type tsqlFormatter struct{}
-
-func (_ tsqlFormatter) Quote(str string) string {
-	return fmt.Sprintf("[%s]", str)
+func GetFormatter() lang.Formatter {
+	return ansiFormatter{}
 }
 
 type UpperMode uint8
@@ -99,7 +75,7 @@ type Writer struct {
 	currExprDepth int
 	currDepth     int
 
-	Formatter
+	lang.Formatter
 }
 
 func NewWriter(w io.Writer) *Writer {
