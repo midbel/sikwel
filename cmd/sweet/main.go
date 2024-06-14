@@ -7,9 +7,10 @@ import (
 	"io"
 	"os"
 
-	"github.com/midbel/sweet/internal/lang"
+	"github.com/midbel/sweet/internal/lang/complexity"
 	"github.com/midbel/sweet/internal/lang/format"
-	// "github.com/midbel/sweet/internal/lang/complex"
+	"github.com/midbel/sweet/internal/lang/lint"
+	"github.com/midbel/sweet/internal/lang/parser"
 )
 
 func main() {
@@ -62,7 +63,7 @@ func runFormat(args []string) error {
 	set.Func("upper", "upperize mode", func(value string) error {
 		switch value {
 		case "all", "":
-			writer.Upperize |= format.lang.UpperId | format.UpperKw | format.UpperFn
+			writer.Upperize |= format.UpperId | format.UpperKw | format.UpperFn
 		case "keyword", "kw":
 			writer.Upperize |= format.UpperKw
 		case "function", "fn":
@@ -103,7 +104,7 @@ func runFormat(args []string) error {
 func runLint(args []string) error {
 	var (
 		set     = flag.NewFlagSet("lint", flag.ExitOnError)
-		linter  = lang.NewLinter()
+		linter  = lint.NewLinter()
 		dialect string
 		config  string
 		init    bool
@@ -120,7 +121,7 @@ func runLint(args []string) error {
 	if init {
 		return runInit()
 	}
-	process := func(file string) ([]lang.LintMessage, error) {
+	process := func(file string) ([]lint.LintMessage, error) {
 		r, err := os.Open(file)
 		if err != nil {
 			return nil, err
@@ -145,25 +146,25 @@ func runInit() error {
 	return nil
 }
 
-// func runCyclo(files []string) error {
-// 	run := func(f string) (int, error) {
-// 		r, err := os.Open(f)
-// 		if err != nil {
-// 			return 0, err
-// 		}
-// 		defer r.Close()
-// 		return complex.Complexity(r)
-// 	}
-// 	for _, f := range files {
-// 		n, err := run(f)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		fmt.Printf("%s: %d", f, n)
-// 		fmt.Println()
-// 	}
-// 	return nil
-// }
+func runCyclo(files []string) error {
+	run := func(f string) (int, error) {
+		r, err := os.Open(f)
+		if err != nil {
+			return 0, err
+		}
+		defer r.Close()
+		return complexity.Complexity(r)
+	}
+	for _, f := range files {
+		n, err := run(f)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s: %d", f, n)
+		fmt.Println()
+	}
+	return nil
+}
 
 func runDebug(files []string) error {
 	for _, f := range files {
@@ -181,7 +182,7 @@ func printTree(file string) error {
 	}
 	defer r.Close()
 
-	p, err := lang.NewParser(r)
+	p, err := parser.NewParser(r)
 	if err != nil {
 		return err
 	}

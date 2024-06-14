@@ -1,9 +1,10 @@
-package lang
+package parser
 
 import (
 	"strconv"
 
 	"github.com/midbel/sweet/internal/lang/ast"
+	"github.com/midbel/sweet/internal/token"
 )
 
 type SelectParser interface {
@@ -23,48 +24,48 @@ func (p *Parser) ParseValues() (ast.Statement, error) {
 		stmt ast.ValuesStatement
 		err  error
 	)
-	if !p.Is(Lparen) {
-		for !p.Done() && !p.Is(EOL) {
+	if !p.Is(token.Lparen) {
+		for !p.Done() && !p.Is(token.EOL) {
 			v, err := p.StartExpression()
 			if err != nil {
 				return nil, err
 			}
-			if err := p.EnsureEnd("values", Comma, EOL); err != nil {
+			if err := p.EnsureEnd("values", token.Comma, token.EOL); err != nil {
 				return nil, err
 			}
 			stmt.List = append(stmt.List, v)
 		}
 		return stmt, nil
 	}
-	for !p.Done() && !p.Is(EOL) {
-		if !p.Is(Lparen) {
+	for !p.Done() && !p.Is(token.EOL) {
+		if !p.Is(token.Lparen) {
 			return nil, p.Unexpected("values")
 		}
 		p.Next()
 		var list ast.List
-		for !p.Done() && !p.Is(Rparen) {
+		for !p.Done() && !p.Is(token.Rparen) {
 			v, err := p.StartExpression()
 			if err != nil {
 				return nil, err
 			}
 			list.Values = append(list.Values, v)
 			switch {
-			case p.Is(Comma):
+			case p.Is(token.Comma):
 				p.Next()
-				if p.Is(Rparen) {
+				if p.Is(token.Rparen) {
 					return nil, p.Unexpected("values")
 				}
-			case p.Is(Rparen):
+			case p.Is(token.Rparen):
 			default:
 				return nil, p.Unexpected("values")
 			}
 		}
-		if !p.Is(Rparen) {
+		if !p.Is(token.Rparen) {
 			return nil, p.Unexpected("values")
 		}
 		p.Next()
 		stmt.List = append(stmt.List, list)
-		if !p.Is(Comma) {
+		if !p.Is(token.Comma) {
 			break
 		}
 		p.Next()
@@ -156,7 +157,7 @@ func (p *Parser) ParseColumns() ([]ast.Statement, error) {
 			return nil, err
 		}
 		switch {
-		case p.Is(Comma):
+		case p.Is(token.Comma):
 			p.Next()
 			if p.IsKeyword("FROM") {
 				return nil, p.Unexpected("fields")
@@ -193,15 +194,15 @@ func (p *Parser) ParseFrom() ([]ast.Statement, error) {
 			return nil, err
 		}
 		list = append(list, stmt)
-		if !p.Is(Comma) {
+		if !p.Is(token.Comma) {
 			break
 		}
 		p.Next()
-		if p.QueryEnds() || p.Is(Keyword) {
+		if p.QueryEnds() || p.Is(token.Keyword) {
 			return nil, p.Unexpected("from")
 		}
 	}
-	for !p.Done() && !p.QueryEnds() && isJoin(p.curr) {
+	for !p.Done() && !p.QueryEnds() && p.curr.IsJoin() {
 		j := ast.Join{
 			Type: p.GetCurrLiteral(),
 		}
@@ -229,30 +230,30 @@ func (p *Parser) ParseFrom() ([]ast.Statement, error) {
 func (p *Parser) ParseJoinOn() (ast.Statement, error) {
 	p.Next()
 	p.setDefaultFuncSet()
-	p.UnregisterInfix("AS", Keyword)
+	p.UnregisterInfix("AS", token.Keyword)
 	defer p.unsetFuncSet()
 	return p.StartExpression()
 }
 
 func (p *Parser) ParseJoinUsing() (ast.Statement, error) {
 	p.Next()
-	if !p.Is(Lparen) {
+	if !p.Is(token.Lparen) {
 		return nil, p.Unexpected("using")
 	}
 	p.Next()
 
 	var list ast.List
-	for !p.Done() && !p.Is(Rparen) {
+	for !p.Done() && !p.Is(token.Rparen) {
 		stmt, err := p.ParseIdentifier()
 		if err = wrapError("using", err); err != nil {
 			return nil, err
 		}
 		list.Values = append(list.Values, stmt)
-		if err := p.EnsureEnd("using", Comma, Rparen); err != nil {
+		if err := p.EnsureEnd("using", token.Comma, token.Rparen); err != nil {
 			return nil, err
 		}
 	}
-	if !p.Is(Rparen) {
+	if !p.Is(token.Rparen) {
 		return nil, p.Unexpected("using")
 	}
 	p.Next()
@@ -285,11 +286,11 @@ func (p *Parser) ParseGroupBy() ([]ast.Statement, error) {
 			return nil, err
 		}
 		list = append(list, stmt)
-		if !p.Is(Comma) {
+		if !p.Is(token.Comma) {
 			break
 		}
 		p.Next()
-		if p.QueryEnds() && !p.Is(Keyword) {
+		if p.QueryEnds() && !p.Is(token.Keyword) {
 			return nil, p.Unexpected("group by")
 		}
 	}
@@ -328,11 +329,11 @@ func (p *Parser) ParseWindows() ([]ast.Statement, error) {
 			return nil, err
 		}
 		list = append(list, win)
-		if !p.Is(Comma) {
+		if !p.Is(token.Comma) {
 			break
 		}
 		p.Next()
-		if p.Is(Keyword) || p.QueryEnds() {
+		if p.Is(token.Keyword) || p.QueryEnds() {
 			return nil, p.Unexpected("window")
 		}
 	}
@@ -344,29 +345,29 @@ func (p *Parser) ParseWindow() (ast.Statement, error) {
 		stmt ast.Window
 		err  error
 	)
-	if !p.Is(Lparen) {
+	if !p.Is(token.Lparen) {
 		return nil, p.Unexpected("window")
 	}
 	p.Next()
 	switch {
-	case p.Is(Ident):
+	case p.Is(token.Ident):
 		stmt.Ident, err = p.ParseIdentifier()
 	case p.IsKeyword("PARTITION BY"):
 		p.Next()
-		for !p.Done() && !p.IsKeyword("ORDER BY") && !p.Is(Rparen) {
+		for !p.Done() && !p.IsKeyword("ORDER BY") && !p.Is(token.Rparen) {
 			expr, err := p.StartExpression()
 			if err != nil {
 				return nil, err
 			}
 			stmt.Partitions = append(stmt.Partitions, expr)
 			switch {
-			case p.Is(Comma):
+			case p.Is(token.Comma):
 				p.Next()
-				if p.IsKeyword("ORDER BY") || p.Is(Rparen) {
+				if p.IsKeyword("ORDER BY") || p.Is(token.Rparen) {
 					return nil, p.Unexpected("window")
 				}
 			case p.IsKeyword("ORDER BY"):
-			case p.Is(Rparen):
+			case p.Is(token.Rparen):
 			default:
 				return nil, p.Unexpected("window")
 			}
@@ -380,7 +381,7 @@ func (p *Parser) ParseWindow() (ast.Statement, error) {
 	if stmt.Orders, err = p.ParseOrderBy(); err != nil {
 		return nil, err
 	}
-	if !p.Is(Rparen) {
+	if !p.Is(token.Rparen) {
 		return nil, p.Unexpected("window")
 	}
 	p.Next()
@@ -491,11 +492,11 @@ func (p *Parser) ParseOrderBy() ([]ast.Statement, error) {
 			p.Next()
 		}
 		list = append(list, order)
-		if !p.Is(Comma) {
+		if !p.Is(token.Comma) {
 			break
 		}
 		p.Next()
-		if p.QueryEnds() || p.Is(Rparen) || p.Is(Keyword) {
+		if p.QueryEnds() || p.Is(token.Rparen) || p.Is(token.Keyword) {
 			return nil, p.Unexpected("order by")
 		}
 	}
@@ -515,7 +516,7 @@ func (p *Parser) ParseLimit() (ast.Statement, error) {
 			return nil, p.Unexpected("limit")
 		}
 		p.Next()
-		if !p.Is(Comma) && !p.IsKeyword("OFFSET") {
+		if !p.Is(token.Comma) && !p.IsKeyword("OFFSET") {
 			return lim, nil
 		}
 		p.Next()

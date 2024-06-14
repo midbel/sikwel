@@ -1,9 +1,10 @@
-package lang
+package parser
 
 import (
 	"strconv"
 
 	"github.com/midbel/sweet/internal/lang/ast"
+	"github.com/midbel/sweet/internal/token"
 )
 
 func (p *Parser) ParseLiteral() (ast.Statement, error) {
@@ -15,7 +16,7 @@ func (p *Parser) ParseLiteral() (ast.Statement, error) {
 }
 
 func (p *Parser) ParseConstant() (ast.Statement, error) {
-	if !p.Is(Keyword) {
+	if !p.Is(token.Keyword) {
 		return nil, p.Unexpected("constant")
 	}
 	switch p.GetCurrLiteral() {
@@ -28,12 +29,12 @@ func (p *Parser) ParseConstant() (ast.Statement, error) {
 
 func (p *Parser) ParseIdentifier() (ast.Statement, error) {
 	var name ast.Name
-	for p.peekIs(Dot) {
+	for p.peekIs(token.Dot) {
 		name.Parts = append(name.Parts, p.GetCurrLiteral())
 		p.Next()
 		p.Next()
 	}
-	if !p.Is(Ident) && !p.Is(Star) {
+	if !p.Is(token.Ident) && !p.Is(token.Star) {
 		return nil, p.Unexpected("identifier")
 	}
 	name.Parts = append(name.Parts, p.GetCurrLiteral())
@@ -55,7 +56,7 @@ func (p *Parser) ParseAlias(stmt ast.Statement) (ast.Statement, error) {
 		p.Next()
 	}
 	switch p.curr.Type {
-	case Ident, Literal, Number:
+	case token.Ident, token.Literal, token.Number:
 		stmt = ast.Alias{
 			Statement: stmt,
 			Alias:     p.GetCurrLiteral(),
@@ -92,7 +93,7 @@ func (p *Parser) ParseCase() (ast.Statement, error) {
 			return nil, p.Unexpected("case")
 		}
 		p.Next()
-		if p.Is(Keyword) {
+		if p.Is(token.Keyword) {
 			when.Body, err = p.ParseStatement()
 		} else {
 			when.Body, err = p.StartExpression()
@@ -118,7 +119,7 @@ func (p *Parser) ParseCase() (ast.Statement, error) {
 
 func (p *Parser) ParseCast() (ast.Statement, error) {
 	p.Next()
-	if !p.Is(Lparen) {
+	if !p.Is(token.Lparen) {
 		return nil, p.Unexpected("cast")
 	}
 	p.Next()
@@ -137,7 +138,7 @@ func (p *Parser) ParseCast() (ast.Statement, error) {
 	if cast.Type, err = p.ParseType(); err != nil {
 		return nil, err
 	}
-	if !p.Is(Rparen) {
+	if !p.Is(token.Rparen) {
 		return nil, p.Unexpected("cast")
 	}
 	p.Next()
@@ -146,12 +147,12 @@ func (p *Parser) ParseCast() (ast.Statement, error) {
 
 func (p *Parser) ParseType() (ast.Type, error) {
 	var t ast.Type
-	if !p.Is(Ident) {
+	if !p.Is(token.Ident) {
 		return t, p.Unexpected("type")
 	}
 	t.Name = p.GetCurrLiteral()
 	p.Next()
-	if p.Is(Lparen) {
+	if p.Is(token.Lparen) {
 		p.Next()
 		size, err := strconv.Atoi(p.GetCurrLiteral())
 		if err != nil {
@@ -159,7 +160,7 @@ func (p *Parser) ParseType() (ast.Type, error) {
 		}
 		t.Length = size
 		p.Next()
-		if p.Is(Comma) {
+		if p.Is(token.Comma) {
 			p.Next()
 			size, err = strconv.Atoi(p.GetCurrLiteral())
 			if err != nil {
@@ -168,7 +169,7 @@ func (p *Parser) ParseType() (ast.Type, error) {
 			t.Precision = size
 			p.Next()
 		}
-		if !p.Is(Rparen) {
+		if !p.Is(token.Rparen) {
 			return t, p.Unexpected("type")
 		}
 		p.Next()
@@ -178,7 +179,7 @@ func (p *Parser) ParseType() (ast.Type, error) {
 
 func (p *Parser) ParseRow() (ast.Statement, error) {
 	p.Next()
-	if !p.Is(Lparen) {
+	if !p.Is(token.Lparen) {
 		return nil, p.Unexpected("row")
 	}
 	p.Next()
@@ -187,17 +188,17 @@ func (p *Parser) ParseRow() (ast.Statement, error) {
 	defer p.unsetFuncSet()
 
 	var row ast.Row
-	for !p.Done() && !p.Is(Rparen) {
+	for !p.Done() && !p.Is(token.Rparen) {
 		expr, err := p.StartExpression()
 		if err != nil {
 			return nil, err
 		}
 		row.Values = append(row.Values, expr)
-		if err = p.EnsureEnd("row", Comma, Rparen); err != nil {
+		if err = p.EnsureEnd("row", token.Comma, token.Rparen); err != nil {
 			return nil, err
 		}
 	}
-	if !p.Is(Rparen) {
+	if !p.Is(token.Rparen) {
 		return nil, p.Unexpected("row")
 	}
 	p.Next()

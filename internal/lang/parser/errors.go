@@ -1,10 +1,12 @@
-package lang
+package parser
 
 import (
 	"fmt"
+
+	"github.com/midbel/sweet/internal/token"
 )
 
-func unexpected(tok Token) error {
+func unexpected(tok token.Token) error {
 	return fmt.Errorf("unexpected token %s at (%d:%d)", tok, tok.Line, tok.Column)
 }
 

@@ -1,7 +1,8 @@
-package lang
+package parser
 
 import (
 	"github.com/midbel/sweet/internal/lang/ast"
+	"github.com/midbel/sweet/internal/token"
 )
 
 func (p *Parser) ParseBegin() (ast.Statement, error) {
@@ -44,7 +45,7 @@ func (p *Parser) parseSetTransaction() (ast.Statement, error) {
 	case p.IsKeyword("READ WRITE"):
 		stmt.Mode = ast.ModeReadWrite
 		p.Next()
-	case p.Is(EOL):
+	case p.Is(token.EOL):
 	default:
 		return nil, p.Unexpected("transaction")
 	}
@@ -65,11 +66,11 @@ func (p *Parser) parseStartTransaction() (ast.Statement, error) {
 	case p.IsKeyword("READ WRITE"):
 		stmt.Mode = ast.ModeReadWrite
 		p.Next()
-	case p.Is(EOL):
+	case p.Is(token.EOL):
 	default:
 		return nil, p.Unexpected("transaction")
 	}
-	if !p.Is(EOL) {
+	if !p.Is(token.EOL) {
 		return nil, p.Unexpected("transaction")
 	}
 	p.Next()
@@ -96,7 +97,7 @@ func (p *Parser) parseSavepoint() (ast.Statement, error) {
 		stmt ast.Savepoint
 		err  error
 	)
-	if p.Is(Ident) {
+	if p.Is(token.Ident) {
 		stmt.Name = p.GetCurrLiteral()
 		p.Next()
 	}
@@ -109,7 +110,7 @@ func (p *Parser) parseReleaseSavepoint() (ast.Statement, error) {
 		stmt ast.ReleaseSavepoint
 		err  error
 	)
-	if !p.Is(Ident) {
+	if !p.Is(token.Ident) {
 		return nil, p.Unexpected("release savepoint")
 	}
 	stmt.Name = p.GetCurrLiteral()
@@ -123,7 +124,7 @@ func (p *Parser) parseRollbackSavepoint() (ast.Statement, error) {
 		stmt ast.RollbackSavepoint
 		err  error
 	)
-	if !p.Is(Ident) {
+	if !p.Is(token.Ident) {
 		return nil, p.Unexpected("rollback savepoint")
 	}
 	stmt.Name = p.GetCurrLiteral()

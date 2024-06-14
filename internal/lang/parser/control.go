@@ -1,7 +1,8 @@
-package lang
+package parser
 
 import (
 	"github.com/midbel/sweet/internal/lang/ast"
+	"github.com/midbel/sweet/internal/token"
 )
 
 func (p *Parser) parseSet() (ast.Statement, error) {
@@ -12,7 +13,7 @@ func (p *Parser) parseSet() (ast.Statement, error) {
 	)
 	stmt.Ident = p.GetCurrLiteral()
 	p.Next()
-	if !p.Is(Eq) {
+	if !p.Is(token.Eq) {
 		return nil, p.Unexpected("set")
 	}
 	p.Next()
@@ -28,7 +29,7 @@ func (p *Parser) parseDeclare() (ast.Statement, error) {
 		stmt ast.Declare
 		err  error
 	)
-	if !p.Is(Ident) {
+	if !p.Is(token.Ident) {
 		return nil, p.Unexpected("declare")
 	}
 	stmt.Ident = p.GetCurrLiteral()
@@ -121,7 +122,7 @@ func (p *Parser) ParseBody(done func() bool) (ast.Statement, error) {
 		if err != nil {
 			return nil, err
 		}
-		if !p.Is(EOL) {
+		if !p.Is(token.EOL) {
 			return nil, p.Unexpected("body")
 		}
 		p.Next()

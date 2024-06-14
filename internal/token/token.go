@@ -1,61 +1,37 @@
-package lang
+package token
 
 import (
 	"fmt"
+	"strings"
 )
 
-const (
-	EOL rune = -(iota + 1)
-	EOF
-	Dot
-	Comment
-	Ident
-	Literal
-	Keyword
-	Macro
-	Number
-	Comma
-	Lparen
-	Rparen
-	Plus
-	Minus
-	Slash
-	Star
-	Mod
-	BitAnd
-	BitOr
-	BitXor
-	Lshift
-	Rshift
-	Eq
-	Ne
-	Lt
-	Le
-	Gt
-	Ge
-	AddAssign
-	MinAssign
-	MulAssign
-	DivAssign
-	ModAssign
-	Concat
-	Arrow
-	Invalid
-)
+type Position struct {
+	Line   int
+	Column int
+}
+
+func (p Position) String() string {
+	return fmt.Sprintf("%d:%d", p.Line, p.Column)
+}
 
 type Token struct {
-	symbol
+	Symbol
 
 	Offset int
 	Position
 }
 
-func (t Token) isValue() bool {
+func (t Token) IsJoin() bool {
+	kw := strings.ToUpper(t.Literal)
+	return t.Type == Keyword && strings.HasSuffix(kw, "JOIN")
+}
+
+func (t Token) IsValue() bool {
 	return t.Type == Ident || t.Type == Literal || t.Type == Number
 }
 
-func (t Token) asSymbol() symbol {
-	sym := symbol{
+func (t Token) AsSymbol() Symbol {
+	sym := Symbol{
 		Type: t.Type,
 	}
 	if t.Type == Keyword {
@@ -155,22 +131,13 @@ func (t Token) String() string {
 	return fmt.Sprintf("%s(%s)", prefix, t.Literal)
 }
 
-type Position struct {
-	Line   int
-	Column int
-}
-
-func (p Position) String() string {
-	return fmt.Sprintf("%d:%d", p.Line, p.Column)
-}
-
-type symbol struct {
+type Symbol struct {
 	Type    rune
 	Literal string
 }
 
-func symbolFor(kind rune, literal string) symbol {
-	return symbol{
+func SymbolFor(kind rune, literal string) Symbol {
+	return Symbol{
 		Type:    kind,
 		Literal: literal,
 	}

@@ -1,14 +1,15 @@
-package lang
+package parser
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/midbel/sweet/internal/token"
 )
 
 func (p *Parser) ParseMacro() error {
 	var err error
-	switch p.curr.Literal {
+	switch p.GetCurrLiteral() {
 	case "INCLUDE":
 		err = p.ParseIncludeMacro()
 	case "DEFINE":
@@ -20,7 +21,7 @@ func (p *Parser) ParseMacro() error {
 	case "VAR":
 		err = p.ParseVarMacro()
 	default:
-		err = fmt.Errorf("macro %s unsupported", p.curr.Literal)
+		err = p.Unexpected("macro")
 	}
 	if err != nil {
 		return err
@@ -31,10 +32,10 @@ func (p *Parser) ParseMacro() error {
 func (p *Parser) ParseIncludeMacro() error {
 	p.Next()
 
-	file := filepath.Join(p.base, p.curr.Literal)
+	file := filepath.Join(p.base, p.GetCurrLiteral())
 	p.Next()
 
-	if !p.Is(EOL) {
+	if !p.Is(token.EOL) {
 		return p.wantError("include", ";")
 	}
 	p.Next()

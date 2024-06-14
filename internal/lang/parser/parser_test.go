@@ -1,4 +1,4 @@
-package lang_test
+package parser_test
 
 import (
 	"errors"

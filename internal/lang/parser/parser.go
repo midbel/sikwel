@@ -1,4 +1,4 @@
-package lang
+package parser
 
 import (
 	"fmt"
@@ -8,7 +8,10 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/midbel/sweet/internal/lang"
 	"github.com/midbel/sweet/internal/lang/ast"
+	"github.com/midbel/sweet/internal/lang/scanner"
+	"github.com/midbel/sweet/internal/token"
 )
 
 type Parser struct {
@@ -21,7 +24,6 @@ type Parser struct {
 	infix    *stack[infixFunc]
 	prefix   *stack[prefixFunc]
 
-	inlineCte bool
 	withAlias bool
 
 	queries map[string]ast.Statement
@@ -29,13 +31,9 @@ type Parser struct {
 }
 
 func NewParser(r io.Reader) (*Parser, error) {
-	return NewParserWithKeywords(r, keywords)
-}
-
-func NewParserWithKeywords(r io.Reader, set KeywordSet) (*Parser, error) {
 	var p Parser
 
-	frame, err := createFrame(r, set)
+	frame, err := createFrame(r, lang.GetKeywords())
 	if err != nil {
 		return nil, err
 	}
@@ -62,13 +60,6 @@ func (p *Parser) DefineVars(file string) error {
 	return nil
 }
 
-func (p *Parser) SetInline(inline bool) {
-	if p.level != 0 {
-		return
-	}
-	p.inlineCte = inline
-}
-
 func (p *Parser) Parse() (ast.Statement, error) {
 	p.reset()
 	stmt, err := p.parse()
@@ -91,10 +82,10 @@ func (p *Parser) ParseStatement() (ast.Statement, error) {
 	if p.Done() {
 		return nil, io.EOF
 	}
-	if !p.Is(Keyword) {
+	if !p.Is(token.Keyword) {
 		return nil, p.wantError("statement", "keyword")
 	}
-	fn, ok := p.keywords[p.curr.Literal]
+	fn, ok := p.keywords[p.GetCurrLiteral()]
 	if !ok {
 		return nil, p.Unexpected("statement")
 	}
@@ -123,9 +114,9 @@ func (p *Parser) reset() {
 
 func (p *Parser) QueryEnds() bool {
 	if p.Nested() {
-		return p.Is(Rparen)
+		return p.Is(token.Rparen)
 	}
-	return p.Is(EOL) || p.Done()
+	return p.Is(token.EOL) || p.Done()
 }
 
 func (p *Parser) Done() bool {
@@ -148,7 +139,7 @@ func (p *Parser) Expect(ctx string, r rune) error {
 
 func (p *Parser) restore() {
 	defer p.Next()
-	for !p.Done() && !p.Is(EOL) {
+	for !p.Done() && !p.Is(token.EOL) {
 		p.Next()
 	}
 }
@@ -158,11 +149,11 @@ func (p *Parser) parse() (ast.Statement, error) {
 		com ast.Commented
 		err error
 	)
-	for p.Is(Comment) {
+	for p.Is(token.Comment) {
 		com.Before = append(com.Before, p.GetCurrLiteral())
 		p.Next()
 	}
-	if p.Is(Macro) {
+	if p.Is(token.Macro) {
 		if err := p.ParseMacro(); err != nil {
 			return nil, err
 		}
@@ -171,12 +162,12 @@ func (p *Parser) parse() (ast.Statement, error) {
 	if com.Statement, err = p.ParseStatement(); err != nil {
 		return nil, err
 	}
-	if !p.Is(EOL) {
+	if !p.Is(token.EOL) {
 		return nil, p.wantError("statement", ";")
 	}
 	eol := p.curr
 	p.Next()
-	if p.Is(Comment) && eol.Line == p.curr.Line {
+	if p.Is(token.Comment) && eol.Line == p.curr.Line {
 		com.After = p.GetCurrLiteral()
 		p.Next()
 	}
@@ -214,7 +205,7 @@ func (p *Parser) UnregisterInfix(literal string, kind rune) {
 }
 
 func (p *Parser) parseColumnsList() ([]string, error) {
-	if !p.Is(Lparen) {
+	if !p.Is(token.Lparen) {
 		return nil, nil
 	}
 	p.Next()
@@ -224,17 +215,17 @@ func (p *Parser) parseColumnsList() ([]string, error) {
 		err  error
 	)
 
-	for !p.Done() && !p.Is(Rparen) {
-		if !p.curr.isValue() {
+	for !p.Done() && !p.Is(token.Rparen) {
+		if !p.curr.IsValue() {
 			return nil, p.Unexpected("columns")
 		}
 		list = append(list, p.GetCurrLiteral())
 		p.Next()
-		if err := p.EnsureEnd("columns", Comma, Rparen); err != nil {
+		if err := p.EnsureEnd("columns", token.Comma, token.Rparen); err != nil {
 			return nil, err
 		}
 	}
-	if !p.Is(Rparen) {
+	if !p.Is(token.Rparen) {
 		return nil, p.Unexpected("columns")
 	}
 	p.Next()
@@ -243,7 +234,7 @@ func (p *Parser) parseColumnsList() ([]string, error) {
 }
 
 func (p *Parser) IsKeyword(kw string) bool {
-	return p.curr.Type == Keyword && p.curr.Literal == kw
+	return p.curr.Type == token.Keyword && p.curr.Literal == kw
 }
 
 func (p *Parser) wantError(ctx, str string) error {
@@ -287,14 +278,14 @@ func (p *Parser) tokCheck(kind ...rune) func() bool {
 func (p *Parser) KwCheck(str ...string) func() bool {
 	sort.Strings(str)
 	return func() bool {
-		if !p.Is(Keyword) {
+		if !p.Is(token.Keyword) {
 			return false
 		}
 		if len(str) == 1 {
-			return str[0] == p.curr.Literal
+			return str[0] == p.GetCurrLiteral()
 		}
-		i := sort.SearchStrings(str, p.curr.Literal)
-		return i < len(str) && str[i] == p.curr.Literal
+		i := sort.SearchStrings(str, p.GetCurrLiteral())
+		return i < len(str) && str[i] == p.GetCurrLiteral()
 	}
 }
 
@@ -336,9 +327,9 @@ func (p *Parser) setParseFunc() {
 
 func (p *Parser) setFuncSetForTable() {
 	prefix := newFuncSet[prefixFunc]()
-	prefix.Register("", Ident, p.ParseIdent)
-	prefix.Register("", Lparen, p.parseGroupExpr)
-	prefix.Register("ROW", Keyword, p.ParseRow)
+	prefix.Register("", token.Ident, p.ParseIdent)
+	prefix.Register("", token.Lparen, p.parseGroupExpr)
+	prefix.Register("ROW", token.Keyword, p.ParseRow)
 
 	p.prefix.Push(prefix)
 
@@ -348,52 +339,52 @@ func (p *Parser) setFuncSetForTable() {
 
 func (p *Parser) setDefaultFuncSet() {
 	infix := newFuncSet[infixFunc]()
-	infix.Register("", Plus, p.parseInfixExpr)
-	infix.Register("", Minus, p.parseInfixExpr)
-	infix.Register("", Slash, p.parseInfixExpr)
-	infix.Register("", Star, p.parseInfixExpr)
-	infix.Register("", Concat, p.parseInfixExpr)
-	infix.Register("", Eq, p.parseInfixExpr)
-	infix.Register("", Ne, p.parseInfixExpr)
-	infix.Register("", Lt, p.parseInfixExpr)
-	infix.Register("", Le, p.parseInfixExpr)
-	infix.Register("", Gt, p.parseInfixExpr)
-	infix.Register("", Ge, p.parseInfixExpr)
-	infix.Register("", Lparen, p.parseCallExpr)
-	infix.Register("AND", Keyword, p.parseKeywordExpr)
-	infix.Register("OR", Keyword, p.parseKeywordExpr)
-	infix.Register("NOT", Keyword, p.parseKeywordExpr)
-	infix.Register("LIKE", Keyword, p.parseKeywordExpr)
-	infix.Register("SIMILAR", Keyword, p.parseKeywordExpr)
-	infix.Register("ILIKE", Keyword, p.parseKeywordExpr)
-	infix.Register("BETWEEN", Keyword, p.parseKeywordExpr)
-	infix.Register("COLLATE", Keyword, p.parseCollateExpr)
-	infix.Register("IN", Keyword, p.parseKeywordExpr)
-	infix.Register("IS", Keyword, p.parseKeywordExpr)
-	infix.Register("ISNULL", Keyword, p.parseKeywordExpr)
-	infix.Register("NOTNULL", Keyword, p.parseKeywordExpr)
-	infix.Register("ALL", Keyword, p.parseKeywordExpr)
+	infix.Register("", token.Plus, p.parseInfixExpr)
+	infix.Register("", token.Minus, p.parseInfixExpr)
+	infix.Register("", token.Slash, p.parseInfixExpr)
+	infix.Register("", token.Star, p.parseInfixExpr)
+	infix.Register("", token.Concat, p.parseInfixExpr)
+	infix.Register("", token.Eq, p.parseInfixExpr)
+	infix.Register("", token.Ne, p.parseInfixExpr)
+	infix.Register("", token.Lt, p.parseInfixExpr)
+	infix.Register("", token.Le, p.parseInfixExpr)
+	infix.Register("", token.Gt, p.parseInfixExpr)
+	infix.Register("", token.Ge, p.parseInfixExpr)
+	infix.Register("", token.Lparen, p.parseCallExpr)
+	infix.Register("AND", token.Keyword, p.parseKeywordExpr)
+	infix.Register("OR", token.Keyword, p.parseKeywordExpr)
+	infix.Register("NOT", token.Keyword, p.parseKeywordExpr)
+	infix.Register("LIKE", token.Keyword, p.parseKeywordExpr)
+	infix.Register("SIMILAR", token.Keyword, p.parseKeywordExpr)
+	infix.Register("ILIKE", token.Keyword, p.parseKeywordExpr)
+	infix.Register("BETWEEN", token.Keyword, p.parseKeywordExpr)
+	infix.Register("COLLATE", token.Keyword, p.parseCollateExpr)
+	infix.Register("IN", token.Keyword, p.parseKeywordExpr)
+	infix.Register("IS", token.Keyword, p.parseKeywordExpr)
+	infix.Register("ISNULL", token.Keyword, p.parseKeywordExpr)
+	infix.Register("NOTNULL", token.Keyword, p.parseKeywordExpr)
+	infix.Register("ALL", token.Keyword, p.parseKeywordExpr)
 
 	p.infix.Push(infix)
 
 	prefix := newFuncSet[prefixFunc]()
-	prefix.Register("", Ident, p.ParseIdentifier)
-	prefix.Register("", Star, p.ParseIdentifier)
-	prefix.Register("", Literal, p.ParseLiteral)
-	prefix.Register("", Number, p.ParseLiteral)
-	prefix.Register("", Lparen, p.parseGroupExpr)
-	prefix.Register("", Minus, p.parseUnary)
-	prefix.Register("", Keyword, p.parseUnary)
-	prefix.Register("NOT", Keyword, p.parseUnary)
-	prefix.Register("NULL", Keyword, p.ParseConstant)
-	prefix.Register("DEFAULT", Keyword, p.ParseConstant)
-	prefix.Register("TRUE", Keyword, p.ParseConstant)
-	prefix.Register("FALSE", Keyword, p.ParseConstant)
-	prefix.Register("CASE", Keyword, p.ParseCase)
-	prefix.Register("SELECT", Keyword, p.ParseStatement)
-	prefix.Register("CAST", Keyword, p.ParseCast)
-	prefix.Register("ROW", Keyword, p.ParseRow)
-	prefix.Register("EXISTS", Keyword, p.parseExists)
+	prefix.Register("", token.Ident, p.ParseIdentifier)
+	prefix.Register("", token.Star, p.ParseIdentifier)
+	prefix.Register("", token.Literal, p.ParseLiteral)
+	prefix.Register("", token.Number, p.ParseLiteral)
+	prefix.Register("", token.Lparen, p.parseGroupExpr)
+	prefix.Register("", token.Minus, p.parseUnary)
+	prefix.Register("", token.Keyword, p.parseUnary)
+	prefix.Register("NOT", token.Keyword, p.parseUnary)
+	prefix.Register("NULL", token.Keyword, p.ParseConstant)
+	prefix.Register("DEFAULT", token.Keyword, p.ParseConstant)
+	prefix.Register("TRUE", token.Keyword, p.ParseConstant)
+	prefix.Register("FALSE", token.Keyword, p.ParseConstant)
+	prefix.Register("CASE", token.Keyword, p.ParseCase)
+	prefix.Register("SELECT", token.Keyword, p.ParseStatement)
+	prefix.Register("CAST", token.Keyword, p.ParseCast)
+	prefix.Register("ROW", token.Keyword, p.ParseRow)
+	prefix.Register("EXISTS", token.Keyword, p.parseExists)
 
 	p.prefix.Push(prefix)
 }
@@ -408,16 +399,16 @@ func (p *Parser) unsetFuncSet() {
 }
 
 type frame struct {
-	scan *Scanner
-	set  KeywordSet
+	scan *scanner.Scanner
+	set  lang.KeywordSet
 
 	base string
-	curr Token
-	peek Token
+	curr token.Token
+	peek token.Token
 }
 
-func createFrame(r io.Reader, set KeywordSet) (*frame, error) {
-	scan, err := Scan(r, set)
+func createFrame(r io.Reader, set lang.KeywordSet) (*frame, error) {
+	scan, err := scanner.Scan(r, set)
 	if err != nil {
 		return nil, err
 	}
@@ -433,11 +424,11 @@ func createFrame(r io.Reader, set KeywordSet) (*frame, error) {
 	return &f, nil
 }
 
-func (f *frame) Curr() Token {
+func (f *frame) Curr() token.Token {
 	return f.curr
 }
 
-func (f *frame) Peek() Token {
+func (f *frame) Peek() token.Token {
 	return f.peek
 }
 
@@ -463,7 +454,7 @@ func (f *frame) Next() {
 }
 
 func (f *frame) Done() bool {
-	return f.Is(EOF)
+	return f.Is(token.EOF)
 }
 
 func (f *frame) Is(kind rune) bool {

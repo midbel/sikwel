@@ -1,9 +1,10 @@
-package lang
+package parser
 
 import (
 	"fmt"
 
 	"github.com/midbel/sweet/internal/lang/ast"
+	"github.com/midbel/sweet/internal/token"
 )
 
 type stack[T prefixFunc | infixFunc] struct {
@@ -47,7 +48,7 @@ func (s *stack[T]) Unregister(literal string, kind rune) {
 	s.values[n-1].Unregister(literal, kind)
 }
 
-func (s *stack[T]) Get(sym symbol) (T, error) {
+func (s *stack[T]) Get(sym token.Symbol) (T, error) {
 	var (
 		n = s.Len()
 		t T
@@ -64,16 +65,16 @@ type infixFunc func(ast.Statement) (ast.Statement, error)
 
 type funcSet[T prefixFunc | infixFunc] struct {
 	disabled bool
-	funcs    map[symbol]T
+	funcs    map[token.Symbol]T
 }
 
 func newFuncSet[T prefixFunc | infixFunc]() *funcSet[T] {
 	return &funcSet[T]{
-		funcs: make(map[symbol]T),
+		funcs: make(map[token.Symbol]T),
 	}
 }
 
-func (s *funcSet[T]) Get(sym symbol) (T, error) {
+func (s *funcSet[T]) Get(sym token.Symbol) (T, error) {
 	if s.disabled {
 		return nil, fmt.Errorf("undefined function")
 	}
@@ -89,9 +90,9 @@ func (s *funcSet[T]) Toggle() {
 }
 
 func (s *funcSet[T]) Register(literal string, kind rune, fn T) {
-	s.funcs[symbolFor(kind, literal)] = fn
+	s.funcs[token.SymbolFor(kind, literal)] = fn
 }
 
 func (s *funcSet[T]) Unregister(literal string, kind rune) {
-	delete(s.funcs, symbolFor(kind, literal))
+	delete(s.funcs, token.SymbolFor(kind, literal))
 }

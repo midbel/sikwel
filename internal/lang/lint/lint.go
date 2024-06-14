@@ -1,4 +1,4 @@
-package lang
+package lint
 
 import (
 	"errors"
@@ -7,43 +7,13 @@ import (
 	"slices"
 
 	"github.com/midbel/sweet/internal/lang/ast"
-)
-
-type Level int
-
-func (e Level) String() string {
-	switch e {
-	case Debug:
-		return "debug"
-	case Info:
-		return "info"
-	case Warning:
-		return "warning"
-	case Error:
-		return "error"
-	default:
-		return "other"
-	}
-}
-
-const (
-	Default Level = iota
-	Debug
-	Info
-	Warning
-	Error
+	"github.com/midbel/sweet/internal/lang/parser"
 )
 
 type MultiError []error
 
 func (_ MultiError) Error() string {
 	return "multiple error detected"
-}
-
-type LintMessage struct {
-	Severity Level
-	Rule     string
-	Message  string
 }
 
 func (e LintMessage) Error() string {
@@ -59,7 +29,7 @@ func NewLinter() *Linter {
 }
 
 func (i Linter) Lint(r io.Reader) ([]LintMessage, error) {
-	p, err := NewParser(r)
+	p, err := parser.NewParser(r)
 	if err != nil {
 		return nil, err
 	}
@@ -495,87 +465,3 @@ func checkAliasUsedInWhere(stmt ast.SelectStatement) []LintMessage {
 	}
 	return list
 }
-
-func countMultipleFields() LintMessage {
-	return LintMessage{
-		Severity: Error,
-		Message:  "subquery should only return one field",
-		Rule:     ruleCountMulti,
-	}
-}
-
-func columnsCountMismatched() LintMessage {
-	return LintMessage{
-		Severity: Error,
-		Message:  "columns count mismatched",
-		Rule:     ruleCountInvalid,
-	}
-}
-
-func fieldNotInGroup(field string) LintMessage {
-	return LintMessage{
-		Severity: Error,
-		Message:  fmt.Sprintf("%s: field should be used in a 'group by' clause or with an aggregate function", field),
-		Rule:     ruleExprGroup,
-	}
-}
-
-func aggregateFunctionExpected(ident string) LintMessage {
-	return LintMessage{
-		Severity: Error,
-		Message:  fmt.Sprintf("%s: aggregate function expected", ident),
-		Rule:     ruleExprAggregate,
-	}
-}
-
-func unexpectedExprType(field, ctx string) LintMessage {
-	return LintMessage{
-		Severity: Error,
-		Message:  fmt.Sprintf("%s: unexpected expression type", ctx),
-		Rule:     ruleExprInvalid,
-	}
-}
-
-func unexpectedAlias(alias string) LintMessage {
-	return LintMessage{
-		Severity: Error,
-		Message:  fmt.Sprintf("%s: alias found in predicate", alias),
-		Rule:     ruleAliasUnexpected,
-	}
-}
-
-func undefinedAlias(alias string) LintMessage {
-	return LintMessage{
-		Severity: Error,
-		Message:  fmt.Sprintf("%s: alias not defined", alias),
-		Rule:     ruleAliasUndefined,
-	}
-}
-
-func missingAlias() LintMessage {
-	return LintMessage{
-		Severity: Error,
-		Message:  "expression needs to be used with an alias",
-		Rule:     ruleAliasMissing,
-	}
-}
-
-func duplicatedAlias(alias string) LintMessage {
-	return LintMessage{
-		Severity: Error,
-		Message:  fmt.Sprintf("%s: alias already defined", alias),
-		Rule:     ruleAliasDuplicate,
-	}
-}
-
-const (
-	ruleCountMulti      = "count.mulitple"
-	ruleCountInvalid    = "count.invalid"
-	ruleExprGroup       = "expression.group"
-	ruleExprAggregate   = "expression.aggregate"
-	ruleExprInvalid     = "expression.invalid"
-	ruleAliasUnexpected = "alias.unexpected"
-	ruleAliasUndefined  = "alias.undefined"
-	ruleAliasDuplicate  = "alias.duplicate"
-	ruleAliasMissing    = "alias.missing"
-)

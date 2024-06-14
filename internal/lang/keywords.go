@@ -3,6 +3,8 @@ package lang
 import (
 	"sort"
 	"strings"
+
+	"github.com/midbel/sweet/internal/token"
 )
 
 type KeywordSet [][]string
@@ -169,9 +171,9 @@ var keywords = KeywordSet{
 	{"all", "privileges"},
 }
 
-func isJoin(tok Token) bool {
+func isJoin(tok token.Token) bool {
 	kw := strings.ToUpper(tok.Literal)
-	return tok.Type == Keyword && strings.HasSuffix(kw, "JOIN")
+	return tok.Type == token.Keyword && strings.HasSuffix(kw, "JOIN")
 }
 
 func GetKeywords() KeywordSet {
@@ -224,7 +226,7 @@ func (ks KeywordSet) Is(str []string) (string, bool) {
 	return "", false
 }
 
-func (ks KeywordSet) prepare() {
+func (ks KeywordSet) Prepare() {
 	seen := make(map[string]struct{})
 	for i := range ks {
 		str := strings.Join(ks[i], "")

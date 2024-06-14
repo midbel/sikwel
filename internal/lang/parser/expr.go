@@ -1,9 +1,10 @@
-package lang
+package parser
 
 import (
 	// "fmt"
 
 	"github.com/midbel/sweet/internal/lang/ast"
+	"github.com/midbel/sweet/internal/token"
 )
 
 func (p *Parser) StartExpression() (ast.Statement, error) {
@@ -21,7 +22,7 @@ func (p *Parser) stopExpression(pow int) bool {
 	if p.QueryEnds() {
 		return true
 	}
-	if p.Is(Comma) {
+	if p.Is(token.Comma) {
 		return true
 	}
 	if p.IsKeyword("AS") && !isExpressionKeyword(p.GetCurrLiteral()) {
@@ -81,7 +82,7 @@ func (p *Parser) parseLike(ident ast.Statement) (ast.Statement, error) {
 
 func (p *Parser) parseIs(ident ast.Statement) (ast.Statement, error) {
 	p.Next()
-	not := p.GetCurrLiteral() == "NOT" && p.Is(Keyword)
+	not := p.GetCurrLiteral() == "NOT" && p.Is(token.Keyword)
 	if not {
 		p.Next()
 	}
@@ -130,7 +131,7 @@ func (p *Parser) parseNotNull(ident ast.Statement) (ast.Statement, error) {
 
 func (p *Parser) parseExists() (ast.Statement, error) {
 	p.Next()
-	if !p.Is(Lparen) {
+	if !p.Is(token.Lparen) {
 		return nil, p.Unexpected("expression")
 	}
 	p.Next()
@@ -142,7 +143,7 @@ func (p *Parser) parseExists() (ast.Statement, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !p.Is(Rparen) {
+	if !p.Is(token.Rparen) {
 		return nil, p.Unexpected("expression")
 	}
 	p.Next()
@@ -177,32 +178,32 @@ func (p *Parser) parseIn(ident ast.Statement) (ast.Statement, error) {
 		Ident: ident,
 	}
 	var err error
-	if p.Is(Lparen) && p.peekIs(Keyword) && p.GetPeekLiteral() == "SELECT" {
+	if p.Is(token.Lparen) && p.peekIs(token.Keyword) && p.GetPeekLiteral() == "SELECT" {
 		in.Value, err = p.parseExpression(powLowest)
-	} else if p.Is(Lparen) {
+	} else if p.Is(token.Lparen) {
 		p.Next()
 		var (
 			list ast.List
 			val  ast.Statement
 		)
-		for !p.Done() && !p.Is(Rparen) {
+		for !p.Done() && !p.Is(token.Rparen) {
 			val, err = p.parseExpression(powLowest)
 			if err != nil {
 				return nil, err
 			}
 			switch {
-			case p.Is(Comma):
+			case p.Is(token.Comma):
 				p.Next()
-				if p.Is(Rparen) {
+				if p.Is(token.Rparen) {
 					return nil, p.Unexpected("in")
 				}
-			case p.Is(Rparen):
+			case p.Is(token.Rparen):
 			default:
 				return nil, p.Unexpected("in")
 			}
 			list.Values = append(list.Values, val)
 		}
-		if !p.Is(Rparen) {
+		if !p.Is(token.Rparen) {
 			return nil, p.Unexpected("in")
 		}
 		in.Value = list
@@ -214,11 +215,11 @@ func (p *Parser) parseIn(ident ast.Statement) (ast.Statement, error) {
 }
 
 func (p *Parser) getPrefixExpr() (prefixFunc, error) {
-	return p.prefix.Get(p.curr.asSymbol())
+	return p.prefix.Get(p.curr.AsSymbol())
 }
 
 func (p *Parser) getInfixExpr() (infixFunc, error) {
-	return p.infix.Get(p.curr.asSymbol())
+	return p.infix.Get(p.curr.AsSymbol())
 }
 
 func (p *Parser) parseInfixExpr(left ast.Statement) (ast.Statement, error) {
@@ -249,7 +250,7 @@ func (p *Parser) parseAllOrAny() (ast.Statement, error) {
 		all  = p.IsKeyword("ALL")
 	)
 	p.Next()
-	if !p.Is(Lparen) {
+	if !p.Is(token.Lparen) {
 		return nil, p.Unexpected("operand")
 	}
 	p.Next()
@@ -260,24 +261,24 @@ func (p *Parser) parseAllOrAny() (ast.Statement, error) {
 			list ast.List
 			val  ast.Statement
 		)
-		for !p.Done() && !p.Is(Rparen) {
+		for !p.Done() && !p.Is(token.Rparen) {
 			val, err = p.parseExpression(powLowest)
 			if err != nil {
 				return nil, err
 			}
 			switch {
-			case p.Is(Comma):
+			case p.Is(token.Comma):
 				p.Next()
-				if p.Is(Rparen) {
+				if p.Is(token.Rparen) {
 					return nil, p.Unexpected("in")
 				}
-			case p.Is(Rparen):
+			case p.Is(token.Rparen):
 			default:
 				return nil, p.Unexpected("in")
 			}
 			list.Values = append(list.Values, val)
 		}
-		if !p.Is(Rparen) {
+		if !p.Is(token.Rparen) {
 			return nil, p.Unexpected("operand")
 		}
 		p.Next()
@@ -303,7 +304,7 @@ func (p *Parser) parseCollateExpr(left ast.Statement) (ast.Statement, error) {
 		Statement: left,
 	}
 	p.Next()
-	if !p.Is(Literal) {
+	if !p.Is(token.Literal) {
 		return nil, p.Unexpected("collate")
 	}
 	stmt.Collation = p.GetCurrLiteral()
@@ -313,7 +314,7 @@ func (p *Parser) parseCollateExpr(left ast.Statement) (ast.Statement, error) {
 
 func (p *Parser) parseKeywordExpr(left ast.Statement) (ast.Statement, error) {
 	reverse := func(stmt ast.Statement) ast.Statement { return stmt }
-	if p.GetCurrLiteral() == "NOT" && p.Is(Keyword) {
+	if p.GetCurrLiteral() == "NOT" && p.Is(token.Keyword) {
 		p.Next()
 		reverse = func(stmt ast.Statement) ast.Statement {
 			if stmt == nil {
@@ -362,23 +363,23 @@ func (p *Parser) parseCallExpr(left ast.Statement) (ast.Statement, error) {
 	if stmt.Distinct {
 		p.Next()
 	}
-	for !p.Done() && !p.Is(Rparen) {
+	for !p.Done() && !p.Is(token.Rparen) {
 		arg, err := p.StartExpression()
 		if err = wrapError("call", err); err != nil {
 			return nil, err
 		}
-		if err := p.EnsureEnd("call", Comma, Rparen); err != nil {
+		if err := p.EnsureEnd("call", token.Comma, token.Rparen); err != nil {
 			return nil, err
 		}
 		stmt.Args = append(stmt.Args, arg)
 	}
-	if !p.Is(Rparen) {
+	if !p.Is(token.Rparen) {
 		return nil, p.Unexpected("call")
 	}
 	p.Next()
 	if p.IsKeyword("FILTER") {
 		p.Next()
-		if !p.Is(Lparen) {
+		if !p.Is(token.Lparen) {
 			return nil, p.Unexpected("call/filter")
 		}
 		p.Next()
@@ -391,7 +392,7 @@ func (p *Parser) parseCallExpr(left ast.Statement) (ast.Statement, error) {
 			return nil, err
 		}
 		stmt.Filter = filter
-		if !p.Is(Rparen) {
+		if !p.Is(token.Rparen) {
 			return nil, p.Unexpected("call/filter")
 		}
 		p.Next()
@@ -409,7 +410,7 @@ func (p *Parser) parseOver() (ast.Statement, error) {
 		return nil, nil
 	}
 	p.Next()
-	if !p.Is(Lparen) {
+	if !p.Is(token.Lparen) {
 		return p.ParseIdentifier()
 	}
 	return p.ParseWindow()
@@ -421,7 +422,7 @@ func (p *Parser) parseUnary() (ast.Statement, error) {
 		err  error
 	)
 	switch {
-	case p.Is(Minus):
+	case p.Is(token.Minus):
 		p.Next()
 		stmt, err = p.StartExpression()
 		if err = wrapError("reverse", err); err != nil {
@@ -453,7 +454,7 @@ func (p *Parser) parseGroupExpr() (ast.Statement, error) {
 		if err != nil {
 			return nil, err
 		}
-		if !p.Is(Rparen) {
+		if !p.Is(token.Rparen) {
 			return nil, p.Unexpected("group(select)")
 		}
 		p.Next()
@@ -463,7 +464,7 @@ func (p *Parser) parseGroupExpr() (ast.Statement, error) {
 	if err = wrapError("group", err); err != nil {
 		return nil, err
 	}
-	if !p.Is(Rparen) {
+	if !p.Is(token.Rparen) {
 		return nil, p.Unexpected("group")
 	}
 	p.Next()
@@ -474,27 +475,27 @@ func (p *Parser) parseGroupExpr() (ast.Statement, error) {
 }
 
 func (p *Parser) currBinding() int {
-	return bindings[p.curr.asSymbol()]
+	return bindings[p.curr.AsSymbol()]
 }
 
 func (p *Parser) peekBinding() int {
-	return bindings[p.peek.asSymbol()]
+	return bindings[p.peek.AsSymbol()]
 }
 
 type OpSet map[rune]string
 
 var operandMapping = OpSet{
-	Plus:   "+",
-	Minus:  "-",
-	Slash:  "/",
-	Star:   "*",
-	Eq:     "=",
-	Ne:     "<>",
-	Gt:     ">",
-	Ge:     ">=",
-	Lt:     "<",
-	Le:     "<=",
-	Concat: "||",
+	token.Plus:   "+",
+	token.Minus:  "-",
+	token.Slash:  "/",
+	token.Star:   "*",
+	token.Eq:     "=",
+	token.Ne:     "<>",
+	token.Gt:     ">",
+	token.Ge:     ">=",
+	token.Lt:     "<",
+	token.Le:     "<=",
+	token.Concat: "||",
 }
 
 func (o OpSet) Get(r rune) string {
@@ -514,35 +515,35 @@ const (
 	powCall
 )
 
-var bindings = map[symbol]int{
-	symbolFor(Keyword, "AND"):     powRel,
-	symbolFor(Keyword, "OR"):      powRel,
-	symbolFor(Keyword, "NOT"):     powNot,
-	symbolFor(Keyword, "LIKE"):    powCmp,
-	symbolFor(Keyword, "ILIKE"):   powCmp,
-	symbolFor(Keyword, "BETWEEN"): powCmp,
-	symbolFor(Keyword, "IN"):      powCmp,
-	symbolFor(Keyword, "IS"):      powKw,
-	symbolFor(Keyword, "ISNULL"):  powKw,
-	symbolFor(Keyword, "NOTNULL"): powKw,
+var bindings = map[token.Symbol]int{
+	token.SymbolFor(token.Keyword, "AND"):     powRel,
+	token.SymbolFor(token.Keyword, "OR"):      powRel,
+	token.SymbolFor(token.Keyword, "NOT"):     powNot,
+	token.SymbolFor(token.Keyword, "LIKE"):    powCmp,
+	token.SymbolFor(token.Keyword, "ILIKE"):   powCmp,
+	token.SymbolFor(token.Keyword, "BETWEEN"): powCmp,
+	token.SymbolFor(token.Keyword, "IN"):      powCmp,
+	token.SymbolFor(token.Keyword, "IS"):      powKw,
+	token.SymbolFor(token.Keyword, "ISNULL"):  powKw,
+	token.SymbolFor(token.Keyword, "NOTNULL"): powKw,
 	// symbolFor(Keyword, "AS"):      powKw,
-	symbolFor(Lt, ""):     powCmp,
-	symbolFor(Le, ""):     powCmp,
-	symbolFor(Gt, ""):     powCmp,
-	symbolFor(Ge, ""):     powCmp,
-	symbolFor(Eq, ""):     powCmp,
-	symbolFor(Ne, ""):     powCmp,
-	symbolFor(Plus, ""):   powAdd,
-	symbolFor(Minus, ""):  powAdd,
-	symbolFor(Star, ""):   powMul,
-	symbolFor(Slash, ""):  powMul,
-	symbolFor(Lparen, ""): powCall,
-	symbolFor(Concat, ""): powConcat,
+	token.SymbolFor(token.Lt, ""):     powCmp,
+	token.SymbolFor(token.Le, ""):     powCmp,
+	token.SymbolFor(token.Gt, ""):     powCmp,
+	token.SymbolFor(token.Ge, ""):     powCmp,
+	token.SymbolFor(token.Eq, ""):     powCmp,
+	token.SymbolFor(token.Ne, ""):     powCmp,
+	token.SymbolFor(token.Plus, ""):   powAdd,
+	token.SymbolFor(token.Minus, ""):  powAdd,
+	token.SymbolFor(token.Star, ""):   powMul,
+	token.SymbolFor(token.Slash, ""):  powMul,
+	token.SymbolFor(token.Lparen, ""): powCall,
+	token.SymbolFor(token.Concat, ""): powConcat,
 }
 
 func isExpressionKeyword(kw string) bool {
 	for k := range bindings {
-		if k.Type == Keyword && k.Literal == kw {
+		if k.Type == token.Keyword && k.Literal == kw {
 			return true
 		}
 	}

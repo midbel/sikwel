@@ -1,7 +1,8 @@
-package lang
+package parser
 
 import (
 	"github.com/midbel/sweet/internal/lang/ast"
+	"github.com/midbel/sweet/internal/token"
 )
 
 func (p *Parser) ParseCall() (ast.Statement, error) {
@@ -14,12 +15,12 @@ func (p *Parser) ParseCall() (ast.Statement, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !p.Is(Lparen) {
+	if !p.Is(token.Lparen) {
 		return nil, p.Unexpected("call")
 	}
 	p.Next()
-	for !p.Done() && !p.Is(Rparen) {
-		if p.peekIs(Arrow) && p.Is(Ident) {
+	for !p.Done() && !p.Is(token.Rparen) {
+		if p.peekIs(token.Arrow) && p.Is(token.Ident) {
 			stmt.Names = append(stmt.Names, p.GetCurrLiteral())
 			p.Next()
 			p.Next()
@@ -28,12 +29,12 @@ func (p *Parser) ParseCall() (ast.Statement, error) {
 		if err = wrapError("call", err); err != nil {
 			return nil, err
 		}
-		if err := p.EnsureEnd("call", Comma, Rparen); err != nil {
+		if err := p.EnsureEnd("call", token.Comma, token.Rparen); err != nil {
 			return nil, err
 		}
 		stmt.Args = append(stmt.Args, arg)
 	}
-	if !p.Is(Rparen) {
+	if !p.Is(token.Rparen) {
 		return nil, p.Unexpected("call")
 	}
 	p.Next()

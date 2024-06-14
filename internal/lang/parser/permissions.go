@@ -1,7 +1,8 @@
-package lang
+package parser
 
 import (
 	"github.com/midbel/sweet/internal/lang/ast"
+	"github.com/midbel/sweet/internal/token"
 )
 
 func (p *Parser) ParseGrant() (ast.Statement, error) {
@@ -17,7 +18,7 @@ func (p *Parser) ParseGrant() (ast.Statement, error) {
 		return nil, p.Unexpected("grant")
 	}
 	p.Next()
-	if !p.Is(Ident) {
+	if !p.Is(token.Ident) {
 		return nil, p.Unexpected("grant")
 	}
 	stmt.Object = p.GetCurrLiteral()
@@ -45,7 +46,7 @@ func (p *Parser) ParseRevoke() (ast.Statement, error) {
 		return nil, p.Unexpected("revoke")
 	}
 	p.Next()
-	if !p.Is(Ident) {
+	if !p.Is(token.Ident) {
 		return nil, p.Unexpected("revoke")
 	}
 	stmt.Object = p.GetCurrLiteral()
@@ -63,13 +64,13 @@ func (p *Parser) ParseRevoke() (ast.Statement, error) {
 func (p *Parser) parseGranted() ([]string, error) {
 	var list []string
 	for !p.QueryEnds() && !p.Done() {
-		if !p.Is(Ident) {
+		if !p.Is(token.Ident) {
 			return nil, p.Unexpected("role")
 		}
 		list = append(list, p.GetCurrLiteral())
 		p.Next()
 		switch {
-		case p.Is(Comma):
+		case p.Is(token.Comma):
 			p.Next()
 			if p.QueryEnds() {
 				return nil, p.Unexpected("role")
@@ -89,13 +90,13 @@ func (p *Parser) parsePrivileges() ([]string, error) {
 	}
 	var list []string
 	for !p.QueryEnds() && !p.Done() && !p.IsKeyword("ON") {
-		if !p.Is(Keyword) {
+		if !p.Is(token.Keyword) {
 			return nil, p.Unexpected("privileges")
 		}
 		list = append(list, p.GetCurrLiteral())
 		p.Next()
 		switch {
-		case p.Is(Comma):
+		case p.Is(token.Comma):
 			p.Next()
 			if p.IsKeyword("ON") {
 				return nil, p.Unexpected("privileges")

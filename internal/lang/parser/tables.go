@@ -1,7 +1,8 @@
-package lang
+package parser
 
 import (
 	"github.com/midbel/sweet/internal/lang/ast"
+	"github.com/midbel/sweet/internal/token"
 )
 
 type CreateTableParser interface {
@@ -26,7 +27,7 @@ func (p *Parser) ParseDropTable() (ast.Statement, error) {
 			return nil, err
 		}
 		stmt.Names = append(stmt.Names, n)
-		if !p.Is(Comma) {
+		if !p.Is(token.Comma) {
 			break
 		}
 		p.Next()
@@ -58,7 +59,7 @@ func (p *Parser) ParseDropView() (ast.Statement, error) {
 			return nil, err
 		}
 		stmt.Names = append(stmt.Names, n)
-		if !p.Is(Comma) {
+		if !p.Is(token.Comma) {
 			break
 		}
 		p.Next()
@@ -212,30 +213,30 @@ func (p *Parser) ParseCreateTableStatement(ctp CreateTableParser) (ast.Statement
 	if stmt.Name, err = ctp.ParseTableName(); err != nil {
 		return nil, err
 	}
-	if err := p.Expect("create table", Lparen); err != nil {
+	if err := p.Expect("create table", token.Lparen); err != nil {
 		return nil, err
 	}
-	for !p.Done() && !p.Is(Rparen) && !p.Is(Keyword) {
+	for !p.Done() && !p.Is(token.Rparen) && !p.Is(token.Keyword) {
 		def, err := ctp.ParseColumnDef(ctp)
 		if err != nil {
 			return nil, err
 		}
 		stmt.Columns = append(stmt.Columns, def)
-		if err = p.EnsureEnd("create table", Comma, Rparen); err != nil {
+		if err = p.EnsureEnd("create table", token.Comma, token.Rparen); err != nil {
 			return nil, err
 		}
 	}
-	for !p.Done() && !p.Is(Rparen) {
+	for !p.Done() && !p.Is(token.Rparen) {
 		cst, err := ctp.ParseConstraint(false)
 		if err != nil {
 			return nil, err
 		}
 		stmt.Constraints = append(stmt.Constraints, cst)
-		if err = p.EnsureEnd("create table", Comma, Rparen); err != nil {
+		if err = p.EnsureEnd("create table", token.Comma, token.Rparen); err != nil {
 			return nil, err
 		}
 	}
-	return stmt, p.Expect("create table", Rparen)
+	return stmt, p.Expect("create table", token.Rparen)
 }
 
 func (p *Parser) ParseCreateView() (ast.Statement, error) {
@@ -251,7 +252,7 @@ func (p *Parser) ParseCreateView() (ast.Statement, error) {
 	if stmt.Name, err = p.ParseTableName(); err != nil {
 		return nil, err
 	}
-	if p.Is(Lparen) {
+	if p.Is(token.Lparen) {
 		stmt.Columns, err = p.parseColumnsList()
 		if err != nil {
 			return nil, err
@@ -280,10 +281,10 @@ func (p *Parser) ParseColumnDef(ctp CreateTableParser) (ast.Statement, error) {
 	if def.Type, err = p.ParseType(); err != nil {
 		return nil, err
 	}
-	if p.Is(Comma) {
+	if p.Is(token.Comma) {
 		return def, nil
 	}
-	for !p.QueryEnds() && !p.Done() && !p.Is(Comma) && !p.Is(Rparen) {
+	for !p.QueryEnds() && !p.Done() && !p.Is(token.Comma) && !p.Is(token.Rparen) {
 		cst, err := ctp.ParseConstraint(true)
 		if err != nil {
 			return nil, err
@@ -342,40 +343,40 @@ func (p *Parser) ParsePrimaryKeyConstraint(short bool) (ast.Statement, error) {
 	if short {
 		return cst, nil
 	}
-	if err := p.Expect("primary key", Lparen); err != nil {
+	if err := p.Expect("primary key", token.Lparen); err != nil {
 		return nil, err
 	}
-	for !p.Done() && !p.Is(Rparen) {
-		if !p.Is(Ident) {
+	for !p.Done() && !p.Is(token.Rparen) {
+		if !p.Is(token.Ident) {
 			return nil, p.Unexpected("primary key")
 		}
 		cst.Columns = append(cst.Columns, p.GetCurrLiteral())
 		p.Next()
-		if err := p.EnsureEnd("primary key", Comma, Rparen); err != nil {
+		if err := p.EnsureEnd("primary key", token.Comma, token.Rparen); err != nil {
 			return nil, err
 		}
 	}
-	return cst, p.Expect("primary key", Rparen)
+	return cst, p.Expect("primary key", token.Rparen)
 }
 
 func (p *Parser) ParseForeignKeyConstraint(short bool) (ast.Statement, error) {
 	var cst ast.ForeignKeyConstraint
 	if p.IsKeyword("FOREIGN KEY") {
 		p.Next()
-		if err := p.Expect("foreign key", Lparen); err != nil {
+		if err := p.Expect("foreign key", token.Lparen); err != nil {
 			return nil, err
 		}
-		for !p.Done() && !p.Is(Rparen) {
-			if !p.Is(Ident) {
+		for !p.Done() && !p.Is(token.Rparen) {
+			if !p.Is(token.Ident) {
 				return nil, p.Unexpected("foreign key")
 			}
 			cst.Locals = append(cst.Locals, p.GetCurrLiteral())
 			p.Next()
-			if err := p.EnsureEnd("foreign key", Comma, Rparen); err != nil {
+			if err := p.EnsureEnd("foreign key", token.Comma, token.Rparen); err != nil {
 				return nil, err
 			}
 		}
-		if err := p.Expect("foreign key", Rparen); err != nil {
+		if err := p.Expect("foreign key", token.Rparen); err != nil {
 			return nil, err
 		}
 	}
@@ -383,25 +384,25 @@ func (p *Parser) ParseForeignKeyConstraint(short bool) (ast.Statement, error) {
 		return nil, p.Unexpected("foreign key")
 	}
 	p.Next()
-	if !p.Is(Ident) {
+	if !p.Is(token.Ident) {
 		return nil, p.Unexpected("foreign key")
 	}
 	cst.Table = p.GetCurrLiteral()
 	p.Next()
-	if err := p.Expect("foreign key", Lparen); err != nil {
+	if err := p.Expect("foreign key", token.Lparen); err != nil {
 		return nil, err
 	}
-	for !p.Done() && !p.Is(Rparen) {
-		if !p.Is(Ident) {
+	for !p.Done() && !p.Is(token.Rparen) {
+		if !p.Is(token.Ident) {
 			return nil, p.Unexpected("foreign key")
 		}
 		cst.Remotes = append(cst.Remotes, p.GetCurrLiteral())
 		p.Next()
-		if err := p.EnsureEnd("foreign key", Comma, Rparen); err != nil {
+		if err := p.EnsureEnd("foreign key", token.Comma, token.Rparen); err != nil {
 			return nil, err
 		}
 	}
-	return cst, p.Expect("foreign key", Rparen)
+	return cst, p.Expect("foreign key", token.Rparen)
 }
 
 func (p *Parser) ParseUniqueConstraint(short bool) (ast.Statement, error) {
@@ -410,20 +411,20 @@ func (p *Parser) ParseUniqueConstraint(short bool) (ast.Statement, error) {
 	if short {
 		return cst, nil
 	}
-	if err := p.Expect("unique", Lparen); err != nil {
+	if err := p.Expect("unique", token.Lparen); err != nil {
 		return nil, err
 	}
-	for !p.Done() && !p.Is(Rparen) {
-		if !p.Is(Ident) {
+	for !p.Done() && !p.Is(token.Rparen) {
+		if !p.Is(token.Ident) {
 			return nil, p.Unexpected("unique")
 		}
 		cst.Columns = append(cst.Columns, p.GetCurrLiteral())
 		p.Next()
-		if err := p.EnsureEnd("unique", Comma, Rparen); err != nil {
+		if err := p.EnsureEnd("unique", token.Comma, token.Rparen); err != nil {
 			return nil, err
 		}
 	}
-	return cst, p.Expect("unique", Rparen)
+	return cst, p.Expect("unique", token.Rparen)
 }
 
 func (p *Parser) ParseNotNullConstraint() (ast.Statement, error) {

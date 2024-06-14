@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/midbel/sweet/internal/lang/ast"
+	"github.com/midbel/sweet/internal/lang/parser"
 )
 
 type Formatter interface {
@@ -115,7 +116,7 @@ func NewWriter(w io.Writer) *Writer {
 }
 
 func (w *Writer) Format(r io.Reader) error {
-	p, err := NewParser(r)
+	p, err := parser.NewParser(r)
 	if err != nil {
 		return err
 	}

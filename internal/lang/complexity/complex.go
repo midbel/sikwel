@@ -1,4 +1,4 @@
-package lang
+package complexity
 
 import (
 	"errors"
@@ -6,10 +6,11 @@ import (
 	"slices"
 
 	"github.com/midbel/sweet/internal/lang/ast"
+	"github.com/midbel/sweet/internal/lang/parser"
 )
 
 func Complexity(r io.Reader) (int, error) {
-	p, err := NewParser(r)
+	p, err := parser.NewParser(r)
 	if err != nil {
 		return 0, err
 	}

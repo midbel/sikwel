@@ -1,7 +1,8 @@
-package lang
+package parser
 
 import (
 	"github.com/midbel/sweet/internal/lang/ast"
+	"github.com/midbel/sweet/internal/token"
 )
 
 func (p *Parser) ParseCreateProcedure() (ast.Statement, error) {
@@ -38,21 +39,21 @@ func (p *Parser) ParseCreateProcedure() (ast.Statement, error) {
 }
 
 func (p *Parser) ParseProcedureParameters() ([]ast.Statement, error) {
-	if err := p.Expect("procedure", Lparen); err != nil {
+	if err := p.Expect("procedure", token.Lparen); err != nil {
 		return nil, err
 	}
 	var list []ast.Statement
-	for !p.Done() && !p.Is(Rparen) {
+	for !p.Done() && !p.Is(token.Rparen) {
 		stmt, err := p.ParseProcedureParameter()
 		if err != nil {
 			return nil, err
 		}
 		list = append(list, stmt)
-		if err := p.EnsureEnd("procedure", Comma, Rparen); err != nil {
+		if err := p.EnsureEnd("procedure", token.Comma, token.Rparen); err != nil {
 			return nil, err
 		}
 	}
-	return list, p.Expect("procedure", Rparen)
+	return list, p.Expect("procedure", token.Rparen)
 }
 
 func (p *Parser) ParseProcedureParameter() (ast.Statement, error) {
@@ -72,7 +73,7 @@ func (p *Parser) ParseProcedureParameter() (ast.Statement, error) {
 	if param.Mode != 0 {
 		p.Next()
 	}
-	if !p.Is(Ident) {
+	if !p.Is(token.Ident) {
 		return nil, p.Unexpected("procedure")
 	}
 	param.Name = p.GetCurrLiteral()
@@ -80,7 +81,7 @@ func (p *Parser) ParseProcedureParameter() (ast.Statement, error) {
 	if param.Type, err = p.ParseType(); err != nil {
 		return nil, err
 	}
-	if p.IsKeyword("DEFAULT") || p.Is(Eq) {
+	if p.IsKeyword("DEFAULT") || p.Is(token.Eq) {
 		p.Next()
 		param.Default, err = p.StartExpression()
 		if err != nil {
