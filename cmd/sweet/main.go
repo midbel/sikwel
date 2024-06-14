@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/midbel/sweet/internal/lang"
+	"github.com/midbel/sweet/internal/lang/format"
 	// "github.com/midbel/sweet/internal/lang/complex"
 )
 
@@ -35,7 +36,7 @@ func main() {
 func runFormat(args []string) error {
 	var (
 		set    = flag.NewFlagSet("format", flag.ExitOnError)
-		writer = lang.NewWriter(os.Stdout)
+		writer = format.NewWriter(os.Stdout)
 		config string
 	)
 	set.StringVar(&config, "config", "", "formatter configuration")
@@ -52,7 +53,7 @@ func runFormat(args []string) error {
 	set.BoolVar(&writer.KeepComment, "keep-comment", writer.KeepComment, "keep comments")
 
 	set.Func("dialect", "SQL dialect", func(value string) error {
-		formatter, err := lang.GetDialectFormatter(value)
+		formatter, err := format.GetDialectFormatter(value)
 		if err == nil {
 			writer.Formatter = formatter
 		}
@@ -61,17 +62,17 @@ func runFormat(args []string) error {
 	set.Func("upper", "upperize mode", func(value string) error {
 		switch value {
 		case "all", "":
-			writer.Upperize |= lang.UpperId | lang.UpperKw | lang.UpperFn
+			writer.Upperize |= format.lang.UpperId | format.UpperKw | format.UpperFn
 		case "keyword", "kw":
-			writer.Upperize |= lang.UpperKw
+			writer.Upperize |= format.UpperKw
 		case "function", "fn":
-			writer.Upperize |= lang.UpperFn
+			writer.Upperize |= format.UpperFn
 		case "identifier", "ident", "id":
-			writer.Upperize |= lang.UpperId
+			writer.Upperize |= format.UpperId
 		case "type":
-			writer.Upperize |= lang.UpperType
+			writer.Upperize |= format.UpperType
 		case "none":
-			writer.Upperize = lang.UpperNone
+			writer.Upperize = format.UpperNone
 		default:
 		}
 		return nil

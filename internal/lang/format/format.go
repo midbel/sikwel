@@ -1,4 +1,4 @@
-package lang
+package format
 
 import (
 	"bufio"
@@ -651,10 +651,7 @@ func (w *Writer) WriteStatement(kw string) {
 }
 
 func (w *Writer) WriteKeyword(kw string) {
-	if !isAlpha(kw) {
-		w.WriteString(kw)
-		return
-	}
+	w.WriteString(kw)
 	if w.Upperize.Keyword() || w.Upperize.All() {
 		kw = strings.ToUpper(kw)
 	} else {
@@ -738,16 +735,6 @@ func (w *Writer) withColor() bool {
 		return false
 	}
 	return w.UseColor
-}
-
-func isAlpha(str string) bool {
-	other := strings.Map(func(r rune) rune {
-		if isLetter(r) || isBlank(r) {
-			return r
-		}
-		return -1
-	}, str)
-	return other == str
 }
 
 const (
