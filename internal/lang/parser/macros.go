@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/midbel/sweet/internal/scanner"
 	"github.com/midbel/sweet/internal/token"
 )
 
@@ -32,7 +33,7 @@ func (p *Parser) ParseMacro() error {
 func (p *Parser) ParseIncludeMacro() error {
 	p.Next()
 
-	file := filepath.Join(p.base, p.GetCurrLiteral())
+	file := filepath.Join(p.Base(), p.GetCurrLiteral())
 	p.Next()
 
 	if !p.Is(token.EOL) {
@@ -46,12 +47,12 @@ func (p *Parser) ParseIncludeMacro() error {
 	}
 	defer r.Close()
 
-	frame, err := createFrame(r, p.frame.set)
+	frame, err := scanner.Create(r, p.Frame.Keywords())
 	if err != nil {
 		return err
 	}
-	p.stack = append(p.stack, p.frame)
-	p.frame = frame
+	p.stack = append(p.stack, p.Frame)
+	p.Frame = frame
 
 	return nil
 }

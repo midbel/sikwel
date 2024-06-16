@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
-	"github.com/midbel/sweet/internal/keywords"
 	"github.com/midbel/sweet/internal/lang"
 	"github.com/midbel/sweet/internal/lang/ast"
 	"github.com/midbel/sweet/internal/scanner"
@@ -16,8 +14,8 @@ import (
 )
 
 type Parser struct {
-	*frame
-	stack []*frame
+	*scanner.Frame
+	stack []*scanner.Frame
 
 	level int
 
@@ -34,11 +32,11 @@ type Parser struct {
 func NewParser(r io.Reader) (*Parser, error) {
 	var p Parser
 
-	frame, err := createFrame(r, lang.GetKeywords())
+	frame, err := scanner.Create(r, lang.GetKeywords())
 	if err != nil {
 		return nil, err
 	}
-	p.frame = frame
+	p.Frame = frame
 	p.queries = make(map[string]ast.Statement)
 	p.values = make(map[string]ast.Statement)
 	p.infix = emptyStack[infixFunc]()
@@ -121,13 +119,13 @@ func (p *Parser) QueryEnds() bool {
 }
 
 func (p *Parser) Done() bool {
-	if p.frame.Done() {
+	if p.Frame.Done() {
 		if n := len(p.stack); n > 0 {
-			p.frame = p.stack[n-1]
+			p.Frame = p.stack[n-1]
 			p.stack = p.stack[:n-1]
 		}
 	}
-	return p.frame.Done()
+	return p.Frame.Done()
 }
 
 func (p *Parser) Expect(ctx string, r rune) error {
@@ -166,9 +164,9 @@ func (p *Parser) parse() (ast.Statement, error) {
 	if !p.Is(token.EOL) {
 		return nil, p.wantError("statement", ";")
 	}
-	eol := p.curr
+	eol := p.Curr()
 	p.Next()
-	if p.Is(token.Comment) && eol.Line == p.curr.Line {
+	if p.Is(token.Comment) && eol.Line == p.Curr().Line {
 		com.After = p.GetCurrLiteral()
 		p.Next()
 	}
@@ -217,7 +215,7 @@ func (p *Parser) parseColumnsList() ([]string, error) {
 	)
 
 	for !p.Done() && !p.Is(token.Rparen) {
-		if !p.curr.IsValue() {
+		if !p.Curr().IsValue() {
 			return nil, p.Unexpected("columns")
 		}
 		list = append(list, p.GetCurrLiteral())
@@ -235,11 +233,12 @@ func (p *Parser) parseColumnsList() ([]string, error) {
 }
 
 func (p *Parser) IsKeyword(kw string) bool {
-	return p.curr.Type == token.Keyword && p.curr.Literal == kw
+	return p.Curr().Type == token.Keyword && p.GetCurrLiteral() == kw
 }
 
 func (p *Parser) wantError(ctx, str string) error {
-	return fmt.Errorf("%s: expected %q at %d:%d! got %s", ctx, str, p.curr.Line, p.curr.Column, p.curr.Literal)
+	curr := p.Curr()
+	return fmt.Errorf("%s: expected %q at %d:%d! got %s", ctx, str, curr.Line, curr.Column, curr.Literal)
 }
 
 func (p *Parser) Unexpected(ctx string) error {
@@ -247,7 +246,7 @@ func (p *Parser) Unexpected(ctx string) error {
 }
 
 func (p *Parser) UnexpectedDialect(ctx, dialect string) error {
-	return wrapErrorWithDialect(dialect, ctx, unexpected(p.curr))
+	return wrapErrorWithDialect(dialect, ctx, unexpected(p.Curr()))
 }
 
 func (p *Parser) EnsureEnd(ctx string, sep, end rune) error {
@@ -272,7 +271,7 @@ func (p *Parser) tokCheck(kind ...rune) func() bool {
 		i := sort.Search(len(kind), func(i int) bool {
 			return p.Is(kind[i])
 		})
-		return i < len(kind) && kind[i] == p.curr.Type
+		return i < len(kind) && kind[i] == p.Curr().Type
 	}
 }
 
@@ -397,71 +396,4 @@ func (p *Parser) toggleAlias() {
 func (p *Parser) unsetFuncSet() {
 	p.infix.Pop()
 	p.prefix.Pop()
-}
-
-type frame struct {
-	scan *scanner.Scanner
-	set  keywords.Set
-
-	base string
-	curr token.Token
-	peek token.Token
-}
-
-func createFrame(r io.Reader, set keywords.Set) (*frame, error) {
-	scan, err := scanner.Scan(r, set)
-	if err != nil {
-		return nil, err
-	}
-	f := frame{
-		scan: scan,
-		set:  set,
-	}
-	if n, ok := r.(interface{ Name() string }); ok {
-		f.base = filepath.Dir(n.Name())
-	}
-	f.Next()
-	f.Next()
-	return &f, nil
-}
-
-func (f *frame) Curr() token.Token {
-	return f.curr
-}
-
-func (f *frame) Peek() token.Token {
-	return f.peek
-}
-
-func (f *frame) GetCurrLiteral() string {
-	return f.curr.Literal
-}
-
-func (f *frame) GetPeekLiteral() string {
-	return f.peek.Literal
-}
-
-func (f *frame) GetCurrType() rune {
-	return f.curr.Type
-}
-
-func (f *frame) GetPeekType() rune {
-	return f.peek.Type
-}
-
-func (f *frame) Next() {
-	f.curr = f.peek
-	f.peek = f.scan.Scan()
-}
-
-func (f *frame) Done() bool {
-	return f.Is(token.EOF)
-}
-
-func (f *frame) Is(kind rune) bool {
-	return f.curr.Type == kind
-}
-
-func (f *frame) peekIs(kind rune) bool {
-	return f.peek.Type == kind
 }

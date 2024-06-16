@@ -178,7 +178,7 @@ func (p *Parser) parseIn(ident ast.Statement) (ast.Statement, error) {
 		Ident: ident,
 	}
 	var err error
-	if p.Is(token.Lparen) && p.peekIs(token.Keyword) && p.GetPeekLiteral() == "SELECT" {
+	if p.Is(token.Lparen) && p.PeekIs(token.Keyword) && p.GetPeekLiteral() == "SELECT" {
 		in.Value, err = p.parseExpression(powLowest)
 	} else if p.Is(token.Lparen) {
 		p.Next()
@@ -215,11 +215,11 @@ func (p *Parser) parseIn(ident ast.Statement) (ast.Statement, error) {
 }
 
 func (p *Parser) getPrefixExpr() (prefixFunc, error) {
-	return p.prefix.Get(p.curr.AsSymbol())
+	return p.prefix.Get(p.Curr().AsSymbol())
 }
 
 func (p *Parser) getInfixExpr() (infixFunc, error) {
-	return p.infix.Get(p.curr.AsSymbol())
+	return p.infix.Get(p.Curr().AsSymbol())
 }
 
 func (p *Parser) parseInfixExpr(left ast.Statement) (ast.Statement, error) {
@@ -230,7 +230,7 @@ func (p *Parser) parseInfixExpr(left ast.Statement) (ast.Statement, error) {
 		pow = p.currBinding()
 		err error
 	)
-	stmt.Op = operandMapping.Get(p.curr.Type)
+	stmt.Op = operandMapping.Get(p.Curr().Type)
 	if stmt.Op == "" {
 		return nil, p.Unexpected("operand")
 	}
@@ -475,11 +475,11 @@ func (p *Parser) parseGroupExpr() (ast.Statement, error) {
 }
 
 func (p *Parser) currBinding() int {
-	return bindings[p.curr.AsSymbol()]
+	return bindings[p.Curr().AsSymbol()]
 }
 
 func (p *Parser) peekBinding() int {
-	return bindings[p.peek.AsSymbol()]
+	return bindings[p.Peek().AsSymbol()]
 }
 
 type OpSet map[rune]string

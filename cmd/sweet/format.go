@@ -10,6 +10,7 @@ import (
 	"github.com/midbel/sweet/internal/lang/format"
 	"github.com/midbel/sweet/internal/ms"
 	"github.com/midbel/sweet/internal/my"
+	// "github.com/midbel/sweet/internal/db2"
 )
 
 func runFormat(args []string) error {
@@ -86,6 +87,8 @@ func getFormatterForDialect(name string) (lang.Formatter, error) {
 	case "mssql":
 		return ms.GetFormatter(), nil
 	case "ansi", "pg", "postgres", "sqlite", "lite":
+		return format.GetFormatter(), nil
+	case "db2":
 		return format.GetFormatter(), nil
 	default:
 		return nil, fmt.Errorf("%s unsupported dialect", name)

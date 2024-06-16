@@ -202,7 +202,7 @@ func (p *Parser) ParseFrom() ([]ast.Statement, error) {
 			return nil, p.Unexpected("from")
 		}
 	}
-	for !p.Done() && !p.QueryEnds() && p.curr.IsJoin() {
+	for !p.Done() && !p.QueryEnds() && p.Curr().IsJoin() {
 		j := ast.Join{
 			Type: p.GetCurrLiteral(),
 		}

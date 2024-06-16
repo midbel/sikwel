@@ -29,7 +29,7 @@ func (p *Parser) ParseConstant() (ast.Statement, error) {
 
 func (p *Parser) ParseIdentifier() (ast.Statement, error) {
 	var name ast.Name
-	for p.peekIs(token.Dot) {
+	for p.PeekIs(token.Dot) {
 		name.Parts = append(name.Parts, p.GetCurrLiteral())
 		p.Next()
 		p.Next()
@@ -55,7 +55,7 @@ func (p *Parser) ParseAlias(stmt ast.Statement) (ast.Statement, error) {
 	if mandatory {
 		p.Next()
 	}
-	switch p.curr.Type {
+	switch p.Curr().Type {
 	case token.Ident, token.Literal, token.Number:
 		stmt = ast.Alias{
 			Statement: stmt,

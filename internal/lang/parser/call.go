@@ -20,7 +20,7 @@ func (p *Parser) ParseCall() (ast.Statement, error) {
 	}
 	p.Next()
 	for !p.Done() && !p.Is(token.Rparen) {
-		if p.peekIs(token.Arrow) && p.Is(token.Ident) {
+		if p.PeekIs(token.Arrow) && p.Is(token.Ident) {
 			stmt.Names = append(stmt.Names, p.GetCurrLiteral())
 			p.Next()
 			p.Next()
