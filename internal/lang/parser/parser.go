@@ -11,7 +11,7 @@ import (
 	"github.com/midbel/sweet/internal/keywords"
 	"github.com/midbel/sweet/internal/lang"
 	"github.com/midbel/sweet/internal/lang/ast"
-	"github.com/midbel/sweet/internal/lang/scanner"
+	"github.com/midbel/sweet/internal/scanner"
 	"github.com/midbel/sweet/internal/token"
 )
 
