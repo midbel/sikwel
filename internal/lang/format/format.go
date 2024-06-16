@@ -628,7 +628,7 @@ func (w *Writer) WriteStatement(kw string) {
 }
 
 func (w *Writer) WriteKeyword(kw string) {
-	w.WriteString(kw)
+	// w.WriteString(kw)
 	if w.Upperize.Keyword() || w.Upperize.All() {
 		kw = strings.ToUpper(kw)
 	} else {

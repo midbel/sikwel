@@ -13,6 +13,9 @@ func (w *Writer) FormatName(name ast.Name) {
 			w.WriteString(".")
 		}
 		str := name.Parts[i]
+		if str == "" && i == len(name.Parts)-1 {
+			str = "*"
+		}
 		if w.Upperize.Identifier() || w.Upperize.All() {
 			str = strings.ToUpper(str)
 		}
