@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/midbel/sweet/internal/scanner"
 	"github.com/midbel/sweet/internal/token"
 )
 
@@ -47,7 +46,7 @@ func (p *Parser) ParseIncludeMacro() error {
 	}
 	defer r.Close()
 
-	frame, err := scanner.Create(r, p.Frame.Keywords())
+	frame, err := p.factory.Create(r)
 	if err != nil {
 		return err
 	}

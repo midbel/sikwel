@@ -8,6 +8,24 @@ import (
 	"github.com/midbel/sweet/internal/token"
 )
 
+type FrameFactory interface {
+	Create(r io.Reader) (*Frame, error)
+}
+
+type keywordsFactory struct {
+	keywords.Set
+}
+
+func FactoryFromKeywords(set keywords.Set) FrameFactory {
+	return keywordsFactory{
+		Set: set,
+	}
+}
+
+func (k keywordsFactory) Create(r io.Reader) (*Frame, error) {
+	return Create(r, k.Set)
+}
+
 type Frame struct {
 	scan *Scanner
 	set  keywords.Set

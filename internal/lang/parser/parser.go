@@ -14,6 +14,7 @@ import (
 )
 
 type Parser struct {
+	factory scanner.FrameFactory
 	*scanner.Frame
 	stack []*scanner.Frame
 
@@ -30,9 +31,13 @@ type Parser struct {
 }
 
 func NewParser(r io.Reader) (*Parser, error) {
+	return ParseWithFactory(r, scanner.FactoryFromKeywords(lang.GetKeywords()))
+}
+
+func ParseWithFactory(r io.Reader, factory scanner.FrameFactory) (*Parser, error) {
 	var p Parser
 
-	frame, err := scanner.Create(r, lang.GetKeywords())
+	frame, err := factory.Create(r)
 	if err != nil {
 		return nil, err
 	}
