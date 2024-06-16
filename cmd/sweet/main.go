@@ -24,7 +24,7 @@ func main() {
 	case "debug", "ast":
 		err = runDebug(args[1:])
 	case "cyclo", "measure":
-		// err = runCyclo(args[1:])
+		err = runCyclo(args[1:])
 	default:
 		err = fmt.Errorf("unknown command %s", n)
 	}
