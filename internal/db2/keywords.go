@@ -8,8 +8,13 @@ import (
 var kw = keywords.Set{
 	{"label", "on"},
 	{"set", "option"},
-	{"read", "sql", "data"},
+	{"reads", "sql", "data"},
 	{"modifies", "sql", "data"},
+	{"contains", "sql"},
+	{"deterministic"},
+	{"not", "deterministic"},
+	{"specific"},
+	{"call", "on", "null", "input"},
 }
 
 func GetKeywords() keywords.Set {

@@ -10,8 +10,14 @@ import (
 	"github.com/midbel/sweet/internal/token"
 )
 
+type Tokenizer interface {
+	Can(rune, rune) bool
+	Scan(*Scanner, *token.Token)
+}
+
 type Scanner struct {
-	input []byte
+	tokens []Tokenizer
+	input  []byte
 	cursor
 	old cursor
 
@@ -36,6 +42,14 @@ func Scan(r io.Reader, keywords keywords.Set) (*Scanner, error) {
 	return &s, nil
 }
 
+func (s *Scanner) Register(fn Tokenizer) {
+	s.tokens = append(s.tokens, fn)
+}
+
+func (s *Scanner) GetFrame(r io.Reader) (*Frame, error) {
+
+}
+
 func (s *Scanner) Scan() token.Token {
 	defer s.Reset()
 	s.Skip(IsBlank)
@@ -46,6 +60,12 @@ func (s *Scanner) Scan() token.Token {
 	if s.Done() {
 		tok.Type = token.EOF
 		return tok
+	}
+	for i := range s.tokens {
+		if s.tokens[i].Can(s.char, s.Peek()) {
+			s.tokens[i].Scan(s, &tok)
+			return tok
+		}
 	}
 	switch {
 	case IsComment(s.char, s.Peek()):

@@ -8,22 +8,8 @@ import (
 	"github.com/midbel/sweet/internal/token"
 )
 
-type FrameFactory interface {
-	Create(r io.Reader) (*Frame, error)
-}
-
-type keywordsFactory struct {
-	keywords.Set
-}
-
-func FactoryFromKeywords(set keywords.Set) FrameFactory {
-	return keywordsFactory{
-		Set: set,
-	}
-}
-
-func (k keywordsFactory) Create(r io.Reader) (*Frame, error) {
-	return Create(r, k.Set)
+func Create(r io.Reader) (*Frame, error) {
+	return nil, 
 }
 
 type Frame struct {
@@ -33,23 +19,6 @@ type Frame struct {
 	file string
 	curr token.Token
 	peek token.Token
-}
-
-func Create(r io.Reader, set keywords.Set) (*Frame, error) {
-	scan, err := Scan(r, set)
-	if err != nil {
-		return nil, err
-	}
-	f := Frame{
-		scan: scan,
-		set:  set,
-	}
-	if n, ok := r.(interface{ Name() string }); ok {
-		f.file = n.Name()
-	}
-	f.Next()
-	f.Next()
-	return &f, nil
 }
 
 func (f *Frame) Keywords() keywords.Set {

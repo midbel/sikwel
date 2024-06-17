@@ -7,32 +7,28 @@ import (
 	"github.com/midbel/sweet/internal/token"
 )
 
-type Scanner struct {
-	inner *scanner.Scanner
-}
-
-func Scan(r io.Reader) (*Scanner, error) {
-	inner, err := scanner.Scan(r, GetKeywords())
+func Scan(r io.Reader) (*scanner.Scanner, error) {
+	scan, err := scanner.Scan(r, GetKeywords())
 	if err != nil {
 		return nil, err
 	}
-	s := Scanner{
-		inner: inner,
-	}
-	return &s, err
+	scan.Register(scanStarIdent{})
+	return scan, err
 }
 
-func (s *Scanner) Scan() token.Token {
-	return s.inner.Scan()
+type scanStarIdent struct{}
+
+func (_ scanStarIdent) Can(curr, peek rune) bool {
+	return curr == '*' && scanner.IsLetter(peek)
 }
 
-func (s *Scanner) scanStarIdent(tok *token.Token) {
-	s.Write()
-	s.Read()
-	for !s.Done() && scanner.IsLetter(s.Curr()) {
-		s.Write()
-		s.Read()
+func (_ scanStarIdent) Scan(scan *scanner.Scanner, tok *token.Token) {
+	scan.Write()
+	scan.Read()
+	for !scan.Done() && scanner.IsLetter(scan.Curr()) {
+		scan.Write()
+		scan.Read()
 	}
-	tok.Type = scanner.Ident
-	tok.Literal = s.Literal()
+	tok.Type = token.Ident
+	tok.Literal = scan.Literal()
 }
