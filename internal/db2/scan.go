@@ -25,3 +25,7 @@ func Scan(r io.Reader) (*Scanner, error) {
 func (s *Scanner) Scan() token.Token {
 	return s.inner.Scan()
 }
+
+func (s *Scanner) scanStarIdent(tok *token.Token) {
+
+}
