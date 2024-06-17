@@ -4,17 +4,19 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/midbel/sweet/internal/lang"
 	"github.com/midbel/sweet/internal/lang/ast"
 	"github.com/midbel/sweet/internal/scanner"
 	"github.com/midbel/sweet/internal/token"
 )
 
 type Parser struct {
-	*scanner.Frame
-	stack []*scanner.Frame
+	*frame
+	stack []*frame
 
 	level int
 
@@ -29,13 +31,21 @@ type Parser struct {
 }
 
 func NewParser(r io.Reader) (*Parser, error) {
-	var p Parser
-
-	frame, err := scanner.Create(r)
+	scan, err := scanner.Scan(r, lang.GetKeywords())
 	if err != nil {
 		return nil, err
 	}
-	p.Frame = frame
+	return ParseWithScanner(scan)
+
+}
+
+func ParseWithScanner(scan *scanner.Scanner) (*Parser, error) {
+	f, err := createFrameFromScanner(scan)
+	if err != nil {
+		return nil, err
+	}
+	var p Parser
+	p.frame = f
 	p.queries = make(map[string]ast.Statement)
 	p.values = make(map[string]ast.Statement)
 	p.infix = emptyStack[infixFunc]()
@@ -118,13 +128,13 @@ func (p *Parser) QueryEnds() bool {
 }
 
 func (p *Parser) Done() bool {
-	if p.Frame.Done() {
+	if p.frame.Done() {
 		if n := len(p.stack); n > 0 {
-			p.Frame = p.stack[n-1]
+			p.frame = p.stack[n-1]
 			p.stack = p.stack[:n-1]
 		}
 	}
-	return p.Frame.Done()
+	return p.frame.Done()
 }
 
 func (p *Parser) Expect(ctx string, r rune) error {
@@ -395,4 +405,82 @@ func (p *Parser) toggleAlias() {
 func (p *Parser) unsetFuncSet() {
 	p.infix.Pop()
 	p.prefix.Pop()
+}
+
+type frame struct {
+	scan *scanner.Scanner
+
+	file string
+	curr token.Token
+	peek token.Token
+}
+
+func createFrameFromScanner(scan *scanner.Scanner) (*frame, error) {
+	f := &frame{
+		scan: scan,
+	}
+	f.Next()
+	f.Next()
+	return f, nil
+}
+
+func createFrame(r io.Reader) (*frame, error) {
+	scan, err := scanner.Scan(r, lang.GetKeywords())
+	if err != nil {
+		return nil, err
+	}
+	return createFrameFromScanner(scan)
+}
+
+func (f *frame) Sub(r io.Reader) (*frame, error) {
+	scan, err := f.scan.Clone(r)
+	if err != nil {
+		return nil, err
+	}
+	return createFrameFromScanner(scan)
+}
+
+func (f *frame) Base() string {
+	return filepath.Dir(f.file)
+}
+
+func (f *frame) Curr() token.Token {
+	return f.curr
+}
+
+func (f *frame) Peek() token.Token {
+	return f.peek
+}
+
+func (f *frame) GetCurrLiteral() string {
+	return f.curr.Literal
+}
+
+func (f *frame) GetPeekLiteral() string {
+	return f.peek.Literal
+}
+
+func (f *frame) GetCurrType() rune {
+	return f.curr.Type
+}
+
+func (f *frame) GetPeekType() rune {
+	return f.peek.Type
+}
+
+func (f *frame) Next() {
+	f.curr = f.peek
+	f.peek = f.scan.Scan()
+}
+
+func (f *frame) Done() bool {
+	return f.Is(token.EOF)
+}
+
+func (f *frame) Is(kind rune) bool {
+	return f.curr.Type == kind
+}
+
+func (f *frame) PeekIs(kind rune) bool {
+	return f.peek.Type == kind
 }

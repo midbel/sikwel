@@ -42,12 +42,23 @@ func Scan(r io.Reader, keywords keywords.Set) (*Scanner, error) {
 	return &s, nil
 }
 
-func (s *Scanner) Register(fn Tokenizer) {
-	s.tokens = append(s.tokens, fn)
+func (s *Scanner) Clone(r io.Reader) (*Scanner, error) {
+	other, err := Scan(r, s.keywords)
+	if err != nil {
+		return nil, err
+	}
+	for i := range s.tokens {
+		other.Register(s.tokens[i])
+	}
+	return other, nil
 }
 
-func (s *Scanner) GetFrame(r io.Reader) (*Frame, error) {
+func (s *Scanner) Keywords() keywords.Set {
+	return s.keywords
+}
 
+func (s *Scanner) Register(fn Tokenizer) {
+	s.tokens = append(s.tokens, fn)
 }
 
 func (s *Scanner) Scan() token.Token {

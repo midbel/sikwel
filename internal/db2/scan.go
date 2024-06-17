@@ -12,17 +12,17 @@ func Scan(r io.Reader) (*scanner.Scanner, error) {
 	if err != nil {
 		return nil, err
 	}
-	scan.Register(scanStarIdent{})
+	scan.Register(starIdent{})
 	return scan, err
 }
 
-type scanStarIdent struct{}
+type starIdent struct{}
 
-func (_ scanStarIdent) Can(curr, peek rune) bool {
+func (_ starIdent) Can(curr, peek rune) bool {
 	return curr == '*' && scanner.IsLetter(peek)
 }
 
-func (_ scanStarIdent) Scan(scan *scanner.Scanner, tok *token.Token) {
+func (_ starIdent) Scan(scan *scanner.Scanner, tok *token.Token) {
 	scan.Write()
 	scan.Read()
 	for !scan.Done() && scanner.IsLetter(scan.Curr()) {

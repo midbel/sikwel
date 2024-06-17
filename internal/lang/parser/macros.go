@@ -46,12 +46,12 @@ func (p *Parser) ParseIncludeMacro() error {
 	}
 	defer r.Close()
 
-	frame, err := p.factory.Create(r)
+	f, err := p.frame.Sub(r)
 	if err != nil {
 		return err
 	}
-	p.stack = append(p.stack, p.Frame)
-	p.Frame = frame
+	p.stack = append(p.stack, p.frame)
+	p.frame = f
 
 	return nil
 }
