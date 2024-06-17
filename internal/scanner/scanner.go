@@ -32,13 +32,13 @@ func Scan(r io.Reader, keywords keywords.Set) (*Scanner, error) {
 	s.cursor.Position.Line = 1
 	s.keywords.Prepare()
 	s.Read()
-	s.Skip(isBlank)
+	s.Skip(IsBlank)
 	return &s, nil
 }
 
 func (s *Scanner) Scan() token.Token {
 	defer s.Reset()
-	s.Skip(isBlank)
+	s.Skip(IsBlank)
 
 	var tok token.Token
 	tok.Offset = s.curr
@@ -48,21 +48,21 @@ func (s *Scanner) Scan() token.Token {
 		return tok
 	}
 	switch {
-	case isComment(s.char, s.Peek()):
+	case IsComment(s.char, s.Peek()):
 		s.scanComment(&tok)
-	case isLetter(s.char):
-		s.scanIdent(&tok, false)
-	case isIdentQ(s.char):
+	case IsLetter(s.char):
+		s.scanIdent(&tok)
+	case IsIdentQ(s.char):
 		s.scanQuotedIdent(&tok)
-	case isLiteralQ(s.char):
+	case IsLiteralQ(s.char):
 		s.scanString(&tok)
-	case isDigit(s.char):
+	case IsDigit(s.char):
 		s.scanNumber(&tok)
-	case isPunct(s.char):
+	case IsPunct(s.char):
 		s.scanPunct(&tok)
-	case isOperator(s.char):
+	case IsOperator(s.char):
 		s.scanOperator(&tok)
-	case isMacro(s.char):
+	case IsMacro(s.char):
 		s.scanMacro(&tok)
 	default:
 		tok.Type = token.Invalid
@@ -72,7 +72,7 @@ func (s *Scanner) Scan() token.Token {
 
 func (s *Scanner) scanMacro(tok *token.Token) {
 	s.Read()
-	for !s.Done() && !isDelim(s.char) {
+	for !s.Done() && !IsDelim(s.char) {
 		s.Write()
 		s.Read()
 	}
@@ -83,8 +83,8 @@ func (s *Scanner) scanMacro(tok *token.Token) {
 func (s *Scanner) scanComment(tok *token.Token) {
 	s.Read()
 	s.Read()
-	s.Skip(isBlank)
-	for !isNL(s.char) && !s.Done() {
+	s.Skip(IsBlank)
+	for !IsNL(s.char) && !s.Done() {
 		s.Write()
 		s.Read()
 	}
@@ -92,31 +92,25 @@ func (s *Scanner) scanComment(tok *token.Token) {
 	tok.Type = token.Comment
 }
 
-func (s *Scanner) scanIdent(tok *token.Token, star bool) {
-	if star {
-		s.Read()
-	}
-	for !isDelim(s.char) && !s.Done() {
+func (s *Scanner) scanIdent(tok *token.Token) {
+	for !IsDelim(s.char) && !s.Done() {
 		s.Write()
 		s.Read()
 	}
 	tok.Literal = s.Literal()
 	tok.Type = token.Ident
-
-	if !star {
-		s.scanKeyword(tok)
-	}
+	s.scanKeyword(tok)
 }
 
 func (s *Scanner) scanQuotedIdent(tok *token.Token) {
 	s.Read()
-	for !isIdentQ(s.char) && !s.Done() {
+	for !IsIdentQ(s.char) && !s.Done() {
 		s.Write()
 		s.Read()
 	}
 	tok.Type = token.Ident
 	tok.Literal = s.Literal()
-	if !isIdentQ(s.char) {
+	if !IsIdentQ(s.char) {
 		tok.Type = token.Invalid
 	}
 	if tok.Type == token.Ident {
@@ -131,11 +125,11 @@ func (s *Scanner) scanKeyword(tok *token.Token) {
 	}
 	tok.Type = token.Keyword
 	tok.Literal = strings.ToUpper(tok.Literal)
-	for !s.Done() && !(isPunct(s.char) || isOperator(s.char)) {
+	for !s.Done() && !(IsPunct(s.char) || IsOperator(s.char)) {
 		s.Save()
 
-		s.Skip(isBlank)
-		s.scanUntil(isDelim)
+		s.Skip(IsBlank)
+		s.scanUntil(IsDelim)
 		if len(s.Literal()) == 0 {
 			s.Restore()
 			break
@@ -162,7 +156,7 @@ func (s *Scanner) scanUntil(until func(rune) bool) {
 
 func (s *Scanner) scanString(tok *token.Token) {
 	s.Read()
-	for !isLiteralQ(s.char) && !s.Done() {
+	for !IsLiteralQ(s.char) && !s.Done() {
 		s.Write()
 		s.Read()
 		if s.char == squote && s.Peek() == s.char {
@@ -174,7 +168,7 @@ func (s *Scanner) scanString(tok *token.Token) {
 	}
 	tok.Literal = s.Literal()
 	tok.Type = token.Literal
-	if !isLiteralQ(s.char) {
+	if !IsLiteralQ(s.char) {
 		tok.Type = token.Invalid
 	}
 	if tok.Type == token.Literal {
@@ -183,14 +177,14 @@ func (s *Scanner) scanString(tok *token.Token) {
 }
 
 func (s *Scanner) scanNumber(tok *token.Token) {
-	for isDigit(s.char) && !s.Done() {
+	for IsDigit(s.char) && !s.Done() {
 		s.Write()
 		s.Read()
 	}
 	if s.char == dot {
 		s.Write()
 		s.Read()
-		for isDigit(s.char) && !s.Done() {
+		for IsDigit(s.char) && !s.Done() {
 			s.Write()
 			s.Read()
 		}
@@ -358,80 +352,4 @@ type cursor struct {
 	curr int
 	next int
 	token.Position
-}
-
-const (
-	minus      = '-'
-	comma      = ','
-	lparen     = '('
-	rparen     = ')'
-	space      = ' '
-	tab        = '\t'
-	semicolon  = ';'
-	nl         = '\n'
-	cr         = '\r'
-	dquote     = '"'
-	squote     = '\''
-	underscore = '_'
-	star       = '*'
-	dot        = '.'
-	equal      = '='
-	langle     = '<'
-	rangle     = '>'
-	bang       = '!'
-	pipe       = '|'
-	ampersand  = '&'
-	slash      = '/'
-	plus       = '+'
-	arobase    = '@'
-	percent    = '%'
-	tilde      = '~'
-)
-
-func isMacro(r rune) bool {
-	return r == arobase
-}
-
-func isDelim(r rune) bool {
-	return isBlank(r) || isPunct(r) || isOperator(r)
-}
-
-func isComment(r, k rune) bool {
-	return r == minus && r == k
-}
-
-func isLetter(r rune) bool {
-	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')
-}
-
-func isDigit(r rune) bool {
-	return r >= '0' && r <= '9'
-}
-
-func isSpace(r rune) bool {
-	return r == space || r == tab
-}
-
-func isIdentQ(r rune) bool {
-	return r == dquote
-}
-
-func isLiteralQ(r rune) bool {
-	return r == squote
-}
-
-func isPunct(r rune) bool {
-	return r == comma || r == lparen || r == rparen || r == semicolon || r == star || r == dot
-}
-
-func isOperator(r rune) bool {
-	return r == equal || r == langle || r == rangle || r == bang || r == slash || r == plus || r == minus || r == pipe || r == percent || r == ampersand || r == tilde
-}
-
-func isNL(r rune) bool {
-	return r == nl || r == cr
-}
-
-func isBlank(r rune) bool {
-	return isSpace(r) || isNL(r)
 }

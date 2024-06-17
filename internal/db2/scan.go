@@ -27,5 +27,12 @@ func (s *Scanner) Scan() token.Token {
 }
 
 func (s *Scanner) scanStarIdent(tok *token.Token) {
-
+	s.Write()
+	s.Read()
+	for !s.Done() && scanner.IsLetter(s.Curr()) {
+		s.Write()
+		s.Read()
+	}
+	tok.Type = scanner.Ident
+	tok.Literal = s.Literal()
 }
