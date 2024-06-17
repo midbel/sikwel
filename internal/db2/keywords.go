@@ -14,7 +14,7 @@ var kw = keywords.Set{
 	{"deterministic"},
 	{"not", "deterministic"},
 	{"specific"},
-	{"call", "on", "null", "input"},
+	{"called", "on", "null", "input"},
 }
 
 func GetKeywords() keywords.Set {

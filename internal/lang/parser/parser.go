@@ -30,7 +30,7 @@ type Parser struct {
 	values  map[string]ast.Statement
 }
 
-func NewParser(r io.Reader) (*Parser, error) {
+func NewParser(r io.Reader) (lang.Parser, error) {
 	scan, err := scanner.Scan(r, lang.GetKeywords())
 	if err != nil {
 		return nil, err
