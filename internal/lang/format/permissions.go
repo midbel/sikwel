@@ -6,10 +6,10 @@ import (
 
 func (w *Writer) FormatGrant(stmt ast.GrantStatement) error {
 	kw, _ := stmt.Keyword()
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	w.WriteBlank()
 	if len(stmt.Privileges) == 0 {
-		w.WriteStatement("ALL PRIVILEGES")
+		w.WriteKeyword("ALL PRIVILEGES")
 	} else {
 		for i, p := range stmt.Privileges {
 			if i > 0 {
@@ -34,10 +34,10 @@ func (w *Writer) FormatGrant(stmt ast.GrantStatement) error {
 
 func (w *Writer) FormatRevoke(stmt ast.RevokeStatement) error {
 	kw, _ := stmt.Keyword()
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	w.WriteBlank()
 	if len(stmt.Privileges) == 0 {
-		w.WriteStatement("ALL")
+		w.WriteKeyword("ALL")
 	} else {
 		for i, p := range stmt.Privileges {
 			if i > 0 {

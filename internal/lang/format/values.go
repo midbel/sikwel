@@ -135,23 +135,20 @@ func (w *Writer) FormatCase(stmt ast.Case) error {
 	}
 	if stmt.Else != nil {
 		w.WriteNL()
-		w.WriteStatement("ELSE")
+		w.WriteKeyword("ELSE")
 		w.WriteBlank()
 
-		err := w.zero(func() error {
-			return w.FormatExpr(stmt.Else, false)
-		})
-		if err != nil {
+		if err := w.FormatExpr(stmt.Else, false); err != nil {
 			return err
 		}
 	}
 	w.WriteNL()
-	w.WriteStatement("END")
+	w.WriteKeyword("END")
 	return nil
 }
 
 func (w *Writer) FormatWhen(stmt ast.When) error {
-	w.WriteStatement("WHEN")
+	w.WriteKeyword("WHEN")
 	w.WriteBlank()
 	if err := w.FormatExpr(stmt.Cdt, false); err != nil {
 		return err
@@ -160,9 +157,7 @@ func (w *Writer) FormatWhen(stmt ast.When) error {
 	w.WriteKeyword("THEN")
 	w.WriteBlank()
 
-	return w.zero(func() error {
-		return w.FormatExpr(stmt.Body, false)
-	})
+	return w.FormatExpr(stmt.Body, false)
 }
 
 func (w *Writer) FormatCast(stmt ast.Cast, _ bool) error {

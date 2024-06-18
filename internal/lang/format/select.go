@@ -63,16 +63,8 @@ func (w *Writer) FormatIntersect(stmt ast.IntersectStatement) error {
 }
 
 func (w *Writer) FormatValues(stmt ast.ValuesStatement) error {
-	return w.formatValues(stmt, false)
-}
-
-func (w *Writer) formatValues(stmt ast.ValuesStatement, inline bool) error {
 	kw, _ := stmt.Keyword()
-	if inline {
-		w.WriteKeyword(kw)
-	} else {
-		w.WriteStatement(kw)
-	}
+	w.WriteKeyword(kw)
 	w.WriteBlank()
 	for i := range stmt.List {
 		if i > 0 {
