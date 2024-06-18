@@ -7,11 +7,8 @@ import (
 )
 
 func (w *Writer) FormatCreateProcedure(stmt ast.CreateProcedureStatement) error {
-	w.Enter()
-	defer w.Leave()
-
 	kw, _ := stmt.Keyword()
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	w.WriteBlank()
 	w.WriteString(stmt.Name)
 	w.WriteString("(")
@@ -49,8 +46,6 @@ func (w *Writer) FormatCreateProcedure(stmt ast.CreateProcedureStatement) error 
 }
 
 func (w *Writer) formatParamter(param ast.ProcedureParameter) error {
-	w.Enter()
-	defer w.Leave()
 
 	w.WritePrefix()
 	switch param.Mode {

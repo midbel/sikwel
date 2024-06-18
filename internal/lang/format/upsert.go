@@ -3,11 +3,8 @@ package format
 import "github.com/midbel/sweet/internal/lang/ast"
 
 func (w *Writer) FormatMerge(stmt ast.MergeStatement) error {
-	w.Enter()
-	defer w.Leave()
-
 	kw, _ := stmt.Keyword()
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	w.WriteBlank()
 	w.WriteKeyword("INTO")
 	w.WriteBlank()
@@ -64,9 +61,6 @@ func (w *Writer) FormatMatch(stmt ast.MatchStatement) error {
 	w.WriteBlank()
 	w.WriteKeyword("THEN")
 	w.WriteNL()
-	w.Enter()
-	defer w.Leave()
-
 	w.WritePrefix()
 
 	switch stmt := stmt.Statement.(type) {
@@ -120,11 +114,8 @@ func (w *Writer) FormatMatch(stmt ast.MatchStatement) error {
 }
 
 func (w *Writer) FormatTruncate(stmt ast.TruncateStatement) error {
-	w.Enter()
-	defer w.Leave()
-
 	kw, _ := stmt.Keyword()
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	w.WriteBlank()
 	if len(stmt.Tables) == 0 {
 		w.WriteString("*")
@@ -141,11 +132,8 @@ func (w *Writer) FormatTruncate(stmt ast.TruncateStatement) error {
 }
 
 func (w *Writer) FormatDelete(stmt ast.DeleteStatement) error {
-	w.Enter()
-	defer w.Leave()
-
 	kw, _ := stmt.Keyword()
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	w.WriteBlank()
 	w.WriteString(stmt.Table)
 	if stmt.Where != nil {
@@ -165,14 +153,7 @@ func (w *Writer) FormatDelete(stmt ast.DeleteStatement) error {
 
 func (w *Writer) FormatUpdate(stmt ast.UpdateStatement) error {
 	kw, _ := stmt.Keyword()
-	return w.FormatUpdateWithKeyword(kw, stmt)
-}
-
-func (w *Writer) FormatUpdateWithKeyword(kw string, stmt ast.UpdateStatement) error {
-	w.Enter()
-	defer w.Leave()
-
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	w.WriteBlank()
 
 	switch stmt := stmt.Table.(type) {
@@ -215,11 +196,8 @@ func (w *Writer) FormatUpdateWithKeyword(kw string, stmt ast.UpdateStatement) er
 }
 
 func (w *Writer) FormatInsert(stmt ast.InsertStatement) error {
-	w.Enter()
-	defer w.Leave()
-
 	kw, _ := stmt.Keyword()
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	w.WriteBlank()
 
 	if err := w.FormatExpr(stmt.Table, false); err != nil {
@@ -281,7 +259,7 @@ func (w *Writer) FormatUpsert(stmt ast.Statement) error {
 	if !ok {
 		return w.CanNotUse("insert(upsert)", stmt)
 	}
-	w.WriteStatement("ON CONFLICT")
+	w.WriteKeyword("ON CONFLICT")
 	w.WriteBlank()
 
 	if len(upsert.Columns) > 0 {
@@ -309,9 +287,6 @@ func (w *Writer) FormatUpsert(stmt ast.Statement) error {
 }
 
 func (w *Writer) FormatAssignment(list []ast.Statement) error {
-	w.Enter()
-	defer w.Leave()
-
 	var err error
 	for i, s := range list {
 		if i > 0 {
@@ -352,7 +327,7 @@ func (w *Writer) FormatReturning(stmt ast.Statement) error {
 	if stmt == nil {
 		return nil
 	}
-	w.WriteStatement("RETURNING")
+	w.WriteKeyword("RETURNING")
 	w.WriteBlank()
 
 	list, ok := stmt.(ast.List)

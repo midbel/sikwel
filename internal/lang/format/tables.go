@@ -9,7 +9,7 @@ import (
 
 func (w *Writer) FormatCreateView(stmt ast.CreateViewStatement) error {
 	kw, _ := stmt.Keyword()
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	w.WriteBlank()
 	if stmt.NotExists {
 		w.WriteKeyword("IF NOT EXISTS")
@@ -44,11 +44,9 @@ func (w *Writer) FormatCreateView(stmt ast.CreateViewStatement) error {
 	}
 
 	w.WriteBlank()
-	w.WriteStatement("AS")
+	w.WriteKeyword("AS")
 	w.WriteNL()
 
-	w.Leave()
-	defer w.Enter()
 	return w.FormatStatement(stmt.Select)
 }
 
@@ -75,11 +73,8 @@ func (w *Writer) FormatCreateTable(stmt ast.CreateTableStatement) error {
 }
 
 func (w *Writer) FormatCreateTableWithFormatter(ctf CreateTableFormatter, stmt ast.CreateTableStatement) error {
-	w.Enter()
-	defer w.Leave()
-
 	kw, _ := stmt.Keyword()
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	w.WriteBlank()
 	if stmt.NotExists {
 		w.WriteKeyword("IF NOT EXISTS")
@@ -92,8 +87,6 @@ func (w *Writer) FormatCreateTableWithFormatter(ctf CreateTableFormatter, stmt a
 	w.WriteString("(")
 	w.WriteNL()
 
-	w.Enter()
-	defer w.Leave()
 	var longest int
 	if !w.Compact {
 		for _, c := range stmt.Columns {
@@ -310,7 +303,7 @@ func (w *Writer) FormatGeneratedConstraint(cst ast.GeneratedConstraint) error {
 
 func (w *Writer) FormatAlterTable(stmt ast.AlterTableStatement) error {
 	kw, _ := stmt.Keyword()
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	w.WriteBlank()
 	if err := w.FormatExpr(stmt.Name, false); err != nil {
 		return err
@@ -400,7 +393,7 @@ func (w *Writer) FormatAlterTable(stmt ast.AlterTableStatement) error {
 
 func (w *Writer) FormatDropView(stmt ast.DropViewStatement) error {
 	kw, _ := stmt.Keyword()
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	if stmt.Exists {
 		w.WriteBlank()
 		w.WriteKeyword("IF EXISTS")
@@ -429,7 +422,7 @@ func (w *Writer) FormatDropView(stmt ast.DropViewStatement) error {
 
 func (w *Writer) FormatDropTable(stmt ast.DropTableStatement) error {
 	kw, _ := stmt.Keyword()
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	if stmt.Exists {
 		w.WriteBlank()
 		w.WriteKeyword("IF EXISTS")

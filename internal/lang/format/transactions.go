@@ -8,7 +8,7 @@ import (
 
 func (w *Writer) FormatStartTransaction(stmt ast.StartTransaction) error {
 	kw, _ := stmt.Keyword()
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	if stmt.Mode > 0 {
 		w.WriteBlank()
 		switch stmt.Mode {
@@ -34,7 +34,7 @@ func (w *Writer) FormatStartTransaction(stmt ast.StartTransaction) error {
 
 func (w *Writer) FormatSetTransaction(stmt ast.SetTransaction) error {
 	kw, _ := stmt.Keyword()
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	if stmt.Level > 0 {
 		w.WriteBlank()
 		w.WriteKeyword("ISOLATION LEVEL")
@@ -56,11 +56,8 @@ func (w *Writer) FormatSetTransaction(stmt ast.SetTransaction) error {
 }
 
 func (w *Writer) FormatSavepoint(stmt ast.Savepoint) error {
-	w.Enter()
-	defer w.Leave()
-
 	kw, _ := stmt.Keyword()
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	if stmt.Name != "" {
 		w.WriteBlank()
 		w.WriteString(stmt.Name)
@@ -69,11 +66,8 @@ func (w *Writer) FormatSavepoint(stmt ast.Savepoint) error {
 }
 
 func (w *Writer) FormatReleaseSavepoint(stmt ast.ReleaseSavepoint) error {
-	w.Enter()
-	defer w.Leave()
-
 	kw, _ := stmt.Keyword()
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	if stmt.Name != "" {
 		w.WriteBlank()
 		w.WriteString(stmt.Name)
@@ -82,11 +76,8 @@ func (w *Writer) FormatReleaseSavepoint(stmt ast.ReleaseSavepoint) error {
 }
 
 func (w *Writer) FormatRollbackSavepoint(stmt ast.RollbackSavepoint) error {
-	w.Enter()
-	defer w.Leave()
-
 	kw, _ := stmt.Keyword()
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	if stmt.Name != "" {
 		w.WriteBlank()
 		w.WriteString(stmt.Name)
@@ -96,12 +87,12 @@ func (w *Writer) FormatRollbackSavepoint(stmt ast.RollbackSavepoint) error {
 
 func (w *Writer) FormatCommit(stmt ast.Commit) error {
 	kw, _ := stmt.Keyword()
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	return nil
 }
 
 func (w *Writer) FormatRollback(stmt ast.Rollback) error {
 	kw, _ := stmt.Keyword()
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	return nil
 }

@@ -91,6 +91,12 @@ func NewWriter(w io.Writer) *Writer {
 	return &ws
 }
 
+func Compact(w io.Writer) *Writer {
+	ws := NewWriter(w)
+	ws.Compact = true
+	return ws
+}
+
 func (w *Writer) Format(r io.Reader) error {
 	p, err := parser.NewParser(r)
 	if err != nil {
@@ -219,14 +225,8 @@ func (w *Writer) FormatStatement(stmt ast.Statement) error {
 
 func (w *Writer) FormatBody(list ast.List) error {
 	doFmt := func(stmt ast.Statement) error {
-		if ast.IsQuery(stmt) {
-			w.Leave()
-			defer w.Enter()
-		}
 		return w.FormatStatement(stmt)
 	}
-	w.Enter()
-	defer w.Leave()
 	for _, v := range list.Values {
 		if err := doFmt(v); err != nil {
 			return err
@@ -237,8 +237,6 @@ func (w *Writer) FormatBody(list ast.List) error {
 }
 
 func (w *Writer) FormatExpr(stmt ast.Statement, nl bool) error {
-	w.enterExpr()
-	defer w.leaveExpr()
 	var err error
 	switch stmt := stmt.(type) {
 	case ast.Name:
@@ -497,9 +495,6 @@ func (w *Writer) formatUnary(stmt ast.Unary, nl bool) error {
 func (w *Writer) formatGroup(stmt ast.Group) error {
 	w.WriteString("(")
 	defer w.WriteString(")")
-
-	w.Enter()
-	defer w.Leave()
 	return w.FormatExpr(stmt.Statement, false)
 }
 

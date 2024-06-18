@@ -8,12 +8,12 @@ func (w *Writer) FormatIf(stmt ast.If) error {
 	if err := w.formatIf(stmt, "IF"); err != nil {
 		return err
 	}
-	w.WriteStatement("END IF")
+	w.WriteKeyword("END IF")
 	return nil
 }
 
 func (w *Writer) formatIf(stmt ast.If, kw string) error {
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	w.WriteBlank()
 	if err := w.FormatExpr(stmt.Cdt, false); err != nil {
 		return err
@@ -31,7 +31,7 @@ func (w *Writer) formatIf(stmt ast.If, kw string) error {
 		if s, ok := stmt.Alt.(ast.If); ok {
 			err = w.formatIf(s, "ELSIF")
 		} else {
-			w.WriteStatement("ELSE")
+			w.WriteKeyword("ELSE")
 			w.WriteNL()
 			err = w.FormatStatement(stmt.Alt)
 		}
@@ -40,7 +40,7 @@ func (w *Writer) formatIf(stmt ast.If, kw string) error {
 }
 
 func (w *Writer) FormatWhile(stmt ast.While) error {
-	w.WriteStatement("WHILE")
+	w.WriteKeyword("WHILE")
 	w.WriteBlank()
 	if err := w.FormatExpr(stmt.Cdt, false); err != nil {
 		return err
@@ -51,12 +51,12 @@ func (w *Writer) FormatWhile(stmt ast.While) error {
 	if err := w.FormatStatement(stmt.Body); err != nil {
 		return err
 	}
-	w.WriteStatement("END WHILE")
+	w.WriteKeyword("END WHILE")
 	return nil
 }
 
 func (w *Writer) FormatSet(stmt ast.Set) error {
-	w.WriteStatement("SET")
+	w.WriteKeyword("SET")
 	w.WriteBlank()
 	w.WriteString(stmt.Ident)
 	w.WriteBlank()
@@ -66,7 +66,7 @@ func (w *Writer) FormatSet(stmt ast.Set) error {
 }
 
 func (w *Writer) FormatReturn(stmt ast.Return) error {
-	w.WriteStatement("RETURN")
+	w.WriteKeyword("RETURN")
 	if stmt.Statement != nil {
 		w.WriteBlank()
 		if err := w.FormatExpr(stmt.Statement, false); err != nil {
@@ -77,7 +77,7 @@ func (w *Writer) FormatReturn(stmt ast.Return) error {
 }
 
 func (w *Writer) FormatDeclare(stmt ast.Declare) error {
-	w.WriteStatement("DECLARE")
+	w.WriteKeyword("DECLARE")
 	w.WriteBlank()
 	w.WriteString(stmt.Ident)
 	w.WriteBlank()
@@ -96,16 +96,10 @@ func (w *Writer) FormatDeclare(stmt ast.Declare) error {
 }
 
 func (w *Writer) FormatCall(stmt ast.CallStatement) error {
-	w.Enter()
-	defer w.Leave()
-
 	kw, _ := stmt.Keyword()
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	w.WriteString("(")
 	defer w.WriteString(")")
-
-	w.Enter()
-	defer w.Leave()
 
 	w.WriteNL()
 	for i, a := range stmt.Args {

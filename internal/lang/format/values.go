@@ -34,10 +34,6 @@ func (w *Writer) FormatAlias(alias ast.Alias) error {
 		if !w.Compact {
 			w.WriteNL()
 		}
-		if w.getCurrDepth() <= 1 {
-			w.Enter()
-			defer w.Leave()
-		}
 		err = w.FormatStatement(alias.Statement)
 		if err == nil {
 			w.WriteNL()

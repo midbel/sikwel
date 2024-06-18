@@ -87,11 +87,8 @@ func (w *Writer) formatValues(stmt ast.ValuesStatement, inline bool) error {
 }
 
 func (w *Writer) FormatSelect(stmt ast.SelectStatement) error {
-	w.Enter()
-	defer w.Leave()
-
 	kw, _ := stmt.Keyword()
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	w.WriteNL()
 	if err := w.FormatSelectColumns(stmt.Columns); err != nil {
 		return err
@@ -140,10 +137,11 @@ func (w *Writer) FormatSelect(stmt ast.SelectStatement) error {
 }
 
 func (w *Writer) FormatSelectColumns(columns []ast.Statement) error {
-	w.Enter()
-	defer w.Leave()
 	for i, v := range columns {
-		w.WriteComma(i)
+		if i > 0 {
+			w.WriteString(",")
+			w.WriteNL()
+		}
 		if err := w.FormatExpr(v, false); err != nil {
 			return err
 		}
@@ -155,21 +153,14 @@ func (w *Writer) FormatWhere(stmt ast.Statement) error {
 	if stmt == nil {
 		return nil
 	}
-	w.WriteStatement("WHERE")
+	w.WriteKeyword("WHERE")
 	w.WriteBlank()
-
-	currDepth := w.currDepth
-	w.Enter()
-	defer func() {
-		w.Leave()
-		w.currDepth = currDepth
-	}()
 
 	return w.FormatExpr(stmt, true)
 }
 
 func (w *Writer) formatFromJoin(join ast.Join) error {
-	w.WriteString(join.Type)
+	w.WriteKeyword(join.Type)
 	w.WriteBlank()
 
 	var err error
@@ -188,17 +179,15 @@ func (w *Writer) formatFromJoin(join ast.Join) error {
 	if err != nil {
 		return err
 	}
-	w.Enter()
-	defer w.Leave()
 	switch s := join.Where.(type) {
 	case ast.Binary:
 		w.WriteNL()
-		w.WriteStatement("ON")
+		w.WriteKeyword("ON")
 		w.WriteBlank()
 		err = w.formatBinary(s, false)
 	case ast.List:
 		w.WriteNL()
-		w.WriteStatement("USING")
+		w.WriteKeyword("USING")
 		w.WriteBlank()
 		err = w.formatList(s)
 	default:
@@ -208,7 +197,7 @@ func (w *Writer) formatFromJoin(join ast.Join) error {
 }
 
 func (w *Writer) FormatFrom(list []ast.Statement) error {
-	w.WriteStatement("FROM")
+	w.WriteKeyword("FROM")
 	w.WriteBlank()
 
 	withComma := func(stmt ast.Statement) bool {
@@ -229,9 +218,7 @@ func (w *Writer) FormatFrom(list []ast.Statement) error {
 		case ast.Name:
 			w.FormatName(s)
 		case ast.Alias:
-			w.Leave()
 			err = w.FormatAlias(s)
-			w.Enter()
 		case ast.Join:
 			err = w.formatFromJoin(s)
 		case ast.Row:
@@ -257,7 +244,7 @@ func (w *Writer) FormatGroupBy(groups []ast.Statement) error {
 	if len(groups) == 0 {
 		return nil
 	}
-	w.WriteStatement("GROUP BY")
+	w.WriteKeyword("GROUP BY")
 	w.WriteBlank()
 	for i, s := range groups {
 		if i > 0 {
@@ -274,10 +261,7 @@ func (w *Writer) FormatGroupBy(groups []ast.Statement) error {
 }
 
 func (w *Writer) FormatWindows(windows []ast.Statement) error {
-	w.WriteStatement("WINDOW")
-
-	w.Enter()
-	defer w.Leave()
+	w.WriteKeyword("WINDOW")
 
 	if len(windows) > 1 {
 		w.WriteNL()
@@ -344,13 +328,10 @@ func (w *Writer) FormatWindows(windows []ast.Statement) error {
 }
 
 func (w *Writer) FormatHaving(having ast.Statement) error {
-	w.Enter()
-	defer w.Leave()
-
 	if having == nil {
 		return nil
 	}
-	w.WriteStatement("HAVING")
+	w.WriteKeyword("HAVING")
 	w.WriteBlank()
 	return w.FormatExpr(having, true)
 }
@@ -359,7 +340,7 @@ func (w *Writer) FormatOrderBy(orders []ast.Statement) error {
 	if len(orders) == 0 {
 		return nil
 	}
-	w.WriteStatement("ORDER BY")
+	w.WriteKeyword("ORDER BY")
 	w.WriteBlank()
 	for i, s := range orders {
 		if i > 0 {
@@ -404,7 +385,7 @@ func (w *Writer) FormatLimit(limit ast.Statement) error {
 	if !ok {
 		return w.FormatOffset(limit)
 	}
-	w.WriteStatement("LIMIT")
+	w.WriteKeyword("LIMIT")
 	w.WriteBlank()
 	w.WriteString(strconv.Itoa(lim.Count))
 	if lim.Offset > 0 {
@@ -446,7 +427,7 @@ func (w *Writer) FormatOffset(limit ast.Statement) error {
 
 func (w *Writer) FormatWith(stmt ast.WithStatement) error {
 	kw, _ := stmt.Keyword()
-	w.WriteStatement(kw)
+	w.WriteKeyword(kw)
 	if stmt.Recursive {
 		w.WriteBlank()
 		w.WriteString("RECURSIVE")
@@ -463,14 +444,10 @@ func (w *Writer) FormatWith(stmt ast.WithStatement) error {
 		}
 	}
 	w.WriteNL()
-	w.Leave()
 	return w.FormatStatement(stmt.Statement)
 }
 
 func (w *Writer) FormatCte(stmt ast.CteStatement) error {
-	w.Enter()
-	defer w.Leave()
-
 	w.WritePrefix()
 	ident := stmt.Ident
 	if w.Upperize.Identifier() {
