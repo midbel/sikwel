@@ -96,12 +96,19 @@ func (w *Writer) FormatDeclare(stmt ast.Declare) error {
 }
 
 func (w *Writer) FormatCall(stmt ast.CallStatement) error {
+	w.WritePrefix()
 	kw, _ := stmt.Keyword()
 	w.WriteKeyword(kw)
 	w.WriteString("(")
-	defer w.WriteString(")")
+	defer func() {
+		w.WritePrefix()
+		w.WriteString(")")
+	}()
 
 	w.WriteNL()
+
+	w.Enter()
+	defer w.Leave()
 	for i, a := range stmt.Args {
 		if i > 0 {
 			w.WriteString(",")

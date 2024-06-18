@@ -130,6 +130,8 @@ func (w *Writer) startStatement(stmt ast.Statement) error {
 		}
 		stmt = com.Statement
 	}
+	w.Enter()
+	defer w.Leave()
 	err := w.FormatStatement(stmt)
 	if err == nil {
 		w.WriteEOL()

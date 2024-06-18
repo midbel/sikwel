@@ -21,7 +21,6 @@ func (w *Writer) FormatName(name ast.Name) {
 		}
 		if w.UseQuote && str != "*" {
 			str = w.Quote(str)
-			// str = fmt.Sprintf("\"%s\"", str)
 		}
 		w.WriteString(str)
 	}
@@ -126,7 +125,6 @@ func (w *Writer) FormatCase(stmt ast.Case) error {
 		w.WriteBlank()
 		w.FormatExpr(stmt.Cdt, false)
 	}
-	w.WriteBlank()
 	for _, s := range stmt.Body {
 		w.WriteNL()
 		if err := w.FormatExpr(s, false); err != nil {
@@ -135,19 +133,26 @@ func (w *Writer) FormatCase(stmt ast.Case) error {
 	}
 	if stmt.Else != nil {
 		w.WriteNL()
+		w.Enter()
+		w.WritePrefix()
 		w.WriteKeyword("ELSE")
 		w.WriteBlank()
 
 		if err := w.FormatExpr(stmt.Else, false); err != nil {
 			return err
 		}
+		w.Leave()
 	}
 	w.WriteNL()
+	w.WritePrefix()
 	w.WriteKeyword("END")
 	return nil
 }
 
 func (w *Writer) FormatWhen(stmt ast.When) error {
+	w.Enter()
+	defer w.Leave()
+	w.WritePrefix()
 	w.WriteKeyword("WHEN")
 	w.WriteBlank()
 	if err := w.FormatExpr(stmt.Cdt, false); err != nil {

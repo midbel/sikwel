@@ -129,11 +129,14 @@ func (w *Writer) FormatSelect(stmt ast.SelectStatement) error {
 }
 
 func (w *Writer) FormatSelectColumns(columns []ast.Statement) error {
+	w.Enter()
+	defer w.Leave()
 	for i, v := range columns {
 		if i > 0 {
 			w.WriteString(",")
 			w.WriteNL()
 		}
+		w.WritePrefix()
 		if err := w.FormatExpr(v, false); err != nil {
 			return err
 		}
@@ -152,6 +155,9 @@ func (w *Writer) FormatWhere(stmt ast.Statement) error {
 }
 
 func (w *Writer) formatFromJoin(join ast.Join) error {
+	w.Enter()
+	defer w.Leave()
+	w.WritePrefix()
 	w.WriteKeyword(join.Type)
 	w.WriteBlank()
 
@@ -173,12 +179,12 @@ func (w *Writer) formatFromJoin(join ast.Join) error {
 	}
 	switch s := join.Where.(type) {
 	case ast.Binary:
-		w.WriteNL()
+		w.WriteBlank()
 		w.WriteKeyword("ON")
 		w.WriteBlank()
 		err = w.formatBinary(s, false)
 	case ast.List:
-		w.WriteNL()
+		w.WriteBlank()
 		w.WriteKeyword("USING")
 		w.WriteBlank()
 		err = w.formatList(s)
