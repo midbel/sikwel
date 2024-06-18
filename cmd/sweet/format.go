@@ -42,7 +42,7 @@ func runFormat(args []string) error {
 	set.Func("upper", "upperize mode", func(value string) error {
 		switch value {
 		case "all", "":
-			writer.Upperize |= format.UpperId | format.UpperKw | format.UpperFn
+			writer.Upperize |= format.UpperId | format.UpperKw | format.UpperFn | format.UpperType
 		case "keyword", "kw":
 			writer.Upperize |= format.UpperKw
 		case "function", "fn":
