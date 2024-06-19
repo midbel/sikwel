@@ -61,6 +61,10 @@ func (w *Writer) FormatMatch(stmt ast.MatchStatement) error {
 	w.WriteBlank()
 	w.WriteKeyword("THEN")
 	w.WriteNL()
+
+	w.Enter()
+	defer w.Leave()
+
 	w.WritePrefix()
 
 	switch stmt := stmt.Statement.(type) {
@@ -137,13 +141,13 @@ func (w *Writer) FormatDelete(stmt ast.DeleteStatement) error {
 	w.WriteBlank()
 	w.WriteString(stmt.Table)
 	if stmt.Where != nil {
-		w.WriteNL()
+		w.WriteBlank()
 		if err := w.FormatWhere(stmt.Where); err != nil {
 			return err
 		}
 	}
 	if stmt.Return != nil {
-		w.WriteNL()
+		w.WriteBlank()
 		if err := w.FormatReturning(stmt.Return); err != nil {
 			return err
 		}
@@ -168,26 +172,26 @@ func (w *Writer) FormatUpdate(stmt ast.UpdateStatement) error {
 	}
 	w.WriteBlank()
 	w.WriteKeyword("SET")
-	w.WriteNL()
+	w.WriteBlank()
 
 	if err := w.FormatAssignment(stmt.List); err != nil {
 		return err
 	}
 
 	if len(stmt.Tables) > 0 {
-		w.WriteNL()
+		w.WriteBlank()
 		if err := w.FormatFrom(stmt.Tables); err != nil {
 			return err
 		}
 	}
 	if stmt.Where != nil {
-		w.WriteNL()
+		w.WriteBlank()
 		if err := w.FormatWhere(stmt.Where); err != nil {
 			return err
 		}
 	}
 	if stmt.Return != nil {
-		w.WriteNL()
+		w.WriteBlank()
 		if err := w.FormatReturning(stmt.Return); err != nil {
 			return err
 		}
