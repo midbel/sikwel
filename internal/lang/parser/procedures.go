@@ -14,28 +14,48 @@ func (p *Parser) ParseCreateProcedure() (ast.Statement, error) {
 		stmt.Replace = true
 	}
 	p.Next()
-	stmt.Name = p.GetCurrLiteral()
-	p.Next()
+	stmt.Name, err = p.ParseProcedureName()
+	if err != nil {
+		return nil, err
+	}
 	if stmt.Parameters, err = p.ParseProcedureParameters(); err != nil {
 		return nil, err
 	}
+	if stmt.Language, err = p.ParseProcedureLanguage(); err != nil {
+		return nil, err
+	}
+
+	stmt.Body, err = p.ParseProcedureBody()
+	return stmt, err
+}
+
+func (p *Parser) ParseProcedureName() (ast.Statement, error) {
+	return p.ParseIdentifier()
+}
+
+func (p *Parser) ParseProcedureLanguage() (string, error) {
+	var lang string
 	if p.IsKeyword("LANGUAGE") {
 		p.Next()
-		stmt.Language = p.GetCurrLiteral()
+		lang = p.GetCurrLiteral()
 		p.Next()
 	}
+	return lang, nil
+}
+
+func (p *Parser) ParseProcedureBody() (ast.Statement, error) {
 	if !p.IsKeyword("BEGIN") {
 		return nil, p.Unexpected("procedure")
 	}
 	p.Next()
 
-	stmt.Body, err = p.ParseBody(func() bool {
+	body, err := p.ParseBody(func() bool {
 		return p.IsKeyword("END")
 	})
 	if err == nil {
 		p.Next()
 	}
-	return stmt, err
+	return body, err
 }
 
 func (p *Parser) ParseProcedureParameters() ([]ast.Statement, error) {

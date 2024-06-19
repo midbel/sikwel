@@ -17,7 +17,7 @@ type ProcedureParameter struct {
 
 type CreateProcedureStatement struct {
 	Replace    bool
-	Name       string
+	Name       Statement
 	Parameters []Statement
 	Language   string
 	Body       Statement

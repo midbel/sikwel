@@ -39,15 +39,15 @@ func (p *Parser) ParseCreateProcedure() (ast.Statement, error) {
 		stmt.Replace = true
 	}
 	p.Next()
-	stmt.Name = p.GetCurrLiteral()
-	p.Next()
+	stmt.Name, err = p.ParseProcedureName()
+	if err != nil {
+		return nil, err
+	}
 	if stmt.Parameters, err = p.ParseProcedureParameters(); err != nil {
 		return nil, err
 	}
-	if p.IsKeyword("LANGUAGE") {
-		p.Next()
-		stmt.Language = p.GetCurrLiteral()
-		p.Next()
+	if stmt.Language, err = p.ParseProcedureLanguage(); err != nil {
+		return nil, err
 	}
 	if p.IsKeyword("DETERMINISTIC") || p.IsKeyword("NOT DETERMINISTIC") {
 		stmt.Deterministic = p.IsKeyword("DETERMINISTIC")
@@ -67,29 +67,18 @@ func (p *Parser) ParseCreateProcedure() (ast.Statement, error) {
 		stmt.NullInput = true
 		p.Next()
 	}
-	if p.IsKeyword("SET OPTION") {
-		p.Next()
-		options, err := p.parseProcedureOptions()
-		if err != nil {
-			return nil, err
-		}
-		stmt.Options = options
+	if stmt.Options, err = p.ParseProcedureOptions(); err != nil {
+		return nil, err
 	}
-	if !p.IsKeyword("BEGIN") {
-		return nil, p.Unexpected("procedure")
-	}
-	p.Next()
-
-	stmt.Body, err = p.ParseBody(func() bool {
-		return p.IsKeyword("END")
-	})
-	if err == nil {
-		p.Next()
-	}
+	stmt.Body, err = p.ParseProcedureBody()
 	return stmt, err
 }
 
-func (p *Parser) parseProcedureOptions() (ast.Statement, error) {
+func (p *Parser) ParseProcedureOptions() (ast.Statement, error) {
+	if !p.IsKeyword("SET OPTION") {
+		return nil, nil
+	}
+	p.Next()
 	var list ast.List
 	for !p.Done() && p.PeekIs(token.Eq) {
 		if !p.Is(token.Ident) && !p.Is(token.Keyword) {

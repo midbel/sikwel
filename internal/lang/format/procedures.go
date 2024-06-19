@@ -10,7 +10,9 @@ func (w *Writer) FormatCreateProcedure(stmt ast.CreateProcedureStatement) error 
 	kw, _ := stmt.Keyword()
 	w.WriteKeyword(kw)
 	w.WriteBlank()
-	w.WriteString(stmt.Name)
+	if err := w.FormatExpr(stmt.Name, false); err != nil {
+		return err
+	}
 	w.WriteString("(")
 	w.WriteNL()
 
