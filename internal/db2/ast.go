@@ -7,7 +7,7 @@ import (
 type SqlStatementSpec int8
 
 const (
-	ContainsSql SqlStatementSpec = iota
+	ContainsSql SqlStatementSpec = iota + 1
 	ModifiesSql
 	ReadsSql
 )
@@ -19,4 +19,22 @@ type CreateProcedureStatement struct {
 	NullInput     bool
 	Options       ast.Statement
 	StmtSpec      SqlStatementSpec
+}
+
+type HandlerType int8
+
+const (
+	ExitHandler HandlerType = iota + 1
+	ContinueHandler
+	UndoHandler
+)
+
+type Handler struct {
+	Type      HandlerType
+	Condition ast.Statement
+	ast.Statement
+}
+
+func (h Handler) Keyword() (string, error) {
+	return "DECLARE", nil
 }

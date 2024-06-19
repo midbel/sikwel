@@ -314,7 +314,7 @@ func (p *Parser) setParseFunc() {
 	p.RegisterParseFunc("CALL", p.ParseCall)
 	p.RegisterParseFunc("IF", p.parseIf)
 	p.RegisterParseFunc("WHILE", p.parseWhile)
-	p.RegisterParseFunc("DECLARE", p.parseDeclare)
+	p.RegisterParseFunc("DECLARE", p.ParseDeclare)
 	p.RegisterParseFunc("SET", p.parseSet)
 	p.RegisterParseFunc("RETURN", p.parseReturn)
 	p.RegisterParseFunc("BEGIN", p.ParseBegin)

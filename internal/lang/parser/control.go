@@ -22,7 +22,7 @@ func (p *Parser) parseSet() (ast.Statement, error) {
 	return stmt, err
 }
 
-func (p *Parser) parseDeclare() (ast.Statement, error) {
+func (p *Parser) ParseDeclare() (ast.Statement, error) {
 	p.Next()
 
 	var (

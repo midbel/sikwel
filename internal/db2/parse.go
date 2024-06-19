@@ -24,10 +24,57 @@ func Parse(r io.Reader) (lang.Parser, error) {
 		return nil, err
 	}
 
+	ps.RegisterParseFunc("EXECUTE IMMEDIATE", ps.ParseExecute)
+	ps.RegisterParseFunc("EXECUTE", ps.ParseExecute)
+	ps.RegisterParseFunc("SIGNAL", ps.ParseSignal)
+	ps.RegisterParseFunc("RESIGNAL", ps.ParseSignal)
+	ps.RegisterParseFunc("DECLARE", ps.ParseDeclare)
 	ps.RegisterParseFunc("CREATE PROCEDURE", ps.ParseCreateProcedure)
 	ps.RegisterParseFunc("CREATE OR REPLACE PROCEDURE", ps.ParseCreateProcedure)
 
 	return &ps, err
+}
+
+func (p *Parser) ParseExecute() (ast.Statement, error) {
+	p.Next()
+	return nil, nil
+}
+
+func (p *Parser) ParseSignal() (ast.Statement, error) {
+	p.Next()
+	return nil, nil
+}
+
+func (p *Parser) ParseDeclare() (ast.Statement, error) {
+	if !p.PeekIs(token.Keyword) {
+		return p.Parser.ParseDeclare()
+	}
+	p.Next()
+	var (
+		stmt Handler
+		err  error
+	)
+	if p.IsKeyword("EXIT HANDLER FOR") {
+		stmt.Type = ExitHandler
+	} else if p.IsKeyword("CONTINUE HANDLER FOR") {
+		stmt.Type = ContinueHandler
+	} else if p.IsKeyword("UNDO HANDLER FOR") {
+		stmt.Type = UndoHandler
+	} else {
+		return nil, p.Unexpected("declare")
+	}
+	p.Next()
+
+	if !p.Is(token.Ident) {
+		return nil, p.Unexpected("declare")
+	}
+	stmt.Condition = ast.Value{
+		Literal: p.GetCurrLiteral(),
+	}
+	p.Next()
+
+	stmt.Statement, err = p.ParseStatement()
+	return stmt, err
 }
 
 func (p *Parser) ParseCreateProcedure() (ast.Statement, error) {
@@ -56,7 +103,7 @@ func (p *Parser) ParseCreateProcedure() (ast.Statement, error) {
 	if p.IsKeyword("MODIFIES SQL DATA") {
 		stmt.StmtSpec = ModifiesSql
 		p.Next()
-	} else if p.IsKeyword("READ SQL DATA") {
+	} else if p.IsKeyword("READS SQL DATA") {
 		stmt.StmtSpec = ReadsSql
 		p.Next()
 	} else if p.IsKeyword("CONTAINS SQL") {
@@ -65,6 +112,11 @@ func (p *Parser) ParseCreateProcedure() (ast.Statement, error) {
 	}
 	if p.IsKeyword("CALLED ON NULL INPUT") {
 		stmt.NullInput = true
+		p.Next()
+	}
+	if p.IsKeyword("SPECIFIC") {
+		p.Next()
+		stmt.Specific = p.GetCurrLiteral()
 		p.Next()
 	}
 	if stmt.Options, err = p.ParseProcedureOptions(); err != nil {

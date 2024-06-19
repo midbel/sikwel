@@ -15,6 +15,13 @@ var kw = keywords.Set{
 	{"not", "deterministic"},
 	{"specific"},
 	{"called", "on", "null", "input"},
+	{"execute"},
+	{"execute", "immediate"},
+	{"exit", "handler", "for"},
+	{"continue", "handler", "for"},
+	{"undo", "handler", "for"},
+	{"signal"},
+	{"resignal"},
 }
 
 func GetKeywords() keywords.Set {
