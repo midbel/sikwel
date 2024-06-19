@@ -80,12 +80,14 @@ func (w *Writer) FormatValues(stmt ast.ValuesStatement) error {
 
 func (w *Writer) FormatSelect(stmt ast.SelectStatement) error {
 	kw, _ := stmt.Keyword()
+	w.WritePrefix()
 	w.WriteKeyword(kw)
 	w.WriteNL()
 	if err := w.FormatSelectColumns(stmt.Columns); err != nil {
 		return err
 	}
 	w.WriteNL()
+	w.WritePrefix()
 	if err := w.FormatFrom(stmt.Tables); err != nil {
 		return err
 	}
@@ -480,6 +482,8 @@ func (w *Writer) FormatCte(stmt ast.CteStatement) error {
 	w.WriteString("(")
 	w.WriteNL()
 
+	w.Enter()
+	defer w.Leave()
 	if err := w.FormatStatement(stmt.Statement); err != nil {
 		return err
 	}

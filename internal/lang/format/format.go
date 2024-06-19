@@ -505,6 +505,10 @@ func (w *Writer) formatRelation(stmt ast.Binary, nl bool) error {
 		return err
 	}
 	w.WriteNL()
+
+	w.Enter()
+	defer w.Leave()
+
 	w.WritePrefix()
 	w.WriteKeyword(stmt.Op)
 	w.WriteBlank()
