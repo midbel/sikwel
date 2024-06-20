@@ -19,7 +19,7 @@ func (w *Writer) FormatCreateView(stmt ast.CreateViewStatement) error {
 		return err
 	}
 
-	if len(stmt.Columns) == 0 && w.UseNames {
+	if len(stmt.Columns) == 0 && w.SetMissingAlias {
 		if q, ok := stmt.Select.(interface{ GetNames() []string }); ok {
 			stmt.Columns = q.GetNames()
 		}

@@ -1,0 +1,21 @@
+TODOS
+
+token
+* ajout type placeholder: ?, :name, $1
+
+rewrite rules
+* rewrite binary expression like `VAL = NULL` as `VAL IS NULL`
+* rewrite `!=` operator as more standard `<>`
+* rewrite join using literal values as conditions using new subqueries
+* replace fields of Writer UseCte and UseSubqueries by a new field which will contain all the rewrite rules
+* list of rewrite rules
+  * binary expression
+  * join condition
+  * use standard operator
+  * missing columns definition in cte
+  * missing columns definition in create view statement
+
+linting
+* rule that check binary expression like `VAL = NULL` as warning
+* rule that check used of non standard operator such as `!=`
+* rule that check literal values in join conditions as warning

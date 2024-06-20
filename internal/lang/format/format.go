@@ -23,6 +23,21 @@ func GetFormatter() lang.Formatter {
 	return ansiFormatter{}
 }
 
+type RewriteRule uint8
+
+const (
+	RewriteExpr = 1 << iota
+	RewriteStdOp
+	RewriteMissCteAlias
+	RewriteMissViewAlias
+	RewriteWithCte
+	RewriteWithSubqueries
+)
+
+func (r RewriteRule) KeepAsIs() bool {
+	return r == 0
+}
+
 type UpperMode uint8
 
 const (
@@ -69,7 +84,9 @@ type Writer struct {
 	KeepComment  bool
 	Upperize     UpperMode
 
-	UseNames bool
+	Rules RewriteRule
+
+	SetMissingAlias bool
 
 	noColor       bool
 	currExprDepth int
@@ -95,6 +112,13 @@ func Compact(w io.Writer) *Writer {
 	ws := NewWriter(w)
 	ws.Compact = true
 	return ws
+}
+
+func (w *Writer) Rewrite(stmt ast.Statement) (ast.Statement, error) {
+	if w.KeepAsIs() {
+		return stmt, nil
+	}
+	return stmt, nil
 }
 
 func (w *Writer) Format(r io.Reader) error {

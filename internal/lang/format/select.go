@@ -93,36 +93,42 @@ func (w *Writer) FormatSelect(stmt ast.SelectStatement) error {
 	}
 	if stmt.Where != nil {
 		w.WriteNL()
+		w.WritePrefix()
 		if err := w.FormatWhere(stmt.Where); err != nil {
 			return err
 		}
 	}
 	if len(stmt.Groups) > 0 {
 		w.WriteNL()
+		w.WritePrefix()
 		if err := w.FormatGroupBy(stmt.Groups); err != nil {
 			return err
 		}
 	}
 	if stmt.Having != nil {
 		w.WriteNL()
+		w.WritePrefix()
 		if err := w.FormatHaving(stmt.Having); err != nil {
 			return err
 		}
 	}
 	if len(stmt.Windows) > 0 {
 		w.WriteNL()
+		w.WritePrefix()
 		if err := w.FormatWindows(stmt.Windows); err != nil {
 			return err
 		}
 	}
 	if len(stmt.Orders) > 0 {
 		w.WriteNL()
+		w.WritePrefix()
 		if err := w.FormatOrderBy(stmt.Orders); err != nil {
 			return err
 		}
 	}
 	if stmt.Limit != nil {
 		w.WriteNL()
+		w.WritePrefix()
 		if err := w.FormatLimit(stmt.Limit); err != nil {
 			return nil
 		}
@@ -454,7 +460,7 @@ func (w *Writer) FormatCte(stmt ast.CteStatement) error {
 		ident = strings.ToUpper(ident)
 	}
 	w.WriteString(ident)
-	if len(stmt.Columns) == 0 && w.UseNames {
+	if len(stmt.Columns) == 0 && w.SetMissingAlias {
 		if q, ok := stmt.Statement.(interface{ GetNames() []string }); ok {
 			stmt.Columns = q.GetNames()
 		}

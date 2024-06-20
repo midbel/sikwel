@@ -31,6 +31,7 @@ func runFormat(args []string) error {
 	set.BoolVar(&writer.UseCrlf, "use-crlf", writer.UseCrlf, "use crlf for newline")
 	set.BoolVar(&writer.PrependComma, "prepend-comma", writer.PrependComma, "write comma before expressions")
 	set.BoolVar(&writer.KeepComment, "keep-comment", writer.KeepComment, "keep comments")
+	set.BoolVar(&writer.SetMissingAlias, "set-missing-alias", writer.SetMissingAlias, "add names when not defined")
 
 	set.Func("dialect", "SQL dialect", func(value string) error {
 		formatter, err := getFormatterForDialect(value)
