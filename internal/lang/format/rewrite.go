@@ -9,7 +9,7 @@ func (w *Writer) Rewrite(stmt ast.Statement) (ast.Statement, error) {
 		return stmt, nil
 	}
 	var err error
-	if w.Rules.ReplaceSubqueryWithCte() {
+	if w.Rules.ReplaceSubqueryWithCte() || w.Rules.All() {
 		stmt, err = w.replaceSubqueryWithCte(stmt)
 	} else if w.Rules.ReplaceCteWithSubquery() {
 		stmt, err = w.replaceCteWithSubquery(stmt)
@@ -59,10 +59,10 @@ func (w *Writer) rewriteBinary(stmt ast.Binary) (ast.Statement, error) {
 		stmt.Right, _ = w.rewrite(stmt.Right)
 		return stmt, nil
 	}
-	if w.Rules.UseStdOp() {
-		return ast.ReplaceOp(stmt), nil
+	if w.Rules.UseStdOp() || w.Rules.All() {
+		stmt = ast.ReplaceOp(stmt)
 	}
-	if w.Rules.UseStdExpr() {
+	if w.Rules.UseStdExpr() || w.Rules.All() {
 		return ast.ReplaceExpr(stmt), nil
 	}
 	return stmt, nil

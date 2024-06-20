@@ -9,7 +9,12 @@ const (
 	RewriteMissViewAlias
 	RewriteWithCte
 	RewriteWithSubqueries
+	RewriteJoinWithLiteral
 )
+
+func (r RewriteRule) All() bool {
+	return false
+}
 
 func (r RewriteRule) UseStdExpr() bool {
 	return r&RewriteStdExpr != 0
@@ -33,6 +38,10 @@ func (r RewriteRule) ReplaceCteWithSubquery() bool {
 
 func (r RewriteRule) ReplaceSubqueryWithCte() bool {
 	return r&RewriteWithCte != 0
+}
+
+func (r RewriteRule) JoinWithLiteralAsSubquery() bool {
+	return r&RewriteJoinWithLiteral != 0
 }
 
 func (r RewriteRule) KeepAsIs() bool {
