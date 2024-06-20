@@ -5,6 +5,9 @@ import (
 )
 
 func (w *Writer) Rewrite(stmt ast.Statement) (ast.Statement, error) {
+	if w.Rules.KeepAsIs() {
+		return stmt, nil
+	}
 	var err error
 	if w.Rules.ReplaceSubqueryWithCte() {
 		stmt, err = w.replaceSubqueryWithCte(stmt)
@@ -26,9 +29,6 @@ func (w *Writer) replaceCteWithSubquery(stmt ast.Statement) (ast.Statement, erro
 }
 
 func (w *Writer) rewrite(stmt ast.Statement) (ast.Statement, error) {
-	if w.Rules.KeepAsIs() {
-		return stmt, nil
-	}
 	switch st := stmt.(type) {
 	case ast.SelectStatement:
 		stmt, _ = w.rewriteSelect(st)
