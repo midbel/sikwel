@@ -26,13 +26,37 @@ func GetFormatter() lang.Formatter {
 type RewriteRule uint8
 
 const (
-	RewriteExpr = 1 << iota
+	RewriteStdExpr = 1 << iota
 	RewriteStdOp
 	RewriteMissCteAlias
 	RewriteMissViewAlias
 	RewriteWithCte
 	RewriteWithSubqueries
 )
+
+func (r RewriteRule) UseStdExpr() bool {
+	return r&RewriteStdExpr != 0
+}
+
+func (r RewriteRule) UseStdOp() bool {
+	return r&RewriteStdOp != 0
+}
+
+func (r RewriteRule) SetMissingCteAlias() bool {
+	return r&RewriteMissCteAlias != 0
+}
+
+func (r RewriteRule) SetMissingViewAlias() bool {
+	return r&RewriteMissViewAlias != 0
+}
+
+func (r RewriteRule) ReplaceCteWithSubquery() bool {
+	return r&RewriteWithSubqueries != 0
+}
+
+func (r RewriteRule) ReplaceSubqueryWithCte() bool {
+	return r&RewriteWithCte != 0
+}
 
 func (r RewriteRule) KeepAsIs() bool {
 	return r == 0
@@ -77,16 +101,12 @@ type Writer struct {
 	UseIndent    int
 	UseSpace     bool
 	UseColor     bool
-	UseSubQuery  bool
-	UseCte       bool
 	UseCrlf      bool
 	PrependComma bool
 	KeepComment  bool
 	Upperize     UpperMode
 
 	Rules RewriteRule
-
-	SetMissingAlias bool
 
 	noColor       bool
 	currExprDepth int
@@ -115,7 +135,7 @@ func Compact(w io.Writer) *Writer {
 }
 
 func (w *Writer) Rewrite(stmt ast.Statement) (ast.Statement, error) {
-	if w.KeepAsIs() {
+	if w.Rules.KeepAsIs() {
 		return stmt, nil
 	}
 	return stmt, nil
@@ -164,13 +184,6 @@ func (w *Writer) startStatement(stmt ast.Statement) error {
 }
 
 func (w *Writer) FormatStatement(stmt ast.Statement) error {
-	if w.UseSubQuery {
-		with, ok := stmt.(ast.WithStatement)
-		if ok {
-			stmt := ast.SubstituteQueries(with.Queries, with.Statement)
-			return w.FormatStatement(stmt)
-		}
-	}
 	var err error
 	switch stmt := stmt.(type) {
 	case ast.GrantStatement:

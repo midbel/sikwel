@@ -26,12 +26,9 @@ func runFormat(args []string) error {
 	set.IntVar(&writer.UseIndent, "use-indent", writer.UseIndent, "number of space to use to indent SQL")
 	set.BoolVar(&writer.UseSpace, "use-space", writer.UseSpace, "use tabs instead of space to indent SQL")
 	set.BoolVar(&writer.UseColor, "use-color", writer.UseColor, "colorify SQL keywords, identifiers")
-	set.BoolVar(&writer.UseSubQuery, "use-subquery", writer.UseSubQuery, "replace cte by subqueries")
-	set.BoolVar(&writer.UseCte, "use-cte", writer.UseCte, "replace subqueries by cte")
 	set.BoolVar(&writer.UseCrlf, "use-crlf", writer.UseCrlf, "use crlf for newline")
 	set.BoolVar(&writer.PrependComma, "prepend-comma", writer.PrependComma, "write comma before expressions")
 	set.BoolVar(&writer.KeepComment, "keep-comment", writer.KeepComment, "keep comments")
-	set.BoolVar(&writer.SetMissingAlias, "set-missing-alias", writer.SetMissingAlias, "add names when not defined")
 
 	set.Func("dialect", "SQL dialect", func(value string) error {
 		formatter, err := getFormatterForDialect(value)
@@ -39,6 +36,25 @@ func runFormat(args []string) error {
 			writer.Formatter = formatter
 		}
 		return err
+	})
+	set.Func("rewrite", "rewrite rules to apply", func(value string) error {
+		switch value {
+		case "all", "":
+		case "use-std-op":
+			writer.Rules |= format.RewriteStdOp
+		case "use-std-expr":
+			writer.Rules |= format.RewriteStdExpr
+		case "missing-cte-alias":
+			writer.Rules |= format.RewriteMissCteAlias
+		case "missing-view-alias":
+			writer.Rules |= format.RewriteMissViewAlias
+		case "subquery-as-cte":
+			writer.Rules |= format.RewriteWithCte
+		case "cte-as-subquery":
+			writer.Rules |= format.RewriteWithSubqueries
+		default:
+		}
+		return nil
 	})
 	set.Func("upper", "upperize mode", func(value string) error {
 		switch value {

@@ -18,12 +18,6 @@ func (w *Writer) FormatCreateView(stmt ast.CreateViewStatement) error {
 	if err := w.FormatTableName(stmt.Name); err != nil {
 		return err
 	}
-
-	if len(stmt.Columns) == 0 && w.SetMissingAlias {
-		if q, ok := stmt.Select.(interface{ GetNames() []string }); ok {
-			stmt.Columns = q.GetNames()
-		}
-	}
 	if len(stmt.Columns) > 0 {
 		w.WriteBlank()
 		w.WriteString("(")

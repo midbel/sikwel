@@ -110,6 +110,13 @@ type Binary struct {
 	Op    string
 }
 
+func (b Binary) Rewrite() Statement {
+	if b.Op == "!=" {
+		b.Op = "<>"
+	}
+	return b
+}
+
 func (b Binary) GetNames() []string {
 	var list []string
 	list = append(list, GetNamesFromStmt([]Statement{b.Left})...)

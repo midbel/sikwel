@@ -460,11 +460,6 @@ func (w *Writer) FormatCte(stmt ast.CteStatement) error {
 		ident = strings.ToUpper(ident)
 	}
 	w.WriteString(ident)
-	if len(stmt.Columns) == 0 && w.SetMissingAlias {
-		if q, ok := stmt.Statement.(interface{ GetNames() []string }); ok {
-			stmt.Columns = q.GetNames()
-		}
-	}
 	if len(stmt.Columns) > 0 {
 		w.WriteString("(")
 		for i, s := range stmt.Columns {
