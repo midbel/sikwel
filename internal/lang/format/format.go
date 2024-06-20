@@ -23,75 +23,6 @@ func GetFormatter() lang.Formatter {
 	return ansiFormatter{}
 }
 
-type RewriteRule uint8
-
-const (
-	RewriteStdExpr = 1 << iota
-	RewriteStdOp
-	RewriteMissCteAlias
-	RewriteMissViewAlias
-	RewriteWithCte
-	RewriteWithSubqueries
-)
-
-func (r RewriteRule) UseStdExpr() bool {
-	return r&RewriteStdExpr != 0
-}
-
-func (r RewriteRule) UseStdOp() bool {
-	return r&RewriteStdOp != 0
-}
-
-func (r RewriteRule) SetMissingCteAlias() bool {
-	return r&RewriteMissCteAlias != 0
-}
-
-func (r RewriteRule) SetMissingViewAlias() bool {
-	return r&RewriteMissViewAlias != 0
-}
-
-func (r RewriteRule) ReplaceCteWithSubquery() bool {
-	return r&RewriteWithSubqueries != 0
-}
-
-func (r RewriteRule) ReplaceSubqueryWithCte() bool {
-	return r&RewriteWithCte != 0
-}
-
-func (r RewriteRule) KeepAsIs() bool {
-	return r == 0
-}
-
-type UpperMode uint8
-
-const (
-	UpperNone UpperMode = 1 << iota
-	UpperKw
-	UpperFn
-	UpperId
-	UpperType
-)
-
-func (u UpperMode) All() bool {
-	return u.Identifier() && u.Function() && u.Keyword() && u.Type()
-}
-
-func (u UpperMode) Identifier() bool {
-	return (u & UpperId) != 0
-}
-
-func (u UpperMode) Function() bool {
-	return (u & UpperFn) != 0
-}
-
-func (u UpperMode) Keyword() bool {
-	return (u & UpperKw) != 0
-}
-
-func (u UpperMode) Type() bool {
-	return (u & UpperType) != 0
-}
-
 type Writer struct {
 	inner *bufio.Writer
 
@@ -105,8 +36,7 @@ type Writer struct {
 	PrependComma bool
 	KeepComment  bool
 	Upperize     UpperMode
-
-	Rules RewriteRule
+	Rules        RewriteRule
 
 	noColor       bool
 	currExprDepth int
@@ -138,6 +68,84 @@ func (w *Writer) Rewrite(stmt ast.Statement) (ast.Statement, error) {
 	if w.Rules.KeepAsIs() {
 		return stmt, nil
 	}
+	switch st := stmt.(type) {
+	case ast.SelectStatement:
+		stmt, _ = w.rewriteSelect(st)
+	case ast.UpdateStatement:
+		stmt, _ = w.rewriteUpdate(st)
+	case ast.DeleteStatement:
+		stmt, _ = w.rewriteDelete(st)
+	case ast.WithStatement:
+		stmt, _ = w.rewriteWith(st)
+	case ast.CteStatement:
+	case ast.UnionStatement:
+	case ast.ExceptStatement:
+	case ast.IntersectStatement:
+	case ast.Binary:
+		stmt, _ = w.rewriteBinary(st)
+	default:
+	}
+	return stmt, nil
+}
+
+func (w *Writer) rewriteBinary(stmt ast.Binary) (ast.Statement, error) {
+	if stmt.IsRelation() {
+		stmt.Left, _ = w.Rewrite(stmt.Left)
+		stmt.Right, _ = w.Rewrite(stmt.Right)
+		return stmt, nil
+	}
+	if w.Rules.UseStdOp() {
+		return ast.ReplaceOp(stmt), nil
+	}
+	if w.Rules.UseStdExpr() {
+		return ast.ReplaceExpr(stmt), nil
+	}
+	return stmt, nil
+}
+
+func (w *Writer) rewriteWith(stmt ast.WithStatement) (ast.Statement, error) {
+	for i := range stmt.Queries {
+		stmt.Queries[i], _ = w.Rewrite(stmt.Queries[i])
+	}
+	stmt.Statement, _ = w.Rewrite(stmt.Statement)
+	return stmt, nil
+}
+
+func (w *Writer) rewritCte(stmt ast.CteStatement) (ast.Statement, error) {
+	stmt.Statement, _ = w.Rewrite(stmt)
+	return stmt, nil
+}
+
+func (w *Writer) rewriteUnion(stmt ast.UnionStatement) (ast.Statement, error) {
+	stmt.Left, _ = w.Rewrite(stmt.Left)
+	stmt.Right, _ = w.Rewrite(stmt.Right)
+	return stmt, nil
+}
+
+func (w *Writer) rewriteExcept(stmt ast.ExceptStatement) (ast.Statement, error) {
+	stmt.Left, _ = w.Rewrite(stmt.Left)
+	stmt.Right, _ = w.Rewrite(stmt.Right)
+	return stmt, nil
+}
+
+func (w *Writer) rewriteIntersect(stmt ast.IntersectStatement) (ast.Statement, error) {
+	stmt.Left, _ = w.Rewrite(stmt.Left)
+	stmt.Right, _ = w.Rewrite(stmt.Right)
+	return stmt, nil
+}
+
+func (w *Writer) rewriteSelect(stmt ast.SelectStatement) (ast.Statement, error) {
+	stmt.Where, _ = w.Rewrite(stmt.Where)
+	return stmt, nil
+}
+
+func (w *Writer) rewriteUpdate(stmt ast.UpdateStatement) (ast.Statement, error) {
+	stmt.Where, _ = w.Rewrite(stmt.Where)
+	return stmt, nil
+}
+
+func (w *Writer) rewriteDelete(stmt ast.DeleteStatement) (ast.Statement, error) {
+	stmt.Where, _ = w.Rewrite(stmt.Where)
 	return stmt, nil
 }
 
@@ -152,6 +160,9 @@ func (w *Writer) Format(r io.Reader) error {
 			if errors.Is(err, io.EOF) {
 				break
 			}
+			return err
+		}
+		if stmt, err = w.Rewrite(stmt); err != nil {
 			return err
 		}
 		if err = w.startStatement(stmt); err != nil {

@@ -110,13 +110,6 @@ type Binary struct {
 	Op    string
 }
 
-func (b Binary) Rewrite() Statement {
-	if b.Op == "!=" {
-		b.Op = "<>"
-	}
-	return b
-}
-
 func (b Binary) GetNames() []string {
 	var list []string
 	list = append(list, GetNamesFromStmt([]Statement{b.Left})...)
@@ -170,6 +163,57 @@ func (i List) Len() int {
 
 type Value struct {
 	Literal string
+}
+
+func ReplaceOp(b Binary) Statement {
+	if b.Op == "!=" {
+		b.Op = "<>"
+	}
+	return b
+}
+
+func ReplaceExpr(b Binary) Statement {
+	// var (
+	// 	left Statement
+	// 	right Statement
+	// )
+	v, ok := b.Right.(Value)
+	if !ok {
+		return b
+	}
+	if !v.Constant() {
+		return b
+	}
+	x := Is{
+		Ident: b.Left,
+		Value: b.Right,
+	}
+	switch b.Op {
+	case "=":
+		return x
+	case "<>":
+		return Not{
+			Statement: x,
+		}
+	default:
+		return b
+	}
+}
+
+func (v Value) Constant() bool {
+	return v.Null() || v.True() || v.False()
+}
+
+func (v Value) Null() bool {
+	return v.Literal == "NULL"
+}
+
+func (v Value) True() bool {
+	return v.Literal == "TRUE"
+}
+
+func (v Value) False() bool {
+	return v.Literal == "FALSE"
 }
 
 type Alias struct {
