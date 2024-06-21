@@ -4,42 +4,12 @@ import (
 	"fmt"
 )
 
-type Statement interface {
-	// Keyword() (string, error)
-	// fmt.Stringer
-}
-
-func HasSimple(st Statement) bool {
-	r, ok := st.(relation)
-	return !ok || !r.IsRelation()
-}
-
-type relation interface {
-	IsRelation() bool
-}
-
-func IsRelation(st Statement) bool {
-	r, ok := st.(relation)
-	return ok && r.IsRelation()
-}
+type Statement interface{}
 
 func WrapWithParens(st Statement) bool {
 	switch st.(type) {
 	case SelectStatement:
 	case ValuesStatement:
-	default:
-		return false
-	}
-	return true
-}
-
-func IsQuery(stmt Statement) bool {
-	switch stmt.(type) {
-	case InsertStatement:
-	case DeleteStatement:
-	case UpdateStatement:
-	case TruncateStatement:
-	case SelectStatement:
 	default:
 		return false
 	}

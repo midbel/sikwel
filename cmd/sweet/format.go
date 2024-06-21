@@ -53,7 +53,7 @@ func runFormat(args []string) error {
 		case "cte-as-subquery":
 			writer.Rules |= format.RewriteWithSubqueries
 		case "join-with-literal":
-			write.Rules |= format.RewriteJoinWithLiteral
+			writer.Rules |= format.RewriteJoinWithLiteral
 		default:
 		}
 		return nil

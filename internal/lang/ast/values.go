@@ -5,6 +5,37 @@ import (
 	"strings"
 )
 
+func ReplaceOp(b Binary) Binary {
+	if b.Op == "!=" {
+		b.Op = "<>"
+	}
+	return b
+}
+
+func ReplaceExpr(b Binary) Statement {
+	v, ok := b.Right.(Value)
+	if !ok {
+		return b
+	}
+	if !v.Constant() {
+		return b
+	}
+	x := Is{
+		Ident: b.Left,
+		Value: b.Right,
+	}
+	switch b.Op {
+	case "=":
+		return x
+	case "<>":
+		return Not{
+			Statement: x,
+		}
+	default:
+		return b
+	}
+}
+
 type Commented struct {
 	Before []string
 	After  string
@@ -163,41 +194,6 @@ func (i List) Len() int {
 
 type Value struct {
 	Literal string
-}
-
-func ReplaceOp(b Binary) Statement {
-	if b.Op == "!=" {
-		b.Op = "<>"
-	}
-	return b
-}
-
-func ReplaceExpr(b Binary) Statement {
-	// var (
-	// 	left Statement
-	// 	right Statement
-	// )
-	v, ok := b.Right.(Value)
-	if !ok {
-		return b
-	}
-	if !v.Constant() {
-		return b
-	}
-	x := Is{
-		Ident: b.Left,
-		Value: b.Right,
-	}
-	switch b.Op {
-	case "=":
-		return x
-	case "<>":
-		return Not{
-			Statement: x,
-		}
-	default:
-		return b
-	}
 }
 
 func (v Value) Constant() bool {

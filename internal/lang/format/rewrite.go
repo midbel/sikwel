@@ -1,6 +1,8 @@
 package format
 
 import (
+	"fmt"
+
 	"github.com/midbel/sweet/internal/lang/ast"
 )
 
@@ -21,10 +23,74 @@ func (w *Writer) Rewrite(stmt ast.Statement) (ast.Statement, error) {
 }
 
 func (w *Writer) replaceSubqueryWithCte(stmt ast.Statement) (ast.Statement, error) {
-	return stmt, nil
+	var with ast.WithStatement
+	if w, ok := stmt.(ast.WithStatement); ok {
+		with = w
+	} else {
+		with.Statement = stmt
+	}
+
+	if q, ok := with.Statement.(ast.SelectStatement); ok {
+		q, qs, err := w.replaceSubqueries(q)
+		if err != nil {
+			return nil, err
+		}
+		with.Statement = q
+		with.Queries = append(with.Queries, qs...)
+	}
+	return with, nil
+}
+
+func (w *Writer) replaceSubqueries(stmt ast.SelectStatement) (ast.Statement, []ast.Statement, error) {
+	var qs []ast.Statement
+
+	if !w.Rules.SetMissingCteAlias() {
+		rules := w.Rules
+		w.Rules |= RewriteMissCteAlias
+		defer func() {
+			w.Rules = rules
+		}()
+	}
+
+	for i, q := range stmt.Tables {
+		j, ok := q.(ast.Join)
+		if !ok {
+			continue
+		}
+		n := fmt.Sprintf("q%03d", i+1)
+		if a, ok := j.Table.(ast.Alias); ok {
+			n = a.Alias
+			q = a.Statement
+		} else {
+			q = j.Table
+
+		}
+		q, ok := q.(ast.SelectStatement)
+		if !ok {
+			continue
+		}
+		cte := ast.CteStatement{
+			Ident:     n,
+			Statement: q,
+		}
+		c, err := w.rewriteCte(cte)
+		if err != nil {
+			return nil, nil, err
+		}
+		qs = append(qs, c)
+
+		j.Table = ast.Name{
+			Parts: []string{n},
+		}
+		stmt.Tables[i] = j
+	}
+	return stmt, qs, nil
 }
 
 func (w *Writer) replaceCteWithSubquery(stmt ast.Statement) (ast.Statement, error) {
+	if _, ok := stmt.(ast.WithStatement); !ok {
+		return stmt, nil
+	}
 	return stmt, nil
 }
 

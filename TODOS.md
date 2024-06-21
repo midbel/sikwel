@@ -4,10 +4,7 @@ token
 * ajout type placeholder: ?, :name, $1
 
 rewrite rules
-* rewrite binary expression like `VAL = NULL` as `VAL IS NULL`: ok
-* rewrite `!=` operator as more standard `<>`: ok
 * rewrite join using literal values as conditions using new subqueries
-* replace fields of Writer UseCte and UseSubqueries by a new field which will contain all the rewrite rules: ok
 * list of rewrite rules
   * binary expression
   * join condition
