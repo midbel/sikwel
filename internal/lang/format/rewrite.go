@@ -2,6 +2,7 @@ package format
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/midbel/sweet/internal/lang/ast"
 )
@@ -28,6 +29,24 @@ func (w *Writer) replaceSubqueryWithCte(stmt ast.Statement) (ast.Statement, erro
 		with = w
 	} else {
 		with.Statement = stmt
+	}
+	qs := slices.Clone(with.Queries)
+	for i := range qs {
+		cte, ok := qs[i].(ast.CteStatement)
+		if !ok {
+			continue
+		}
+		q, ok := cte.Statement.(ast.SelectStatement)
+		if !ok {
+			continue
+		}
+		stmt, ns, err := w.replaceSubqueries(q)
+		if err != nil {
+			return nil, err
+		}
+		cte.Statement = stmt
+		with.Queries = append(with.Queries, ns...)
+
 	}
 
 	if q, ok := with.Statement.(ast.SelectStatement); ok {
@@ -57,7 +76,7 @@ func (w *Writer) replaceSubqueries(stmt ast.SelectStatement) (ast.Statement, []a
 		if !ok {
 			continue
 		}
-		n := fmt.Sprintf("q%03d", i+1)
+		var n string
 		if a, ok := j.Table.(ast.Alias); ok {
 			n = a.Alias
 			q = a.Statement
@@ -69,9 +88,15 @@ func (w *Writer) replaceSubqueries(stmt ast.SelectStatement) (ast.Statement, []a
 		if !ok {
 			continue
 		}
+		x, xs, err := w.replaceSubqueries(q)
+		if err != nil {
+			return nil, nil, err
+		}
+		qs = append(qs, xs...)
+
 		cte := ast.CteStatement{
 			Ident:     n,
-			Statement: q,
+			Statement: x,
 		}
 		c, err := w.rewriteCte(cte)
 		if err != nil {
@@ -88,8 +113,62 @@ func (w *Writer) replaceSubqueries(stmt ast.SelectStatement) (ast.Statement, []a
 }
 
 func (w *Writer) replaceCteWithSubquery(stmt ast.Statement) (ast.Statement, error) {
-	if _, ok := stmt.(ast.WithStatement); !ok {
+	with, ok := stmt.(ast.WithStatement)
+	if !ok {
 		return stmt, nil
+	}
+	var (
+		qs  []ast.CteStatement
+		err error
+	)
+	for i := range with.Queries {
+		q, ok := with.Queries[i].(ast.CteStatement)
+		if !ok {
+			return nil, fmt.Errorf("unexpected query type in with")
+		}
+		qs = append(qs, q)
+	}
+	for i := range qs {
+		q, ok := qs[i].Statement.(ast.SelectStatement)
+		if !ok {
+			continue
+		}
+		xs := slices.Delete(slices.Clone(qs), i, i+1)
+		qs[i].Statement, err = w.replaceCte(q, xs)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if stmt, ok := with.Statement.(ast.SelectStatement); ok {
+		return w.replaceCte(stmt, qs)
+	}
+	return stmt, nil
+}
+
+func (w *Writer) replaceCte(stmt ast.SelectStatement, qs []ast.CteStatement) (ast.Statement, error) {
+	var replace func(ast.Statement) ast.Statement
+
+	replace = func(stmt ast.Statement) ast.Statement {
+		switch st := stmt.(type) {
+		case ast.Alias:
+			st.Statement = replace(st.Statement)
+			stmt = st
+		case ast.Join:
+			st.Table = replace(st.Table)
+			stmt = st
+		case ast.Name:
+			ix := slices.IndexFunc(qs, func(e ast.CteStatement) bool {
+				return e.Ident == st.Ident()
+			})
+			if ix >= 0 {
+				stmt = qs[ix].Statement
+			}
+		default:
+		}
+		return stmt
+	}
+	for i := range stmt.Tables {
+		stmt.Tables[i] = replace(stmt.Tables[i])
 	}
 	return stmt, nil
 }

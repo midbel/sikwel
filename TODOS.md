@@ -4,6 +4,7 @@ token
 * ajout type placeholder: ?, :name, $1
 
 rewrite rules
+* rewriting subquery as cte when subquery as no alias, reuse the name of the main table as alias by taking from the query
 * rewrite join using literal values as conditions using new subqueries
 * list of rewrite rules
   * binary expression
