@@ -40,6 +40,7 @@ func runFormat(args []string) error {
 	set.Func("rewrite", "rewrite rules to apply", func(value string) error {
 		switch value {
 		case "all", "":
+			writer.Rules |= format.RewriteAll
 		case "use-std-op":
 			writer.Rules |= format.RewriteStdOp
 		case "use-std-expr":

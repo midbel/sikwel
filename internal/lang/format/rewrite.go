@@ -89,6 +89,9 @@ func (w *Writer) replaceSubqueries(stmt ast.SelectStatement) (ast.Statement, []a
 			continue
 		}
 		x, xs, err := w.replaceSubqueries(q)
+		for i := range xs {
+			xs[i], _ = w.rewrite(xs[i])
+		}
 		if err != nil {
 			return nil, nil, err
 		}

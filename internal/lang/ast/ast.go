@@ -156,8 +156,9 @@ func (s SelectStatement) GetNames() []string {
 				return nil
 			}
 			list = append(list, n)
+		case Call:
+			list = append(list, c.Ident.(Name).Name())
 		default:
-			return nil
 		}
 	}
 	return list

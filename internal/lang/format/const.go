@@ -10,10 +10,18 @@ const (
 	RewriteWithCte
 	RewriteWithSubqueries
 	RewriteJoinWithLiteral
+
+	RewriteAll = RewriteStdExpr |
+		RewriteStdOp |
+		RewriteMissCteAlias |
+		RewriteMissViewAlias |
+		RewriteWithCte |
+		RewriteWithSubqueries |
+		RewriteJoinWithLiteral
 )
 
 func (r RewriteRule) All() bool {
-	return false
+	return r == RewriteAll
 }
 
 func (r RewriteRule) UseStdExpr() bool {
