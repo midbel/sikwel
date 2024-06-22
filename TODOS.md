@@ -6,12 +6,6 @@ token
 rewrite rules
 * rewriting subquery as cte when subquery as no alias, reuse the name of the main table as alias by taking from the query
 * rewrite join using literal values as conditions using new subqueries
-* list of rewrite rules
-  * binary expression
-  * join condition
-  * use standard operator
-  * missing columns definition in cte
-  * missing columns definition in create view statement
 
 linting
 * rule that check binary expression like `VAL = NULL` as warning
