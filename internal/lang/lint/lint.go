@@ -85,16 +85,7 @@ func (i Linter) LintStatement(stmt ast.Statement) ([]LintMessage, error) {
 	case ast.Unary:
 		list, err = i.LintStatement(stmt.Right)
 	case ast.Binary:
-		l1, err1 := i.LintStatement(stmt.Left)
-		l2, err2 := i.LintStatement(stmt.Right)
-		list = append(list, l1...)
-		list = append(list, l2...)
-		if err1 != nil {
-			err = err1
-		}
-		if err2 != nil {
-			err = err2
-		}
+		list, err = i.lintBinary(stmt)
 	case ast.Between:
 		l1, err1 := i.LintStatement(stmt.Lower)
 		l2, err2 := i.LintStatement(stmt.Upper)
@@ -123,6 +114,33 @@ func (i Linter) LintStatement(stmt ast.Statement) ([]LintMessage, error) {
 	default:
 	}
 	return list, err
+}
+
+func (i Linter) lintBinary(stmt ast.Binary) ([]LintMessage, error) {
+	l1, err1 := i.LintStatement(stmt.Left)
+	if err1 != nil {
+		return nil, err1
+	}
+	l2, err2 := i.LintStatement(stmt.Right)
+	if err2 != nil {
+		return nil, err2
+	}
+	list = append(list, l1...)
+	list = append(list, l2...)
+
+	if stmt.IsRelation() {
+		return list, nil
+	}
+	if stmt.Op == "!=" {
+		list = append(list, notStandardOperator())
+	}
+	if stmt.Op == "=" || stmt.Op == "<>" {
+		v, ok := stmt.Right.(ast.Value)
+		if ok && v.Constant() {
+			list = append(list, rewritableBinaryExpr())
+		}
+	}
+	return list, nil
 }
 
 func (i Linter) lintList(stmt ast.List) ([]LintMessage, error) {

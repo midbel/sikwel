@@ -2,6 +2,19 @@ package lint
 
 import "fmt"
 
+const (
+	ruleCountMulti      = "count.mulitple"
+	ruleCountInvalid    = "count.invalid"
+	ruleExprRewrite     = "expression.rewrite"
+	ruleExprGroup       = "expression.group"
+	ruleExprAggregate   = "expression.aggregate"
+	ruleExprInvalid     = "expression.invalid"
+	ruleAliasUnexpected = "alias.unexpected"
+	ruleAliasUndefined  = "alias.undefined"
+	ruleAliasDuplicate  = "alias.duplicate"
+	ruleAliasMissing    = "alias.missing"
+)
+
 type Level int
 
 func (e Level) String() string {
@@ -31,6 +44,22 @@ type LintMessage struct {
 	Severity Level
 	Rule     string
 	Message  string
+}
+
+func rewritableBinaryExpr() LintMessage {
+	return LintMessage{
+		Severity: Warning,
+		Message:  "expression can be rewritten",
+		Rule:     ruleExprRewrite,
+	}
+}
+
+func notStandardOperator() LintMessage {
+	return LintMessage{
+		Severity: Warning,
+		Message:  "non standard operator found",
+		Rule:     ruleExprRewrite,
+	}
 }
 
 func countMultipleFields() LintMessage {
@@ -104,15 +133,3 @@ func duplicatedAlias(alias string) LintMessage {
 		Rule:     ruleAliasDuplicate,
 	}
 }
-
-const (
-	ruleCountMulti      = "count.mulitple"
-	ruleCountInvalid    = "count.invalid"
-	ruleExprGroup       = "expression.group"
-	ruleExprAggregate   = "expression.aggregate"
-	ruleExprInvalid     = "expression.invalid"
-	ruleAliasUnexpected = "alias.unexpected"
-	ruleAliasUndefined  = "alias.undefined"
-	ruleAliasDuplicate  = "alias.duplicate"
-	ruleAliasMissing    = "alias.missing"
-)
