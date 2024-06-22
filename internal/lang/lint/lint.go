@@ -125,8 +125,7 @@ func (i Linter) lintBinary(stmt ast.Binary) ([]LintMessage, error) {
 	if err2 != nil {
 		return nil, err2
 	}
-	list = append(list, l1...)
-	list = append(list, l2...)
+	list := slices.Concat(l1, l2)
 
 	if stmt.IsRelation() {
 		return list, nil
@@ -348,6 +347,11 @@ func (i Linter) lintSelect(stmt ast.SelectStatement) ([]LintMessage, error) {
 	list = append(list, checkUndefinedAlias(stmt)...)
 	list = append(list, checkAliasUsedInWhere(stmt)...)
 	list = append(list, checkColumnUsedInGroup(stmt)...)
+	ls, err := i.LintStatement(stmt.Where)
+	if err != nil {
+		return nil, err
+	}
+	list = append(list, ls...)
 	return list, nil
 }
 

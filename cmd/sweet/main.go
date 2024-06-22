@@ -10,7 +10,6 @@ import (
 	"github.com/midbel/sweet/internal/db2"
 	"github.com/midbel/sweet/internal/lang"
 	"github.com/midbel/sweet/internal/lang/complexity"
-	"github.com/midbel/sweet/internal/lang/lint"
 	"github.com/midbel/sweet/internal/lang/parser"
 	"github.com/midbel/sweet/internal/scanner"
 	"github.com/midbel/sweet/internal/token"
@@ -122,51 +121,6 @@ func runScan(args []string) error {
 		}
 		fmt.Println(tok)
 	}
-	return nil
-}
-
-func runLint(args []string) error {
-	var (
-		set     = flag.NewFlagSet("lint", flag.ExitOnError)
-		linter  = lint.NewLinter()
-		dialect string
-		config  string
-		init    bool
-	)
-	set.StringVar(&config, "config", "", "linter configuration")
-	set.StringVar(&dialect, "dialect", "", "SQL dialect")
-	set.BoolVar(&init, "init", false, "create linter configuration file")
-	if err := set.Parse(args); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-
-		}
-		return err
-	}
-	if init {
-		return runInit()
-	}
-	process := func(file string) ([]lint.LintMessage, error) {
-		r, err := os.Open(file)
-		if err != nil {
-			return nil, err
-		}
-		return linter.Lint(r)
-	}
-	for _, f := range set.Args() {
-		list, err := process(f)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			continue
-		}
-		for _, m := range list {
-			fmt.Fprintf(os.Stdout, "%s (%s): %s", m.Rule, m.Severity, m.Message)
-			fmt.Fprintln(os.Stdout)
-		}
-	}
-	return nil
-}
-
-func runInit() error {
 	return nil
 }
 

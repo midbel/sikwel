@@ -9,6 +9,7 @@ const (
 	ruleExprGroup       = "expression.group"
 	ruleExprAggregate   = "expression.aggregate"
 	ruleExprInvalid     = "expression.invalid"
+	ruleJoinCondition   = "join.condition"
 	ruleAliasUnexpected = "alias.unexpected"
 	ruleAliasUndefined  = "alias.undefined"
 	ruleAliasDuplicate  = "alias.duplicate"
@@ -44,6 +45,14 @@ type LintMessage struct {
 	Severity Level
 	Rule     string
 	Message  string
+}
+
+func constantExprInJoin() LintMessage {
+	return LintMessage{
+		Severity: Warning,
+		Message:  "constant expression used in join condition",
+		Rule:     ruleJoinCondition,
+	}
 }
 
 func rewritableBinaryExpr() LintMessage {
