@@ -5,6 +5,83 @@ import (
 	"strings"
 )
 
+func SplitBinary(stmt Statement) (Statement, Statement) {
+	b, ok := stmt.(Binary)
+	if !ok {
+		return stmt, nil
+	}
+	if !b.IsRelation() {
+		return b, nil
+	}
+	var (
+		extract func(Statement) Statement
+		create  func(Binary, []Statement) Binary
+		list    []Statement
+	)
+
+	discard := func(s Statement) bool {
+		b, ok := s.(Binary)
+		if !ok {
+			return true
+		}
+		return isValue(b.Left) || isValue(b.Right)
+	}
+
+	create = func(b Binary, items []Statement) Binary {
+		if len(items) == 1 {
+			b.Right = items[0]
+			return b
+		}
+		b.Left = items[0]
+		b.Op = "AND"
+		if is := items[1:]; len(is) > 1 {
+			var tmp Binary
+			b.Right = create(tmp, is)
+		} else {
+			return create(b, is)
+		}
+		return b
+	}
+
+	extract = func(st Statement) Statement {
+		b, ok := st.(Binary)
+		if !ok && !b.IsRelation() {
+			return b
+		}
+		if !discard(b.Left) && !discard(b.Right) {
+			return b
+		}
+		if !discard(b.Left) {
+			list = append(list, b.Right)
+			return extract(b.Left)
+		}
+		list = append(list, b.Left)
+		return extract(b.Right)
+	}
+	slices.Reverse(list)
+	switch join := extract(b); len(list) {
+	case 0:
+		return join, nil
+	case 1:
+		return join, list[0]
+	case 2:
+		where := Binary{
+			Left:  list[0],
+			Right: list[1],
+			Op:    "AND",
+		}
+		return join, where
+	default:
+		var where Binary
+		return join, create(where, list)
+	}
+}
+
+func isValue(v Statement) bool {
+	_, ok := v.(Value)
+	return ok
+}
+
 func ReplaceOp(b Binary) Binary {
 	if b.Op == "!=" {
 		b.Op = "<>"
