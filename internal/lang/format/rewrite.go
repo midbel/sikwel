@@ -3,6 +3,7 @@ package format
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/midbel/sweet/internal/lang/ast"
 )
@@ -257,7 +258,92 @@ func (w *Writer) rewriteIntersect(stmt ast.IntersectStatement) (ast.Statement, e
 
 func (w *Writer) rewriteSelect(stmt ast.SelectStatement) (ast.Statement, error) {
 	stmt.Where, _ = w.rewrite(stmt.Where)
+	for i := range stmt.Tables {
+		j, ok := stmt.Tables[i].(ast.Join)
+		if ok && joinNeedRewrite(j) {
+			stmt.Tables[i] = w.rewriteJoin(j, stmt.Columns)
+		}
+	}
 	return stmt, nil
+}
+
+func (w *Writer) rewriteJoin(stmt ast.Join, columns []ast.Statement) ast.Statement {
+	var (
+		alias string
+		query ast.Statement = stmt.Table
+	)
+	if q, ok := query.(ast.Alias); ok {
+		query = q.Statement
+		alias = q.Alias
+	}
+	name, ok := query.(ast.Name)
+	if !ok {
+		return stmt
+	}
+
+	var x ast.SelectStatement
+	if alias == "" {
+		x.Tables = append(x.Tables, name)
+	} else {
+		x.Tables = append(x.Tables, ast.Alias{
+			Alias:     alias,
+			Statement: name,
+		})
+	}
+	x.Where = ast.SplitWhereLiteral(stmt.Where)
+	x.Columns = mergeColumns(columns, ast.GetNamesFromWhere(stmt.Where, alias), alias)
+
+	stmt.Where = ast.SplitWhere(stmt.Where)
+	stmt.Table = x
+	if alias != "" {
+		stmt.Table = ast.Alias{
+			Alias:     alias,
+			Statement: stmt.Table,
+		}
+	}
+	return stmt
+}
+
+func mergeColumns(set1, set2 []ast.Statement, prefix string) []ast.Statement {
+	var (
+		tmp  []ast.Statement
+		all  = slices.Concat(set1, set2)
+		seen = make(map[string]struct{})
+	)
+	for i := range all {
+		n, ok := all[i].(ast.Name)
+		if !ok {
+			continue
+		}
+		ident := n.Ident()
+		if _, ok := seen[ident]; ok || !strings.HasPrefix(ident, prefix) {
+			continue
+		}
+		tmp = append(tmp, n)
+		seen[ident] = struct{}{}
+	}
+	return tmp
+}
+
+func joinNeedRewrite(join ast.Join) bool {
+	isValue := func(stmt ast.Statement) bool {
+		_, ok := stmt.(ast.Value)
+		return ok
+	}
+
+	var check func(ast.Statement) bool
+
+	check = func(stmt ast.Statement) bool {
+		b, ok := stmt.(ast.Binary)
+		if !ok {
+			return false
+		}
+		if b.IsRelation() {
+			return check(b.Left) || check(b.Right)
+		}
+		return isValue(b.Left) || isValue(b.Right)
+	}
+	return check(join.Where)
 }
 
 func (w *Writer) rewriteUpdate(stmt ast.UpdateStatement) (ast.Statement, error) {
