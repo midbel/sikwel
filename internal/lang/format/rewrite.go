@@ -258,16 +258,33 @@ func (w *Writer) rewriteIntersect(stmt ast.IntersectStatement) (ast.Statement, e
 
 func (w *Writer) rewriteSelect(stmt ast.SelectStatement) (ast.Statement, error) {
 	stmt.Where, _ = w.rewrite(stmt.Where)
+	return w.rewriteJoins(stmt), nil
+}
+
+func (w *Writer) rewriteJoins(stmt ast.SelectStatement) ast.Statement {
 	for i := range stmt.Tables {
 		j, ok := stmt.Tables[i].(ast.Join)
 		if ok && joinNeedRewrite(j) {
-			stmt.Tables[i] = w.rewriteJoin(j, stmt.Columns)
+			q, w := w.rewriteJoinCondition(j)
+			stmt.Tables[i] = q
+			stmt.Where = ast.Binary{
+				Left:  stmt.Where,
+				Right: w,
+				Op:    "AND",
+			}
+			// stmt.Tables[i] = w.rewriteJoinAsSubquery(j, stmt.Columns)
 		}
 	}
-	return stmt, nil
+	return stmt
 }
 
-func (w *Writer) rewriteJoin(stmt ast.Join, columns []ast.Statement) ast.Statement {
+func (w *Writer) rewriteJoinCondition(stmt ast.Join) (ast.Statement, ast.Statement) {
+	where := ast.SplitWhereLiteral(stmt.Where)
+	stmt.Where = ast.SplitWhere(stmt.Where)
+	return stmt, where
+}
+
+func (w *Writer) rewriteJoinAsSubquery(stmt ast.Join, columns []ast.Statement) ast.Statement {
 	var (
 		alias string
 		query ast.Statement = stmt.Table
