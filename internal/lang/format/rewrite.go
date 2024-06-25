@@ -264,7 +264,12 @@ func (w *Writer) rewriteSelect(stmt ast.SelectStatement) (ast.Statement, error) 
 func (w *Writer) rewriteJoins(stmt ast.SelectStatement) ast.Statement {
 	for i := range stmt.Tables {
 		j, ok := stmt.Tables[i].(ast.Join)
-		if ok && joinNeedRewrite(j) {
+		if !ok && !joinNeedRewrite(j) {
+			continue
+		}
+		if w.Rules.JoinAsSubquery() {
+			stmt.Tables[i] = w.rewriteJoinAsSubquery(j, stmt.Columns)
+		} else if w.Rules.JoinPredicate() || w.Rules.All() {
 			q, w := w.rewriteJoinCondition(j)
 			stmt.Tables[i] = q
 			stmt.Where = ast.Binary{
@@ -272,7 +277,6 @@ func (w *Writer) rewriteJoins(stmt ast.SelectStatement) ast.Statement {
 				Right: w,
 				Op:    "AND",
 			}
-			// stmt.Tables[i] = w.rewriteJoinAsSubquery(j, stmt.Columns)
 		}
 	}
 	return stmt

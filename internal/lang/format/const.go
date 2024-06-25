@@ -9,13 +9,17 @@ const (
 	RewriteMissViewAlias
 	RewriteWithCte
 	RewriteWithSubqueries
+	RewriteJoinSubquery
+	RewriteJoinPredicate
 
 	RewriteAll = RewriteStdExpr |
 		RewriteStdOp |
 		RewriteMissCteAlias |
 		RewriteMissViewAlias |
 		RewriteWithCte |
-		RewriteWithSubqueries
+		RewriteWithSubqueries |
+		RewriteJoinSubquery |
+		RewriteJoinPredicate
 )
 
 func (r RewriteRule) All() bool {
@@ -44,6 +48,14 @@ func (r RewriteRule) ReplaceCteWithSubquery() bool {
 
 func (r RewriteRule) ReplaceSubqueryWithCte() bool {
 	return r&RewriteWithCte != 0
+}
+
+func (r RewriteRule) JoinAsSubquery() bool {
+	return r&RewriteJoinSubquery != 0
+}
+
+func (r RewriteRule) JoinPredicate() bool {
+	return r&RewriteJoinPredicate != 0
 }
 
 func (r RewriteRule) KeepAsIs() bool {
