@@ -49,7 +49,6 @@ func (w *Writer) FormatCreateProcedure(stmt ast.CreateProcedureStatement) error 
 
 func (w *Writer) formatParamter(param ast.ProcedureParameter) error {
 
-	w.WritePrefix()
 	switch param.Mode {
 	case ast.ModeIn:
 		w.WriteKeyword("IN")

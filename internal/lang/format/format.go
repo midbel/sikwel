@@ -100,8 +100,6 @@ func (w *Writer) startStatement(stmt ast.Statement) error {
 		}
 		stmt = com.Statement
 	}
-	w.Enter()
-	defer w.Leave()
 	err := w.FormatStatement(stmt)
 	if err == nil {
 		w.WriteEOL()
@@ -273,7 +271,7 @@ func (w *Writer) formatExists(stmt ast.Exists, _ bool) error {
 	w.Compact = true
 	w.WriteKeyword("EXISTS")
 	w.WriteString("(")
-	if err := w.FormatExpr(stmt.Statement, false); err != nil {
+	if err := w.FormatStatement(stmt.Statement); err != nil {
 		return err
 	}
 	w.WriteString(")")
@@ -467,12 +465,7 @@ func (w *Writer) formatRelation(stmt ast.Binary, nl bool) error {
 	if err := w.FormatExpr(stmt.Left, false); err != nil {
 		return err
 	}
-	w.WriteNL()
-
-	w.Enter()
-	defer w.Leave()
-
-	w.WritePrefix()
+	w.WriteBlank()
 	w.WriteKeyword(stmt.Op)
 	w.WriteBlank()
 	return w.FormatExpr(stmt.Right, false)
@@ -530,7 +523,6 @@ func (w *Writer) WriteComment(str string) {
 	if w.Compact {
 		return
 	}
-	w.WritePrefix()
 	w.WriteString("--")
 	w.WriteBlank()
 	w.WriteString(str)
@@ -561,7 +553,6 @@ func (w *Writer) WriteComma(i int) {
 	if i > 0 {
 		w.WriteNL()
 	}
-	w.WritePrefix()
 	if w.PrependComma && !w.Compact {
 		if i == 0 {
 			w.WriteBlank()
@@ -592,7 +583,6 @@ func (w *Writer) WriteStatement(kw string) {
 }
 
 func (w *Writer) WriteKeyword(kw string) {
-	// w.WriteString(kw)
 	if w.Upperize.Keyword() || w.Upperize.All() {
 		kw = strings.ToUpper(kw)
 	} else {

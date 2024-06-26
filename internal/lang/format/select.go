@@ -80,55 +80,47 @@ func (w *Writer) FormatValues(stmt ast.ValuesStatement) error {
 
 func (w *Writer) FormatSelect(stmt ast.SelectStatement) error {
 	kw, _ := stmt.Keyword()
-	w.WritePrefix()
 	w.WriteKeyword(kw)
 	w.WriteNL()
 	if err := w.FormatSelectColumns(stmt.Columns); err != nil {
 		return err
 	}
 	w.WriteNL()
-	w.WritePrefix()
 	if err := w.FormatFrom(stmt.Tables); err != nil {
 		return err
 	}
 	if stmt.Where != nil {
 		w.WriteNL()
-		w.WritePrefix()
 		if err := w.FormatWhere(stmt.Where); err != nil {
 			return err
 		}
 	}
 	if len(stmt.Groups) > 0 {
 		w.WriteNL()
-		w.WritePrefix()
 		if err := w.FormatGroupBy(stmt.Groups); err != nil {
 			return err
 		}
 	}
 	if stmt.Having != nil {
 		w.WriteNL()
-		w.WritePrefix()
 		if err := w.FormatHaving(stmt.Having); err != nil {
 			return err
 		}
 	}
 	if len(stmt.Windows) > 0 {
 		w.WriteNL()
-		w.WritePrefix()
 		if err := w.FormatWindows(stmt.Windows); err != nil {
 			return err
 		}
 	}
 	if len(stmt.Orders) > 0 {
 		w.WriteNL()
-		w.WritePrefix()
 		if err := w.FormatOrderBy(stmt.Orders); err != nil {
 			return err
 		}
 	}
 	if stmt.Limit != nil {
 		w.WriteNL()
-		w.WritePrefix()
 		if err := w.FormatLimit(stmt.Limit); err != nil {
 			return nil
 		}
@@ -137,14 +129,11 @@ func (w *Writer) FormatSelect(stmt ast.SelectStatement) error {
 }
 
 func (w *Writer) FormatSelectColumns(columns []ast.Statement) error {
-	w.Enter()
-	defer w.Leave()
 	for i, v := range columns {
 		if i > 0 {
 			w.WriteString(",")
 			w.WriteNL()
 		}
-		w.WritePrefix()
 		if err := w.FormatExpr(v, false); err != nil {
 			return err
 		}
@@ -163,9 +152,6 @@ func (w *Writer) FormatWhere(stmt ast.Statement) error {
 }
 
 func (w *Writer) formatFromJoin(join ast.Join) error {
-	w.Enter()
-	defer w.Leave()
-	w.WritePrefix()
 	w.WriteKeyword(join.Type)
 	w.WriteBlank()
 
@@ -218,7 +204,6 @@ func (w *Writer) FormatFrom(list []ast.Statement) error {
 		}
 		if i > 0 {
 			w.WriteNL()
-			w.WritePrefix()
 		}
 		switch s := s.(type) {
 		case ast.Name:
@@ -271,7 +256,6 @@ func (w *Writer) FormatWindows(windows []ast.Statement) error {
 
 	if len(windows) > 1 {
 		w.WriteNL()
-		w.WritePrefix()
 	} else {
 		w.WriteBlank()
 	}
@@ -284,7 +268,6 @@ func (w *Writer) FormatWindows(windows []ast.Statement) error {
 		if i > 0 {
 			w.WriteString(",")
 			w.WriteNL()
-			w.WritePrefix()
 		}
 		if err := w.FormatExpr(def.Ident, false); err != nil {
 			return err
@@ -408,7 +391,6 @@ func (w *Writer) FormatOffset(limit ast.Statement) error {
 	if !ok {
 		return w.CanNotUse("fetch", limit)
 	}
-	w.WritePrefix()
 	if lim.Offset > 0 {
 		w.WriteKeyword("OFFSET")
 		w.WriteBlank()
@@ -454,7 +436,6 @@ func (w *Writer) FormatWith(stmt ast.WithStatement) error {
 }
 
 func (w *Writer) FormatCte(stmt ast.CteStatement) error {
-	w.WritePrefix()
 	ident := stmt.Ident
 	if w.Upperize.Identifier() {
 		ident = strings.ToUpper(ident)
@@ -483,8 +464,6 @@ func (w *Writer) FormatCte(stmt ast.CteStatement) error {
 	w.WriteString("(")
 	w.WriteNL()
 
-	w.Enter()
-	defer w.Leave()
 	if err := w.FormatStatement(stmt.Statement); err != nil {
 		return err
 	}

@@ -29,7 +29,6 @@ func (w *Writer) FormatMerge(stmt ast.MergeStatement) error {
 			return w.CanNotUse("merge", a)
 		}
 		w.WriteNL()
-		w.WritePrefix()
 		if err := w.FormatMatch(m); err != nil {
 			return err
 		}
@@ -61,11 +60,6 @@ func (w *Writer) FormatMatch(stmt ast.MatchStatement) error {
 	w.WriteBlank()
 	w.WriteKeyword("THEN")
 	w.WriteNL()
-
-	w.Enter()
-	defer w.Leave()
-
-	w.WritePrefix()
 
 	switch stmt := stmt.Statement.(type) {
 	case ast.DeleteStatement:
@@ -301,7 +295,6 @@ func (w *Writer) FormatAssignment(list []ast.Statement) error {
 		if !ok {
 			return w.CanNotUse("assignment", s)
 		}
-		w.WritePrefix()
 		switch field := ass.Field.(type) {
 		case ast.Name:
 			w.FormatName(field)

@@ -36,7 +36,6 @@ func (w *Writer) FormatAlias(alias ast.Alias) error {
 		err = w.FormatStatement(alias.Statement)
 		if err == nil {
 			w.WriteNL()
-			w.WritePrefix()
 			w.WriteString(")")
 		}
 	} else {
@@ -106,7 +105,6 @@ func (w *Writer) FormatRow(stmt ast.Row, nl bool) error {
 		}
 		if nl {
 			w.WriteNL()
-			w.WritePrefix()
 		}
 		if err := w.FormatExpr(v, false); err != nil {
 			return err
@@ -133,26 +131,19 @@ func (w *Writer) FormatCase(stmt ast.Case) error {
 	}
 	if stmt.Else != nil {
 		w.WriteNL()
-		w.Enter()
-		w.WritePrefix()
 		w.WriteKeyword("ELSE")
 		w.WriteBlank()
 
 		if err := w.FormatExpr(stmt.Else, false); err != nil {
 			return err
 		}
-		w.Leave()
 	}
 	w.WriteNL()
-	w.WritePrefix()
 	w.WriteKeyword("END")
 	return nil
 }
 
 func (w *Writer) FormatWhen(stmt ast.When) error {
-	w.Enter()
-	defer w.Leave()
-	w.WritePrefix()
 	w.WriteKeyword("WHEN")
 	w.WriteBlank()
 	if err := w.FormatExpr(stmt.Cdt, false); err != nil {

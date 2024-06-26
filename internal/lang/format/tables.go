@@ -105,7 +105,6 @@ func (w *Writer) FormatCreateTableWithFormatter(ctf CreateTableFormatter, stmt a
 	for _, c := range stmt.Constraints {
 		w.WriteString(",")
 		w.WriteNL()
-		w.WritePrefix()
 		if err := ctf.FormatConstraint(c); err != nil {
 			return err
 		}
@@ -124,7 +123,6 @@ func (w *Writer) FormatColumnDef(ctf ConstraintFormatter, stmt ast.Statement, si
 	if !ok {
 		return w.CanNotUse("column", stmt)
 	}
-	w.WritePrefix()
 	w.WriteString(def.Name)
 	if z := len(def.Name); size > 0 && z < size {
 		w.WriteString(strings.Repeat(" ", size-z))
