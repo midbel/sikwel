@@ -465,9 +465,12 @@ func (w *Writer) formatRelation(stmt ast.Binary, nl bool) error {
 	if err := w.FormatExpr(stmt.Left, false); err != nil {
 		return err
 	}
-	w.WriteBlank()
+	w.WriteNL()
+	w.Enter()
+	w.WritePrefix()
 	w.WriteKeyword(stmt.Op)
 	w.WriteBlank()
+	w.Leave()
 	return w.FormatExpr(stmt.Right, false)
 }
 
@@ -577,11 +580,6 @@ func (w *Writer) WriteBlank() {
 	w.inner.WriteRune(' ')
 }
 
-func (w *Writer) WriteStatement(kw string) {
-	w.WritePrefix()
-	w.WriteKeyword(kw)
-}
-
 func (w *Writer) WriteKeyword(kw string) {
 	if w.Upperize.Keyword() || w.Upperize.All() {
 		kw = strings.ToUpper(kw)
@@ -633,28 +631,11 @@ func (w *Writer) Leave() {
 	w.currDepth--
 }
 
-func (w *Writer) zero(fn func() error) error {
-	depth := w.currDepth
-	defer func() {
-		w.currDepth = depth
-	}()
-	w.Reset()
-	return fn()
-}
-
 func (w *Writer) getCurrDepth() int {
 	if w.currDepth < 0 {
 		return 0
 	}
 	return w.currDepth
-}
-
-func (w *Writer) enterExpr() {
-	w.currExprDepth++
-}
-
-func (w *Writer) leaveExpr() {
-	w.currExprDepth--
 }
 
 func (w *Writer) CanNotUse(ctx string, stmt ast.Statement) error {

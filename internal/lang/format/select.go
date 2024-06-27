@@ -13,6 +13,8 @@ func (w *Writer) FormatUnion(stmt ast.UnionStatement) error {
 		return err
 	}
 	w.WriteNL()
+	w.Enter()
+	w.WritePrefix()
 	w.WriteKeyword("UNION")
 	if stmt.All {
 		w.WriteBlank()
@@ -23,6 +25,7 @@ func (w *Writer) FormatUnion(stmt ast.UnionStatement) error {
 		w.WriteKeyword("DISTINCT")
 	}
 	w.WriteNL()
+	w.Leave()
 	return w.FormatStatement(stmt.Right)
 }
 
@@ -31,6 +34,8 @@ func (w *Writer) FormatExcept(stmt ast.ExceptStatement) error {
 		return err
 	}
 	w.WriteNL()
+	w.Enter()
+	w.WritePrefix()
 	w.WriteKeyword("EXCEPT")
 	if stmt.All {
 		w.WriteBlank()
@@ -41,6 +46,7 @@ func (w *Writer) FormatExcept(stmt ast.ExceptStatement) error {
 		w.WriteKeyword("DISTINCT")
 	}
 	w.WriteNL()
+	w.Leave()
 	return w.FormatStatement(stmt.Right)
 }
 
@@ -49,6 +55,8 @@ func (w *Writer) FormatIntersect(stmt ast.IntersectStatement) error {
 		return err
 	}
 	w.WriteNL()
+	w.Enter()
+	w.WritePrefix()
 	w.WriteKeyword("INTERSECT")
 	if stmt.All {
 		w.WriteBlank()
@@ -59,6 +67,7 @@ func (w *Writer) FormatIntersect(stmt ast.IntersectStatement) error {
 		w.WriteKeyword("DISTINCT")
 	}
 	w.WriteNL()
+	w.Leave()
 	return w.FormatStatement(stmt.Right)
 }
 
@@ -79,24 +88,31 @@ func (w *Writer) FormatValues(stmt ast.ValuesStatement) error {
 }
 
 func (w *Writer) FormatSelect(stmt ast.SelectStatement) error {
+	w.Enter()
+	defer w.Leave()
+
 	kw, _ := stmt.Keyword()
+	w.WritePrefix()
 	w.WriteKeyword(kw)
 	w.WriteNL()
 	if err := w.FormatSelectColumns(stmt.Columns); err != nil {
 		return err
 	}
 	w.WriteNL()
+	w.WritePrefix()
 	if err := w.FormatFrom(stmt.Tables); err != nil {
 		return err
 	}
 	if stmt.Where != nil {
 		w.WriteNL()
+		w.WritePrefix()
 		if err := w.FormatWhere(stmt.Where); err != nil {
 			return err
 		}
 	}
 	if len(stmt.Groups) > 0 {
 		w.WriteNL()
+		w.WritePrefix()
 		if err := w.FormatGroupBy(stmt.Groups); err != nil {
 			return err
 		}
@@ -109,18 +125,21 @@ func (w *Writer) FormatSelect(stmt ast.SelectStatement) error {
 	}
 	if len(stmt.Windows) > 0 {
 		w.WriteNL()
+		w.WritePrefix()
 		if err := w.FormatWindows(stmt.Windows); err != nil {
 			return err
 		}
 	}
 	if len(stmt.Orders) > 0 {
 		w.WriteNL()
+		w.WritePrefix()
 		if err := w.FormatOrderBy(stmt.Orders); err != nil {
 			return err
 		}
 	}
 	if stmt.Limit != nil {
 		w.WriteNL()
+		w.WritePrefix()
 		if err := w.FormatLimit(stmt.Limit); err != nil {
 			return nil
 		}
@@ -129,11 +148,14 @@ func (w *Writer) FormatSelect(stmt ast.SelectStatement) error {
 }
 
 func (w *Writer) FormatSelectColumns(columns []ast.Statement) error {
+	w.Enter()
+	defer w.Leave()
 	for i, v := range columns {
 		if i > 0 {
 			w.WriteString(",")
 			w.WriteNL()
 		}
+		w.WritePrefix()
 		if err := w.FormatExpr(v, false); err != nil {
 			return err
 		}
@@ -152,6 +174,7 @@ func (w *Writer) FormatWhere(stmt ast.Statement) error {
 }
 
 func (w *Writer) formatFromJoin(join ast.Join) error {
+	w.WritePrefix()
 	w.WriteKeyword(join.Type)
 	w.WriteBlank()
 
@@ -160,13 +183,30 @@ func (w *Writer) formatFromJoin(join ast.Join) error {
 	case ast.Name:
 		w.FormatName(s)
 	case ast.Alias:
-		err = w.FormatAlias(s)
+		if _, ok := s.Statement.(ast.SelectStatement); !ok {
+			err = w.FormatAlias(s)
+			break
+		}
+		w.WriteString("(")
+		w.WriteNL()
+		if err = w.FormatStatement(s.Statement); err != nil {
+			break
+		}
+		w.WriteNL()
+		w.WritePrefix()
+		w.WriteString(")")
+		w.WriteBlank()
+		if w.UseAs {
+			w.WriteKeyword("AS")
+			w.WriteBlank()
+		}
+		w.WriteString(s.Alias)
 	case ast.SelectStatement:
 		w.WriteString("(")
 		err = w.FormatSelect(s)
 		w.WriteString(")")
 	default:
-		return w.CanNotUse("from", s)
+		return w.CanNotUse("join", s)
 	}
 	if err != nil {
 		return err
@@ -355,13 +395,13 @@ func (w *Writer) formatOrder(order ast.Order) error {
 	w.FormatName(n)
 	if order.Dir != "" {
 		w.WriteBlank()
-		w.WriteString(order.Dir)
+		w.WriteKeyword(order.Dir)
 	}
 	if order.Nulls != "" {
 		w.WriteBlank()
 		w.WriteKeyword("NULLS")
 		w.WriteBlank()
-		w.WriteString(order.Nulls)
+		w.WriteKeyword(order.Nulls)
 	}
 	return nil
 }

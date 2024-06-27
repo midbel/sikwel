@@ -131,19 +131,26 @@ func (w *Writer) FormatCase(stmt ast.Case) error {
 	}
 	if stmt.Else != nil {
 		w.WriteNL()
+		w.Enter()
+		w.WritePrefix()
 		w.WriteKeyword("ELSE")
 		w.WriteBlank()
 
 		if err := w.FormatExpr(stmt.Else, false); err != nil {
 			return err
 		}
+		w.Leave()
 	}
 	w.WriteNL()
+	w.WritePrefix()
 	w.WriteKeyword("END")
 	return nil
 }
 
 func (w *Writer) FormatWhen(stmt ast.When) error {
+	w.Enter()
+	defer w.Leave()
+	w.WritePrefix()
 	w.WriteKeyword("WHEN")
 	w.WriteBlank()
 	if err := w.FormatExpr(stmt.Cdt, false); err != nil {
