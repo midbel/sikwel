@@ -24,6 +24,35 @@ func (w *Writer) Rewrite(stmt ast.Statement) (ast.Statement, error) {
 	return w.rewrite(stmt)
 }
 
+func (w *Writer) rewrite(stmt ast.Statement) (ast.Statement, error) {
+	switch st := stmt.(type) {
+	case ast.SelectStatement:
+		stmt, _ = w.rewriteSelect(st)
+	case ast.UpdateStatement:
+		stmt, _ = w.rewriteUpdate(st)
+	case ast.DeleteStatement:
+		stmt, _ = w.rewriteDelete(st)
+	case ast.WithStatement:
+		stmt, _ = w.rewriteWith(st)
+	case ast.CteStatement:
+		stmt, _ = w.rewriteCte(st)
+	case ast.UnionStatement:
+		stmt, _ = w.rewriteUnion(st)
+	case ast.ExceptStatement:
+		stmt, _ = w.rewriteExcept(st)
+	case ast.IntersectStatement:
+		stmt, _ = w.rewriteIntersect(st)
+	case ast.Binary:
+		stmt, _ = w.rewriteBinary(st)
+	case ast.In:
+		stmt, _ = w.rewriteIn(st, false)
+	case ast.Not:
+		stmt, _ = w.rewriteNot(st)
+	default:
+	}
+	return stmt, nil
+}
+
 func (w *Writer) replaceSubqueryWithCte(stmt ast.Statement) (ast.Statement, error) {
 	var with ast.WithStatement
 	if w, ok := stmt.(ast.WithStatement); ok {
@@ -180,29 +209,38 @@ func (w *Writer) replaceCte(stmt ast.SelectStatement, qs []ast.CteStatement) (as
 	return stmt, nil
 }
 
-func (w *Writer) rewrite(stmt ast.Statement) (ast.Statement, error) {
-	switch st := stmt.(type) {
-	case ast.SelectStatement:
-		stmt, _ = w.rewriteSelect(st)
-	case ast.UpdateStatement:
-		stmt, _ = w.rewriteUpdate(st)
-	case ast.DeleteStatement:
-		stmt, _ = w.rewriteDelete(st)
-	case ast.WithStatement:
-		stmt, _ = w.rewriteWith(st)
-	case ast.CteStatement:
-		stmt, _ = w.rewriteCte(st)
-	case ast.UnionStatement:
-		stmt, _ = w.rewriteUnion(st)
-	case ast.ExceptStatement:
-		stmt, _ = w.rewriteExcept(st)
-	case ast.IntersectStatement:
-		stmt, _ = w.rewriteIntersect(st)
-	case ast.Binary:
-		stmt, _ = w.rewriteBinary(st)
-	default:
+func (w *Writer) rewriteNot(stmt ast.Not) (ast.Statement, error) {
+	if !w.Rules.UseStdExpr() && !w.Rules.All() {
+		return stmt, nil
 	}
-	return stmt, nil
+	switch stmt := stmt.Statement.(type) {
+	case ast.In:
+		return w.rewriteIn(stmt, true)
+	default:
+		return stmt, nil
+	}
+}
+
+func (w *Writer) rewriteIn(stmt ast.In, not bool) (ast.Statement, error) {
+	if !w.Rules.UseStdExpr() && !w.Rules.All() {
+		return stmt, nil
+	}
+	list, ok := stmt.Value.(ast.List)
+	if !ok {
+		return stmt, nil
+	}
+	if len(list.Values) != 1 {
+		return stmt, nil
+	}
+	bin := ast.Binary{
+		Left:  stmt.Ident,
+		Right: list.Values[0],
+		Op:    "=",
+	}
+	if not {
+		bin.Op = "<>"
+	}
+	return bin, nil
 }
 
 func (w *Writer) rewriteBinary(stmt ast.Binary) (ast.Statement, error) {
