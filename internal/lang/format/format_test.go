@@ -60,7 +60,14 @@ func getSQL(file string) (string, string, error) {
 		str := scan.Text()
 		lines = append(lines, strings.TrimSpace(str))
 	}
-	sql := strings.ReplaceAll(buf.String(), "\t", "    ")
+
+	var (
+		sql   = strings.ReplaceAll(buf.String(), "\t", "    ")
+		parts = strings.Split(sql, "--")
+	)
+	if len(parts) > 1 {
+		sql = parts[len(parts)-1]
+	}
 	sql = strings.TrimSpace(sql)
 	return strings.Join(lines, " "), sql, scan.Err()
 }

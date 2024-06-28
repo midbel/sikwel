@@ -44,7 +44,7 @@ func (p *Parser) ParseFormatMacro() error {
 	}
 	value := strings.ToLower(p.GetCurrLiteral())
 	switch key {
-	case "as", "comma", "quote", "compact", "space":
+	case "as", "comma", "quote", "compact", "space", "keepspace":
 		v, err := strconv.ParseBool(value)
 		if err != nil {
 			return err
