@@ -285,7 +285,9 @@ func (w *Writer) formatCollate(stmt ast.Collate, _ bool) error {
 	w.WriteBlank()
 	w.WriteKeyword("COLLATE")
 	w.WriteBlank()
+	w.WriteString("\"")
 	w.WriteString(stmt.Collation)
+	w.WriteString("\"")
 	return nil
 }
 

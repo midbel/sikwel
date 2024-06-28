@@ -1,8 +1,6 @@
 package parser
 
 import (
-	// "fmt"
-
 	"github.com/midbel/sweet/internal/lang/ast"
 	"github.com/midbel/sweet/internal/token"
 )
@@ -304,7 +302,7 @@ func (p *Parser) parseCollateExpr(left ast.Statement) (ast.Statement, error) {
 		Statement: left,
 	}
 	p.Next()
-	if !p.Is(token.Literal) {
+	if !p.Is(token.Ident) {
 		return nil, p.Unexpected("collate")
 	}
 	stmt.Collation = p.GetCurrLiteral()
@@ -526,6 +524,7 @@ var bindings = map[token.Symbol]int{
 	token.SymbolFor(token.Keyword, "IS"):      powKw,
 	token.SymbolFor(token.Keyword, "ISNULL"):  powKw,
 	token.SymbolFor(token.Keyword, "NOTNULL"): powKw,
+	token.SymbolFor(token.Keyword, "COLLATE"): powKw,
 	// symbolFor(Keyword, "AS"):      powKw,
 	token.SymbolFor(token.Lt, ""):     powCmp,
 	token.SymbolFor(token.Le, ""):     powCmp,
