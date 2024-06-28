@@ -7,17 +7,6 @@ import (
 	"github.com/midbel/sweet/internal/token"
 )
 
-type SelectParser interface {
-	ParseColumns() ([]ast.Statement, error)
-	ParseFrom() ([]ast.Statement, error)
-	ParseWhere() (ast.Statement, error)
-	ParseGroupBy() ([]ast.Statement, error)
-	ParseHaving() (ast.Statement, error)
-	ParseOrderBy() ([]ast.Statement, error)
-	ParseWindows() ([]ast.Statement, error)
-	ParseLimit() (ast.Statement, error)
-}
-
 func (p *Parser) ParseValues() (ast.Statement, error) {
 	p.Next()
 	var (
@@ -74,10 +63,6 @@ func (p *Parser) ParseValues() (ast.Statement, error) {
 }
 
 func (p *Parser) ParseSelect() (ast.Statement, error) {
-	return p.ParseSelectStatement(p)
-}
-
-func (p *Parser) ParseSelectStatement(sp SelectParser) (ast.Statement, error) {
 	p.Next()
 	var (
 		stmt ast.SelectStatement
@@ -87,28 +72,28 @@ func (p *Parser) ParseSelectStatement(sp SelectParser) (ast.Statement, error) {
 		stmt.Distinct = true
 		p.Next()
 	}
-	if stmt.Columns, err = sp.ParseColumns(); err != nil {
+	if stmt.Columns, err = p.ParseColumns(); err != nil {
 		return nil, err
 	}
-	if stmt.Tables, err = sp.ParseFrom(); err != nil {
+	if stmt.Tables, err = p.ParseFrom(); err != nil {
 		return nil, err
 	}
-	if stmt.Where, err = sp.ParseWhere(); err != nil {
+	if stmt.Where, err = p.ParseWhere(); err != nil {
 		return nil, err
 	}
-	if stmt.Groups, err = sp.ParseGroupBy(); err != nil {
+	if stmt.Groups, err = p.ParseGroupBy(); err != nil {
 		return nil, err
 	}
-	if stmt.Having, err = sp.ParseHaving(); err != nil {
+	if stmt.Having, err = p.ParseHaving(); err != nil {
 		return nil, err
 	}
-	if stmt.Windows, err = sp.ParseWindows(); err != nil {
+	if stmt.Windows, err = p.ParseWindows(); err != nil {
 		return nil, err
 	}
-	if stmt.Orders, err = sp.ParseOrderBy(); err != nil {
+	if stmt.Orders, err = p.ParseOrderBy(); err != nil {
 		return nil, err
 	}
-	if stmt.Limit, err = sp.ParseLimit(); err != nil {
+	if stmt.Limit, err = p.ParseLimit(); err != nil {
 		return nil, err
 	}
 	allDistinct := func() (bool, bool) {
@@ -128,21 +113,21 @@ func (p *Parser) ParseSelectStatement(sp SelectParser) (ast.Statement, error) {
 			Left: stmt,
 		}
 		u.All, u.Distinct = allDistinct()
-		u.Right, err = p.ParseSelectStatement(sp)
+		u.Right, err = p.ParseSelect()
 		return u, err
 	case p.IsKeyword("INTERSECT"):
 		i := ast.IntersectStatement{
 			Left: stmt,
 		}
 		i.All, i.Distinct = allDistinct()
-		i.Right, err = p.ParseSelectStatement(sp)
+		i.Right, err = p.ParseSelect()
 		return i, err
 	case p.IsKeyword("EXCEPT"):
 		e := ast.ExceptStatement{
 			Left: stmt,
 		}
 		e.All, e.Distinct = allDistinct()
-		e.Right, err = p.ParseSelectStatement(sp)
+		e.Right, err = p.ParseSelect()
 		return e, err
 	default:
 		return stmt, err
@@ -477,10 +462,12 @@ func (p *Parser) ParseOrderBy() ([]ast.Statement, error) {
 		}
 		order := ast.Order{
 			Statement: stmt,
-			Dir:       "ASC",
 		}
-		if p.IsKeyword("ASC") || p.IsKeyword("DESC") {
-			order.Dir = p.GetCurrLiteral()
+		if p.IsKeyword("ASC") {
+			order.Dir = ast.AscOrder
+			p.Next()
+		} else if p.IsKeyword("DESC") {
+			order.Dir = ast.DescOrder
 			p.Next()
 		}
 		if p.IsKeyword("NULLS") {

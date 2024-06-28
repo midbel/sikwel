@@ -393,9 +393,16 @@ func (w *Writer) formatOrder(order ast.Order) error {
 		return w.CanNotUse("order by", order.Statement)
 	}
 	w.FormatName(n)
-	if order.Dir != "" {
+	switch order.Dir {
+	case 0:
+	case ast.AscOrder:
 		w.WriteBlank()
-		w.WriteKeyword(order.Dir)
+		w.WriteKeyword("ASC")
+	case ast.DescOrder:
+		w.WriteBlank()
+		w.WriteKeyword("DESC")
+	default:
+		return fmt.Errorf("invalid order direction")
 	}
 	if order.Nulls != "" {
 		w.WriteBlank()

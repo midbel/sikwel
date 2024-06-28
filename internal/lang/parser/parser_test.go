@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/midbel/sweet/internal/lang"
+	"github.com/midbel/sweet/internal/lang/parser"
 )
 
 func TestParserShouldFail(t *testing.T) {
@@ -16,7 +16,7 @@ func TestParserShouldFail(t *testing.T) {
 		"select e.dept count(e.id) from employees e where e.salary >= 1000 and e.manager is null group by e.dept;",
 	}
 	for _, q := range queries {
-		p, err := lang.NewParser(strings.NewReader(q))
+		p, err := parser.NewParser(strings.NewReader(q))
 		if err != nil {
 			t.Errorf("fail to create parser for query: %s", q)
 			continue
@@ -57,7 +57,7 @@ func testFile(t *testing.T, file string) {
 	}
 	defer r.Close()
 
-	p, err := lang.NewParser(r)
+	p, err := parser.NewParser(r)
 	if err != nil {
 		t.Errorf("fail to create parser for file %s (%s)", file, err)
 		return

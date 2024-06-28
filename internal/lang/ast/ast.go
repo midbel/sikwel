@@ -26,9 +26,16 @@ type Offset struct {
 	Next bool
 }
 
+type OrderDir uint8
+
+const (
+	AscOrder OrderDir = 1 << iota
+	DescOrder
+)
+
 type Order struct {
 	Statement
-	Dir   string
+	Dir   OrderDir
 	Nulls string
 }
 
