@@ -1,5 +1,6 @@
 @format as true;
 @format keepspace false;
+@format quote true;
 
 select
 	e.firstname fname,
@@ -15,14 +16,14 @@ where exists(
 fetch first 100 rows only;
 --
 select
-	e.firstname as fname,
-	e.lastname as lname
-from employees as e
+	"e"."firstname" as "fname",
+	"e"."lastname" as "lname"
+from "employees" as "e"
 where exists(
 	select
-		d.name,
-		d.active
-	from departments as d
-	where d.dept='it'
+		"d"."name",
+		"d"."active"
+	from "departments" as "d"
+	where "d"."dept"='it'
 )
 fetch first 100 rows only;
