@@ -9,5 +9,5 @@ select
 	firstname || ' ' || lastname,
 	salary
 from employees
-where salary > all(select salary from managers)
+where not salary > all(select salary from managers)
 	and dept = any(select name from departments where technic is true);

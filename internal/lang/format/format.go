@@ -275,7 +275,7 @@ func (w *Writer) formatNot(stmt ast.Not, _ bool) error {
 	default:
 		w.WriteKeyword("NOT")
 		w.WriteBlank()
-		return w.FormatStatement(stmt)
+		return w.FormatExpr(stmt, false)
 	}
 }
 
