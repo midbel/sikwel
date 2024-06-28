@@ -46,11 +46,28 @@ func (c *Config) Sub(key string) *Config {
 	}
 }
 
-func (c Config) Get(key string) any {
+func (c *Config) Set(key string, value any) {
+	c.values[key] = value
+}
+
+func (c *Config) Add(key string, value any) {
+	vs, ok := c.values[key]
+	if !ok {
+		c.values[key] = append([]any{}, value)
+		return
+	}
+	if vs, ok := vs.([]any); ok {
+		c.values[key] = append(vs, value)
+		return
+	}
+	c.values[key] = append([]any{}, vs, value)
+}
+
+func (c *Config) Get(key string) any {
 	return c.values[key]
 }
 
-func (c Config) Apply(key string, fn func(value any) error) error {
+func (c *Config) Apply(key string, fn func(value any) error) error {
 	value := c.Get(key)
 	if value == nil {
 		return nil
@@ -58,12 +75,20 @@ func (c Config) Apply(key string, fn func(value any) error) error {
 	return fn(value)
 }
 
-func (c Config) GetString(key string) string {
-	v, _ := c.Get(key).(string)
-	return v
+func (c *Config) GetString(key string) string {
+	return c.GetDefaultString(key, "")
 }
 
-func (c Config) GetStrings(key string) []string {
+func (c *Config) GetDefaultString(key, value string) string {
+	v, ok := c.Get(key).(string)
+	if !ok {
+		v = value
+	}
+	return v
+
+}
+
+func (c *Config) GetStrings(key string) []string {
 	vs, ok := c.Get(key).([]any)
 	if !ok {
 		str := c.GetString(key)
@@ -79,23 +104,56 @@ func (c Config) GetStrings(key string) []string {
 	return arr
 }
 
-func (c Config) GetBool(key string) bool {
-	v, _ := c.Get(key).(bool)
+func (c *Config) GetBool(key string) bool {
+	return c.GetDefaultBool(key, false)
+}
+
+func (c *Config) GetDefaultBool(key string, value bool) bool {
+	v, ok := c.Get(key).(bool)
+	if !ok {
+		v = value
+	}
 	return v
 }
 
-func (c Config) GetInt(key string) int64 {
-	v, _ := c.Get(key).(float64)
+func (c *Config) GetInt(key string) int64 {
+	return c.GetDefaultInt(key, 0)
+}
+
+func (c *Config) GetDefaultInt(key string, value int64) int64 {
+	got := c.Get(key)
+	if n, ok := got.(int64); ok {
+		return n
+	}
+	v, ok := got.(float64)
+	if !ok {
+		return value
+	}
 	return int64(v)
 }
 
-func (c Config) GetFloat(key string) float64 {
-	v, _ := c.Get(key).(float64)
+func (c *Config) GetFloat(key string) float64 {
+	return c.GetDefaultFloat(key, 0)
+}
+
+func (c *Config) GetDefaultFloat(key string, value float64) float64 {
+	v, ok := c.Get(key).(float64)
+	if !ok {
+		v = value
+	}
 	return v
 }
 
-func (c Config) GetTime(key string) time.Time {
-	return time.Now()
+func (c *Config) GetTime(key string) time.Time {
+	return c.GetDefaultTime(key, time.Now())
+}
+
+func (c *Config) GetDefaultTime(key string, value time.Time) time.Time {
+	v, ok := c.Get(key).(time.Time)
+	if !ok {
+		v = value
+	}
+	return v
 }
 
 type Parser struct {

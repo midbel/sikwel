@@ -70,6 +70,21 @@ func (w *Writer) Format(r io.Reader) error {
 	if err != nil {
 		return err
 	}
+	if p, ok := p.(*parser.Parser); ok {
+		w.Compact = p.GetDefaultBool("compact", w.Compact)
+		w.UseIndent = int(p.GetDefaultInt("indent", int64(w.UseIndent)))
+		w.UseSpace = p.GetDefaultBool("space", w.UseSpace)
+		w.UseAs = p.GetDefaultBool("as", w.UseAs)
+		w.UseQuote = p.GetDefaultBool("quote", w.UseQuote)
+		w.UseCrlf = p.GetDefaultBool("crlf", w.UseCrlf)
+		w.KeepComment = p.GetDefaultBool("comment", w.KeepComment)
+		for _, r := range p.GetStrings("rewrite") {
+			_ = r
+		}
+		for _, r := range p.GetStrings("upperize") {
+			_ = r
+		}
+	}
 	for {
 		stmt, err := p.Parse()
 		if err != nil {

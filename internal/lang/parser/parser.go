@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/midbel/sweet/internal/config"
 	"github.com/midbel/sweet/internal/lang"
 	"github.com/midbel/sweet/internal/lang/ast"
 	"github.com/midbel/sweet/internal/scanner"
@@ -16,6 +17,7 @@ import (
 
 type Parser struct {
 	*frame
+	*config.Config
 	stack []*frame
 
 	level int
@@ -45,6 +47,7 @@ func ParseWithScanner(scan *scanner.Scanner) (*Parser, error) {
 		return nil, err
 	}
 	var p Parser
+	p.Config = config.Make()
 	p.frame = f
 	p.queries = make(map[string]ast.Statement)
 	p.values = make(map[string]ast.Statement)
@@ -55,7 +58,7 @@ func ParseWithScanner(scan *scanner.Scanner) (*Parser, error) {
 	p.setDefaultFuncSet()
 	p.toggleAlias()
 
-	return &p, nil
+	return &p, p.start()
 }
 
 func (p *Parser) DefineVars(file string) error {
@@ -65,6 +68,15 @@ func (p *Parser) DefineVars(file string) error {
 	}
 	defer r.Close()
 
+	return nil
+}
+
+func (p *Parser) start() error {
+	for p.Is(token.Macro) {
+		if err := p.ParseMacro(); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

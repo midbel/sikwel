@@ -1,8 +1,11 @@
 package parser
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/midbel/sweet/internal/token"
 )
@@ -20,12 +23,63 @@ func (p *Parser) ParseMacro() error {
 		err = p.ParseEnvMacro()
 	case "VAR":
 		err = p.ParseVarMacro()
+	case "FORMAT":
+		err = p.ParseFormatMacro()
+	case "LINT":
+		err = p.ParseLintMacro()
 	default:
 		err = p.Unexpected("macro")
 	}
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (p *Parser) ParseFormatMacro() error {
+	p.Next()
+	if !p.Is(token.Ident) && !p.Is(token.Literal) && !p.Is(token.Keyword) {
+		return p.Unexpected("format(key)")
+	}
+	key := strings.ToLower(p.GetCurrLiteral())
+	p.Next()
+	if !p.Is(token.Ident) && !p.Is(token.Number) && !p.Is(token.Literal) && !p.Is(token.Keyword) {
+		return p.Unexpected("format(value)")
+	}
+	value := strings.ToLower(p.GetCurrLiteral())
+	switch key {
+	case "as", "comma", "quote", "compact", "space":
+		v, err := strconv.ParseBool(value)
+		if err != nil {
+			return err
+		}
+		p.Config.Set(key, v)
+	case "comment":
+		p.Config.Set(key, value == "keep")
+	case "newline":
+		p.Config.Set("crlf", value == "crlf")
+	case "upperize":
+		p.Config.Add("upperize", value)
+	case "rewrite":
+		p.Config.Add("rewrite", value)
+	case "indent":
+		v, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return err
+		}
+		p.Config.Set(key, v)
+	default:
+		return p.Unexpected(fmt.Sprintf("format(%s)", key))
+	}
+	p.Next()
+	if !p.Is(token.EOL) {
+		return p.wantError("format", ";")
+	}
+	p.Next()
+	return nil
+}
+
+func (p *Parser) ParseLintMacro() error {
 	return nil
 }
 
