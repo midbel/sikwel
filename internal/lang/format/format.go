@@ -264,16 +264,14 @@ func (w *Writer) formatNot(stmt ast.Not, _ bool) error {
 }
 
 func (w *Writer) formatExists(stmt ast.Exists, _ bool) error {
-	compact := w.Compact
-	defer func() {
-		w.Compact = compact
-	}()
-	w.Compact = true
 	w.WriteKeyword("EXISTS")
+	w.WriteBlank()
 	w.WriteString("(")
+	w.WriteNL()
 	if err := w.FormatStatement(stmt.Statement); err != nil {
 		return err
 	}
+	w.WriteNL()
 	w.WriteString(")")
 	return nil
 }

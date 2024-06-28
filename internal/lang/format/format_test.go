@@ -41,12 +41,8 @@ func testFile(t *testing.T, file string) {
 	got := strings.TrimSpace(ws.String())
 	if got != want {
 		t.Errorf("output SQL mismatched!")
-		t.Logf("got : %s", got)
-		t.Logf("want: %s", want)
-
-		common, diff := compare(want, got)
-		t.Logf("common: %s", common)
-		t.Logf("diff: %s", diff)
+		t.Logf("got : %s", strings.ReplaceAll(got, " ", "_"))
+		t.Logf("want: %s", strings.ReplaceAll(want, " ", "_"))
 	}
 }
 
@@ -67,16 +63,4 @@ func getSQL(file string) (string, string, error) {
 	sql := strings.ReplaceAll(buf.String(), "\t", "    ")
 	sql = strings.TrimSpace(sql)
 	return strings.Join(lines, " "), sql, scan.Err()
-}
-
-func compare(want, got string) (string, string) {
-	for i := range want {
-		if i >= len(got) {
-			return "", got[i:]
-		}
-		if want[i] != got[i] {
-			return want[:i+1], got[i:]
-		}
-	}
-	return "", ""
 }
