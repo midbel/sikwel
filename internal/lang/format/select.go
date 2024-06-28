@@ -183,24 +183,7 @@ func (w *Writer) formatFromJoin(join ast.Join) error {
 	case ast.Name:
 		w.FormatName(s)
 	case ast.Alias:
-		if _, ok := s.Statement.(ast.SelectStatement); !ok {
-			err = w.FormatAlias(s)
-			break
-		}
-		w.WriteString("(")
-		w.WriteNL()
-		if err = w.FormatStatement(s.Statement); err != nil {
-			break
-		}
-		w.WriteNL()
-		w.WritePrefix()
-		w.WriteString(")")
-		w.WriteBlank()
-		if w.UseAs {
-			w.WriteKeyword("AS")
-			w.WriteBlank()
-		}
-		w.WriteString(s.Alias)
+		err = w.FormatAlias(s)
 	case ast.SelectStatement:
 		w.WriteString("(")
 		err = w.FormatSelect(s)

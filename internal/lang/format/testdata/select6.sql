@@ -7,7 +7,9 @@ managers as (
 )
 select
 	firstname || ' ' || lastname,
-	salary
+	salary,
+	avg(salary) over (partition by dept order by salary, dept desc)
 from employees
 where not salary > all(select salary from managers)
+	and salary >= (salary * 1.15)
 	and dept = any(select name from departments where technic is true);
