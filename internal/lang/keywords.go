@@ -50,6 +50,7 @@ var ansi = keywords.Set{
 	{"intersect"},
 	{"except"},
 	{"all"},
+	{"any"},
 	{"distinct"},
 	{"and"},
 	{"or"},

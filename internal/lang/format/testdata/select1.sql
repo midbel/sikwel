@@ -2,7 +2,7 @@ select
 	firstname,
 	lastname
 from employees
-where exists (
+where exists(
 	select
 		name,
 		active

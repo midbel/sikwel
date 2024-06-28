@@ -249,42 +249,16 @@ func (p *Parser) parseAllOrAny() (ast.Statement, error) {
 	)
 	p.Next()
 	if !p.Is(token.Lparen) {
-		return nil, p.Unexpected("operand")
+		return nil, p.Unexpected("all/any")
 	}
 	p.Next()
-	if p.IsKeyword("SELECT") {
-		expr, err = p.ParseStatement()
-	} else {
-		var (
-			list ast.List
-			val  ast.Statement
-		)
-		for !p.Done() && !p.Is(token.Rparen) {
-			val, err = p.parseExpression(powLowest)
-			if err != nil {
-				return nil, err
-			}
-			switch {
-			case p.Is(token.Comma):
-				p.Next()
-				if p.Is(token.Rparen) {
-					return nil, p.Unexpected("in")
-				}
-			case p.Is(token.Rparen):
-			default:
-				return nil, p.Unexpected("in")
-			}
-			list.Values = append(list.Values, val)
-		}
-		if !p.Is(token.Rparen) {
-			return nil, p.Unexpected("operand")
-		}
-		p.Next()
-		expr = list
-	}
-	if err != nil {
+	if expr, err = p.ParseStatement(); err != nil {
 		return nil, err
 	}
+	if !p.Is(token.Rparen) {
+		return nil, p.Unexpected("all/any")
+	}
+	p.Next()
 	if all {
 		expr = ast.All{
 			Statement: expr,

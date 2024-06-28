@@ -281,9 +281,6 @@ func (w *Writer) formatNot(stmt ast.Not, _ bool) error {
 
 func (w *Writer) formatExists(stmt ast.Exists, _ bool) error {
 	w.WriteKeyword("EXISTS")
-	if w.SpaceBetweenOp || !w.Compact {
-		w.WriteBlank()
-	}
 	w.WriteString("(")
 	w.WriteNL()
 	if err := w.FormatStatement(stmt.Statement); err != nil {
@@ -511,14 +508,20 @@ func (w *Writer) formatRelation(stmt ast.Binary, nl bool) error {
 
 func (w *Writer) formatAll(stmt ast.All, _ bool) error {
 	w.WriteKeyword("ALL")
-	w.WriteBlank()
-	return w.FormatExpr(stmt.Statement, false)
+	w.WriteString("(")
+	defer w.WriteString(")")
+	return w.compact(func() error {
+		return w.FormatExpr(stmt.Statement, false)
+	})
 }
 
 func (w *Writer) formatAny(stmt ast.Any, _ bool) error {
 	w.WriteKeyword("ANY")
-	w.WriteBlank()
-	return w.FormatExpr(stmt.Statement, false)
+	w.WriteString("(")
+	defer w.WriteString(")")
+	return w.compact(func() error {
+		return w.FormatExpr(stmt.Statement, false)
+	})
 }
 
 func (w *Writer) formatBinary(stmt ast.Binary, nl bool) error {
