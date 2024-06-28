@@ -12,6 +12,6 @@ select
 	lastname,
 	name
 from employees
-join departments on dept=id
-order by name
+join departments on dept = id
+order by name asc
 limit 25 offset 10;

@@ -504,9 +504,11 @@ func (w *Writer) FormatCte(stmt ast.CteStatement) error {
 	w.WriteString("(")
 	w.WriteNL()
 
+	w.Enter()
 	if err := w.FormatStatement(stmt.Statement); err != nil {
 		return err
 	}
+	w.Leave()
 	w.WriteNL()
 	w.WriteString(")")
 	return nil
