@@ -67,6 +67,33 @@ func configureRules(writer *format.Writer) func(string) error {
 	var (
 		rewrite  = rewriteRules(writer)
 		upperize = upperizeRules(writer)
+		setComma = func(value any) error {
+			switch value.(string) {
+			case "before", "prepend":
+				writer.PrependComma = true
+			case "after", "":
+			default:
+			}
+			return nil
+		}
+		setCrlf = func(value any) error {
+			switch value.(string) {
+			case "crlf":
+				writer.UseCrlf = true
+			case "nl", "lf", "":
+			default:
+			}
+			return nil
+		}
+		setComment = func(value any) error {
+			switch value.(string) {
+			case "keep":
+				writer.KeepComment = true
+			case "discard", "":
+			default:
+			}
+			return nil
+		}
 	)
 	return func(file string) error {
 		r, err := os.Open(file)
@@ -87,33 +114,9 @@ func configureRules(writer *format.Writer) func(string) error {
 		writer.UseAs = syntax.GetBool("as")
 		writer.UseIndent = int(indent.GetInt("count"))
 		writer.UseSpace = indent.GetBool("space")
-		cfg.Apply("comma", func(value any) error {
-			switch value.(string) {
-			case "before", "prepend":
-				writer.PrependComma = true
-			case "after", "":
-			default:
-			}
-			return nil
-		})
-		cfg.Apply("comment", func(value any) error {
-			switch value.(string) {
-			case "keep":
-				writer.KeepComment = true
-			case "discard", "":
-			default:
-			}
-			return nil
-		})
-		cfg.Apply("newline", func(value any) error {
-			switch value.(string) {
-			case "crlf":
-				writer.UseCrlf = true
-			case "nl", "lf", "":
-			default:
-			}
-			return nil
-		})
+		cfg.Apply("comma", setComma)
+		cfg.Apply("comment", setComment)
+		cfg.Apply("newline", setCrlf)
 		for _, r := range cfg.GetStrings("upperize") {
 			upperize(strings.ReplaceAll(r, "_", "-"))
 		}
