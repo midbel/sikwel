@@ -100,7 +100,16 @@ func configureRules(writer *format.Writer) func(string) error {
 			switch value.(string) {
 			case "keep":
 				writer.KeepComment = true
-			case "discard":
+			case "discard", "":
+			default:
+			}
+			return nil
+		})
+		cfg.Apply("newline", func(value any) error {
+			switch value.(string) {
+			case "crlf":
+				writer.UseCrlf = true
+			case "nl", "lf", "":
 			default:
 			}
 			return nil

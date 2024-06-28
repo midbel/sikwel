@@ -51,7 +51,11 @@ func (c Config) Get(key string) any {
 }
 
 func (c Config) Apply(key string, fn func(value any) error) error {
-	return fn(c.Get(key))
+	value := c.Get(key)
+	if value == nil {
+		return nil
+	}
+	return fn(value)
 }
 
 func (c Config) GetString(key string) string {
