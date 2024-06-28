@@ -456,7 +456,10 @@ func (p *Parser) parseGroupExpr() (ast.Statement, error) {
 			return nil, p.Unexpected("group(select)")
 		}
 		p.Next()
-		return p.ParseAlias(stmt)
+		g := ast.Group{
+			Statement: stmt,
+		}
+		return p.ParseAlias(g)
 	}
 	stmt, err := p.StartExpression()
 	if err = wrapError("group", err); err != nil {

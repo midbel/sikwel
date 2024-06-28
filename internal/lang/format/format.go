@@ -423,13 +423,12 @@ func (w *Writer) formatIn(stmt ast.In, not, nl bool) error {
 		w.WriteBlank()
 	}
 	w.WriteKeyword("IN")
-	w.WriteBlank()
-
-	if stmt, ok := stmt.Value.(ast.SelectStatement); ok {
-		w.WriteString("(")
-		defer w.WriteString(")")
+	if !w.Compact {
+		w.WriteBlank()
+	}
+	if stmt, ok := stmt.Value.(ast.Group); ok {
 		return w.compact(func() error {
-			return w.FormatSelect(stmt)
+			return w.formatGroup(stmt)
 		})
 	}
 	return w.FormatExpr(stmt.Value, false)
@@ -462,6 +461,21 @@ func (w *Writer) formatUnary(stmt ast.Unary, nl bool) error {
 }
 
 func (w *Writer) formatGroup(stmt ast.Group) error {
+	if _, ok := stmt.Statement.(ast.SelectStatement); ok {
+		w.WriteString("(")
+		if !w.Compact {
+			w.WriteNL()
+		}
+		if err := w.FormatStatement(stmt.Statement); err != nil {
+			return err
+		}
+		if !w.Compact {
+			w.WriteNL()
+			w.WritePrefix()
+		}
+		w.WriteString(")")
+		return nil
+	}
 	w.WriteString("(")
 	defer w.WriteString(")")
 	return w.FormatExpr(stmt.Statement, false)
