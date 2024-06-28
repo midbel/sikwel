@@ -87,8 +87,24 @@ func configureRules(writer *format.Writer) func(string) error {
 		writer.UseAs = syntax.GetBool("as")
 		writer.UseIndent = int(indent.GetInt("count"))
 		writer.UseSpace = indent.GetBool("space")
-		writer.PrependComma = cfg.GetString("comma") == "before"
-		writer.KeepComment = cfg.GetString("comment") == "keep"
+		cfg.Apply("comma", func(value any) error {
+			switch value.(string) {
+			case "before", "prepend":
+				writer.PrependComma = true
+			case "after", "":
+			default:
+			}
+			return nil
+		})
+		cfg.Apply("comment", func(value any) error {
+			switch value.(string) {
+			case "keep":
+				writer.KeepComment = true
+			case "discard":
+			default:
+			}
+			return nil
+		})
 		for _, r := range cfg.GetStrings("upperize") {
 			upperize(strings.ReplaceAll(r, "_", "-"))
 		}

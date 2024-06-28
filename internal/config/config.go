@@ -50,6 +50,10 @@ func (c Config) Get(key string) any {
 	return c.values[key]
 }
 
+func (c Config) Apply(key string, fn func(value any) error) error {
+	return fn(c.Get(key))
+}
+
 func (c Config) GetString(key string) string {
 	v, _ := c.Get(key).(string)
 	return v
