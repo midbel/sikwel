@@ -27,21 +27,7 @@ func (w *Writer) FormatName(name ast.Name) {
 }
 
 func (w *Writer) FormatAlias(alias ast.Alias) error {
-	var err error
-	if ast.WrapWithParens(alias.Statement) {
-		w.WriteString("(")
-		if !w.Compact {
-			w.WriteNL()
-		}
-		err = w.FormatStatement(alias.Statement)
-		if err == nil {
-			w.WriteNL()
-			w.WritePrefix()
-			w.WriteString(")")
-		}
-	} else {
-		err = w.FormatExpr(alias.Statement, false)
-	}
+	err := w.FormatExpr(alias.Statement, false)
 	if err != nil {
 		return err
 	}
@@ -154,7 +140,11 @@ func (w *Writer) FormatWhen(stmt ast.When) error {
 	w.WritePrefix()
 	w.WriteKeyword("WHEN")
 	w.WriteBlank()
-	if err := w.FormatExpr(stmt.Cdt, false); err != nil {
+
+	err := w.compact(func() error {
+		return w.FormatExpr(stmt.Cdt, false)
+	})
+	if err != nil {
 		return err
 	}
 	w.WriteBlank()
