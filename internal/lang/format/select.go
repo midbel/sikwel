@@ -216,7 +216,9 @@ func (w *Writer) formatFromJoin(join ast.Join) error {
 		w.WriteBlank()
 		w.WriteKeyword("ON")
 		w.WriteBlank()
-		err = w.formatBinary(s, false)
+		err = w.compact(func() error {
+			return w.formatBinary(s, false)
+		})
 	case ast.List:
 		w.WriteBlank()
 		w.WriteKeyword("USING")
@@ -493,7 +495,9 @@ func (w *Writer) FormatCte(stmt ast.CteStatement) error {
 		for i, s := range stmt.Columns {
 			if i > 0 {
 				w.WriteString(",")
-				w.WriteBlank()
+				if !w.Compact {
+					w.WriteBlank()
+				}
 			}
 			if w.Upperize.Identifier() {
 				s = strings.ToUpper(s)

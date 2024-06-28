@@ -26,17 +26,18 @@ func GetFormatter() lang.Formatter {
 type Writer struct {
 	inner *bufio.Writer
 
-	Compact      bool
-	UseQuote     bool
-	UseAs        bool
-	UseIndent    int
-	UseSpace     bool
-	UseColor     bool
-	UseCrlf      bool
-	PrependComma bool
-	KeepComment  bool
-	Upperize     UpperMode
-	Rules        RewriteRule
+	Compact        bool
+	UseQuote       bool
+	UseAs          bool
+	UseIndent      int
+	UseSpace       bool
+	UseColor       bool
+	UseCrlf        bool
+	PrependComma   bool
+	KeepComment    bool
+	SpaceBetweenOp bool
+	Upperize       UpperMode
+	Rules          RewriteRule
 
 	noColor       bool
 	currExprDepth int
@@ -47,10 +48,11 @@ type Writer struct {
 
 func NewWriter(w io.Writer) *Writer {
 	ws := Writer{
-		inner:     bufio.NewWriter(w),
-		UseIndent: 4,
-		UseSpace:  true,
-		Formatter: ansiFormatter{},
+		inner:          bufio.NewWriter(w),
+		UseIndent:      4,
+		UseSpace:       true,
+		SpaceBetweenOp: true,
+		Formatter:      ansiFormatter{},
 	}
 	if w != os.Stdout {
 		ws.noColor = true
@@ -303,7 +305,9 @@ func (w *Writer) formatList(stmt ast.List) error {
 	for i, v := range stmt.Values {
 		if i > 0 {
 			w.WriteString(",")
-			w.WriteBlank()
+			if !w.Compact {
+				w.WriteBlank()
+			}
 		}
 		if err := w.FormatExpr(v, false); err != nil {
 			return err
@@ -420,9 +424,10 @@ func (w *Writer) formatIn(stmt ast.In, not, nl bool) error {
 
 	if stmt, ok := stmt.Value.(ast.SelectStatement); ok {
 		w.WriteString("(")
-		err := w.FormatSelect(stmt)
-		w.WriteString(")")
-		return err
+		defer w.WriteString(")")
+		return w.compact(func() error {
+			return w.FormatSelect(stmt)
+		})
 	}
 	return w.FormatExpr(stmt.Value, false)
 }
@@ -491,9 +496,13 @@ func (w *Writer) formatBinary(stmt ast.Binary, nl bool) error {
 	if err := w.FormatExpr(stmt.Left, nl); err != nil {
 		return err
 	}
-	w.WriteBlank()
+	if w.SpaceBetweenOp || !w.Compact {
+		w.WriteBlank()
+	}
 	w.WriteKeyword(stmt.Op)
-	w.WriteBlank()
+	if w.SpaceBetweenOp || !w.Compact {
+		w.WriteBlank()
+	}
 	if err := w.FormatExpr(stmt.Right, nl); err != nil {
 		return err
 	}
@@ -634,6 +643,15 @@ func (w *Writer) getCurrDepth() int {
 		return 0
 	}
 	return w.currDepth
+}
+
+func (w *Writer) compact(fn func() error) error {
+	c := w.Compact
+	defer func() {
+		w.Compact = c
+	}()
+	w.Compact = true
+	return fn()
 }
 
 func (w *Writer) CanNotUse(ctx string, stmt ast.Statement) error {
