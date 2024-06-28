@@ -55,6 +55,14 @@ func constantExprInJoin() LintMessage {
 	}
 }
 
+func oneValueWithInPredicate() LintMessage {
+	return LintMessage{
+		Severity: Warning,
+		Message:  "only one value used with in can be rewritten with comparison operator",
+		Rule:     ruleExprRewrite,
+	}
+}
+
 func rewritableBinaryExpr() LintMessage {
 	return LintMessage{
 		Severity: Warning,

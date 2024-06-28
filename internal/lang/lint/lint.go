@@ -98,7 +98,7 @@ func (i Linter) LintStatement(stmt ast.Statement) ([]LintMessage, error) {
 			err = err2
 		}
 	case ast.In:
-		list, err = i.LintStatement(stmt.Value)
+		list, err = i.lintIn(stmt)
 	case ast.Is:
 		list, err = i.LintStatement(stmt.Value)
 	case ast.Not:
@@ -114,6 +114,13 @@ func (i Linter) LintStatement(stmt ast.Statement) ([]LintMessage, error) {
 	default:
 	}
 	return list, err
+}
+
+func (i Linter) lintIn(stmt ast.In) ([]LintMessage, error) {
+	if vs, ok := stmt.Value.(ast.List); ok && len(vs.Values) == 1 {
+		return []LintMessage{oneValueWithInPredicate()}, nil
+	}
+	return i.LintStatement(stmt.Value)
 }
 
 func (i Linter) lintBinary(stmt ast.Binary) ([]LintMessage, error) {
