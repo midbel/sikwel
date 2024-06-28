@@ -36,6 +36,7 @@ func (w *Writer) FormatAlias(alias ast.Alias) error {
 		err = w.FormatStatement(alias.Statement)
 		if err == nil {
 			w.WriteNL()
+			w.WritePrefix()
 			w.WriteString(")")
 		}
 	} else {
