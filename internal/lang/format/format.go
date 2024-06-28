@@ -321,7 +321,7 @@ func (w *Writer) formatList(stmt ast.List) error {
 	for i, v := range stmt.Values {
 		if i > 0 {
 			w.WriteString(",")
-			if !w.Compact || !w.UseKeepSpace {
+			if w.UseKeepSpace {
 				w.WriteBlank()
 			}
 		}
@@ -525,13 +525,6 @@ func (w *Writer) formatAny(stmt ast.Any, _ bool) error {
 	})
 }
 
-func (w *Writer) keepBlanks() bool {
-	if w.Compact {
-		return false
-	}
-	return w.UseKeepSpace
-}
-
 func (w *Writer) formatBinary(stmt ast.Binary, nl bool) error {
 	if stmt.IsRelation() {
 		return w.formatRelation(stmt, nl)
@@ -539,11 +532,11 @@ func (w *Writer) formatBinary(stmt ast.Binary, nl bool) error {
 	if err := w.FormatExpr(stmt.Left, nl); err != nil {
 		return err
 	}
-	if w.UseKeepSpace || !w.Compact {
+	if w.UseKeepSpace {
 		w.WriteBlank()
 	}
 	w.WriteKeyword(stmt.Op)
-	if w.UseKeepSpace || !w.Compact {
+	if w.UseKeepSpace {
 		w.WriteBlank()
 	}
 	if err := w.FormatExpr(stmt.Right, nl); err != nil {
