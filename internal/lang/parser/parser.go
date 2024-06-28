@@ -73,7 +73,16 @@ func (p *Parser) DefineVars(file string) error {
 
 func (p *Parser) start() error {
 	for p.Is(token.Macro) {
-		if err := p.ParseMacro(); err != nil {
+		var err error
+		switch p.GetCurrLiteral() {
+		case "FORMAT":
+			err = p.ParseFormatMacro()
+		case "LINT":
+			err = p.ParseLintMacro()
+		default:
+			err = p.ParseMacro()
+		}
+		if err != nil {
 			return err
 		}
 	}

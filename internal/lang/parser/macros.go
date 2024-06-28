@@ -23,10 +23,6 @@ func (p *Parser) ParseMacro() error {
 		err = p.ParseEnvMacro()
 	case "VAR":
 		err = p.ParseVarMacro()
-	case "FORMAT":
-		err = p.ParseFormatMacro()
-	case "LINT":
-		err = p.ParseLintMacro()
 	default:
 		err = p.Unexpected("macro")
 	}
