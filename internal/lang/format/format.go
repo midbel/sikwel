@@ -39,9 +39,8 @@ type Writer struct {
 	Upperize       UpperMode
 	Rules          RewriteRule
 
-	noColor       bool
-	currExprDepth int
-	currDepth     int
+	noColor   bool
+	currDepth int
 
 	lang.Formatter
 }
@@ -267,7 +266,9 @@ func (w *Writer) formatNot(stmt ast.Not, _ bool) error {
 
 func (w *Writer) formatExists(stmt ast.Exists, _ bool) error {
 	w.WriteKeyword("EXISTS")
-	w.WriteBlank()
+	if w.SpaceBetweenOp || !w.Compact {
+		w.WriteBlank()
+	}
 	w.WriteString("(")
 	w.WriteNL()
 	if err := w.FormatStatement(stmt.Statement); err != nil {

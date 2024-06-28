@@ -55,6 +55,22 @@ func (c Config) GetString(key string) string {
 	return v
 }
 
+func (c Config) GetStrings(key string) []string {
+	vs, ok := c.Get(key).([]any)
+	if !ok {
+		str := c.GetString(key)
+		return []string{str}
+	}
+	var arr []string
+	for i := range vs {
+		s, ok := vs[i].(string)
+		if ok {
+			arr = append(arr, s)
+		}
+	}
+	return arr
+}
+
 func (c Config) GetBool(key string) bool {
 	v, _ := c.Get(key).(bool)
 	return v
@@ -125,7 +141,20 @@ func (p *Parser) parseEqual(cfg *Config, ident Token) error {
 	case p.is(BegObj):
 		err = p.parseObject(cfg, ident, true)
 	default:
-		cfg.values[ident.Literal], err = p.parseLiteral()
+		value, err := p.parseLiteral()
+		if err != nil {
+			return err
+		}
+		if vs, ok := cfg.values[ident.Literal]; ok {
+			arr, ok := vs.([]any)
+			if !ok {
+				arr = append(arr, vs)
+			}
+			arr = append(arr, value)
+			cfg.values[ident.Literal] = arr
+		} else {
+			cfg.values[ident.Literal] = value
+		}
 	}
 	return err
 }
@@ -153,14 +182,19 @@ func (p *Parser) parseLiteral() (any, error) {
 }
 
 func (p *Parser) parseObject(cfg *Config, ident Token, inline bool) error {
-	other := Make()
-	cfg.values[ident.Literal] = other
+	var other *Config
+	if c, ok := cfg.values[ident.Literal]; ok {
+		other = c.(*Config)
+	} else {
+		other = Make()
+		cfg.values[ident.Literal] = other
+	}
 	if !inline {
 		for p.isIdent() {
+			ident = p.curr
 			n := Make()
 			other.values[ident.Literal] = n
 			other = n
-			ident = p.curr
 			p.next()
 		}
 	}

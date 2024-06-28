@@ -5,7 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/midbel/sweet/internal/config"
 	"github.com/midbel/sweet/internal/lang"
 	"github.com/midbel/sweet/internal/lang/format"
 	"github.com/midbel/sweet/internal/ms"
@@ -17,9 +19,7 @@ func runFormat(args []string) error {
 	var (
 		set    = flag.NewFlagSet("format", flag.ExitOnError)
 		writer = format.NewWriter(os.Stdout)
-		config string
 	)
-	set.StringVar(&config, "config", "", "formatter configuration")
 	set.BoolVar(&writer.Compact, "compact", writer.Compact, "produces compact SQL queries")
 	set.BoolVar(&writer.UseAs, "use-as", writer.UseAs, "always use as to define alias")
 	set.BoolVar(&writer.UseQuote, "use-quote", writer.UseQuote, "quote all identifier")
@@ -37,7 +37,91 @@ func runFormat(args []string) error {
 		}
 		return err
 	})
-	set.Func("rewrite", "rewrite rules to apply", func(value string) error {
+	set.Func("rewrite", "rewrite rules to apply", rewriteRules(writer))
+	set.Func("upper", "upperize mode", upperizeRules(writer))
+	set.Func("config", "formatter configuration file", configureRules(writer))
+
+	if err := set.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+
+		}
+		return err
+	}
+	process := func(file string) error {
+		r, err := os.Open(file)
+		if err != nil {
+			return err
+		}
+		defer r.Close()
+		return writer.Format(r)
+	}
+	for _, f := range set.Args() {
+		if err := process(f); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+	}
+	return nil
+}
+
+func configureRules(writer *format.Writer) func(string) error {
+	var (
+		rewrite  = rewriteRules(writer)
+		upperize = upperizeRules(writer)
+	)
+	return func(file string) error {
+		r, err := os.Open(file)
+		if err != nil {
+			return err
+		}
+		cfg, err := config.Load(r)
+		if err != nil {
+			return err
+		}
+		cfg = cfg.Sub("format")
+		var (
+			syntax = cfg.Sub("syntax")
+			indent = cfg.Sub("indent")
+		)
+		writer.Compact = cfg.GetBool("compact")
+		writer.UseQuote = syntax.GetBool("quote")
+		writer.UseAs = syntax.GetBool("as")
+		writer.UseIndent = int(indent.GetInt("count"))
+		writer.UseSpace = indent.GetBool("space")
+		writer.PrependComma = cfg.GetString("comma") == "before"
+		writer.KeepComment = cfg.GetString("comment") == "keep"
+		for _, r := range cfg.GetStrings("upperize") {
+			upperize(strings.ReplaceAll(r, "_", "-"))
+		}
+		for _, r := range cfg.GetStrings("rewrite") {
+			rewrite(strings.ReplaceAll(r, "_", "-"))
+		}
+		return nil
+	}
+}
+
+func upperizeRules(writer *format.Writer) func(string) error {
+	return func(value string) error {
+		switch value {
+		case "all", "":
+			writer.Upperize |= format.UpperId | format.UpperKw | format.UpperFn | format.UpperType
+		case "keyword", "kw":
+			writer.Upperize |= format.UpperKw
+		case "function", "fn":
+			writer.Upperize |= format.UpperFn
+		case "identifier", "ident", "id":
+			writer.Upperize |= format.UpperId
+		case "type":
+			writer.Upperize |= format.UpperType
+		case "none":
+			writer.Upperize = format.UpperNone
+		default:
+		}
+		return nil
+	}
+}
+
+func rewriteRules(writer *format.Writer) func(string) error {
+	return func(value string) error {
 		switch value {
 		case "all", "":
 			writer.Rules |= format.RewriteAll
@@ -60,46 +144,7 @@ func runFormat(args []string) error {
 		default:
 		}
 		return nil
-	})
-	set.Func("upper", "upperize mode", func(value string) error {
-		switch value {
-		case "all", "":
-			writer.Upperize |= format.UpperId | format.UpperKw | format.UpperFn | format.UpperType
-		case "keyword", "kw":
-			writer.Upperize |= format.UpperKw
-		case "function", "fn":
-			writer.Upperize |= format.UpperFn
-		case "identifier", "ident", "id":
-			writer.Upperize |= format.UpperId
-		case "type":
-			writer.Upperize |= format.UpperType
-		case "none":
-			writer.Upperize = format.UpperNone
-		default:
-		}
-		return nil
-	})
-
-	if err := set.Parse(args); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-
-		}
-		return err
 	}
-	process := func(file string) error {
-		r, err := os.Open(file)
-		if err != nil {
-			return err
-		}
-		defer r.Close()
-		return writer.Format(r)
-	}
-	for _, f := range set.Args() {
-		if err := process(f); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-		}
-	}
-	return nil
 }
 
 func getFormatterForDialect(name string) (lang.Formatter, error) {
