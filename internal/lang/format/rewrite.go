@@ -117,6 +117,9 @@ func (w *Writer) replaceSubqueries(stmt ast.SelectStatement) (ast.Statement, []a
 			q = j.Table
 
 		}
+		if g, ok := q.(ast.Group); ok {
+			q = g.Statement
+		}
 		q, ok := q.(ast.SelectStatement)
 		if !ok {
 			continue

@@ -52,6 +52,8 @@ func NewWriter(w io.Writer) *Writer {
 		UseSpace:     true,
 		UseKeepSpace: true,
 		Formatter:    ansiFormatter{},
+		Upperize:     UpperNone,
+		Rules:        0,
 	}
 	if w != os.Stdout {
 		ws.noColor = true
@@ -65,27 +67,67 @@ func Compact(w io.Writer) *Writer {
 	return ws
 }
 
+func (w *Writer) configure(ps lang.Parser) {
+	p, ok := ps.(*parser.Parser)
+	if !ok {
+		return
+	}
+	w.Compact = p.GetDefaultBool("compact", w.Compact)
+	w.UseIndent = int(p.GetDefaultInt("indent", int64(w.UseIndent)))
+	w.UseSpace = p.GetDefaultBool("space", w.UseSpace)
+	w.UseKeepSpace = p.GetDefaultBool("keepspace", w.UseKeepSpace)
+	w.UseAs = p.GetDefaultBool("as", w.UseAs)
+	w.UseQuote = p.GetDefaultBool("quote", w.UseQuote)
+	w.UseCrlf = p.GetDefaultBool("crlf", w.UseCrlf)
+	w.KeepComment = p.GetDefaultBool("comment", w.KeepComment)
+	for _, r := range p.GetStrings("rewrite") {
+		switch r {
+		case "all":
+			w.Rules |= RewriteAll
+		case "use-std-op":
+			w.Rules |= RewriteStdOp
+		case "use-std-expr":
+			w.Rules |= RewriteStdExpr
+		case "missing-cte-alias":
+			w.Rules |= RewriteMissCteAlias
+		case "missing-view-alias":
+			w.Rules |= RewriteMissViewAlias
+		case "subquery-as-cte":
+			w.Rules |= RewriteWithCte
+		case "cte-as-subquery":
+			w.Rules |= RewriteWithSubqueries
+		case "join-as-subquery":
+			w.Rules |= RewriteJoinSubquery
+		case "join-without-literal":
+			w.Rules |= RewriteJoinPredicate
+		default:
+		}
+	}
+	for _, r := range p.GetStrings("upperize") {
+		switch r {
+		case "all":
+			w.Upperize |= UpperId | UpperKw | UpperFn | UpperType
+		case "keyword", "kw":
+			w.Upperize |= UpperKw
+		case "function", "fn":
+			w.Upperize |= UpperFn
+		case "identifier", "ident", "id":
+			w.Upperize |= UpperId
+		case "type":
+			w.Upperize |= UpperType
+		case "none":
+			w.Upperize = UpperNone
+		default:
+		}
+	}
+}
+
 func (w *Writer) Format(r io.Reader) error {
 	p, err := parser.NewParser(r)
 	if err != nil {
 		return err
 	}
-	if p, ok := p.(*parser.Parser); ok {
-		w.Compact = p.GetDefaultBool("compact", w.Compact)
-		w.UseIndent = int(p.GetDefaultInt("indent", int64(w.UseIndent)))
-		w.UseSpace = p.GetDefaultBool("space", w.UseSpace)
-		w.UseKeepSpace = p.GetDefaultBool("keepspace", w.UseKeepSpace)
-		w.UseAs = p.GetDefaultBool("as", w.UseAs)
-		w.UseQuote = p.GetDefaultBool("quote", w.UseQuote)
-		w.UseCrlf = p.GetDefaultBool("crlf", w.UseCrlf)
-		w.KeepComment = p.GetDefaultBool("comment", w.KeepComment)
-		for _, r := range p.GetStrings("rewrite") {
-			_ = r
-		}
-		for _, r := range p.GetStrings("upperize") {
-			_ = r
-		}
-	}
+	w.configure(p)
 	for {
 		stmt, err := p.Parse()
 		if err != nil {

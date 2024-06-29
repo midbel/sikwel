@@ -1,6 +1,7 @@
 @format as true;
 @format keepspace false;
 @format quote true;
+@format upperize keyword;
 
 select
 	e.firstname fname,
@@ -15,15 +16,15 @@ where exists(
 )
 fetch first 100 rows only;
 --
-select
-	"e"."firstname" as "fname",
-	"e"."lastname" as "lname"
-from "employees" as "e"
-where exists(
-	select
+SELECT
+	"e"."firstname" AS "fname",
+	"e"."lastname" AS "lname"
+FROM "employees" AS "e"
+WHERE EXISTS(
+	SELECT
 		"d"."name",
 		"d"."active"
-	from "departments" as "d"
-	where "d"."dept"='it'
+	FROM "departments" AS "d"
+	WHERE "d"."dept"='it'
 )
-fetch first 100 rows only;
+FETCH FIRST 100 ROWS ONLY;
