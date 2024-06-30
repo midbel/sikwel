@@ -137,6 +137,11 @@ func (w *Writer) replaceSubqueries(stmt ast.SelectStatement) (ast.Statement, []a
 			Ident:     n,
 			Statement: x,
 		}
+		if q, ok := x.(ast.SelectStatement); ok {
+			if i, ok := q.Tables[0].(ast.Name); ok {
+				cte.Ident = i.Ident()
+			}
+		}
 		c, err := w.rewriteCte(cte)
 		if err != nil {
 			return nil, nil, err
@@ -144,7 +149,13 @@ func (w *Writer) replaceSubqueries(stmt ast.SelectStatement) (ast.Statement, []a
 		qs = append(qs, c)
 
 		j.Table = ast.Name{
-			Parts: []string{n},
+			Parts: []string{cte.Ident},
+		}
+		if n != "" {
+			j.Table = ast.Alias{
+				Alias:     n,
+				Statement: j.Table,
+			}
 		}
 		stmt.Tables[i] = j
 	}

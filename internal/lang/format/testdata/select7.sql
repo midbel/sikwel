@@ -8,10 +8,11 @@ join (
 	select id, name 
 	from departments 
 	where technic is true and active is true
-) d on e.dept=d.id;
+) d on e.dept=d.id
+where d.name like 'dev%';
 --
 with
-d(id, name) as (
+departments(id, name) as (
 	select
 		id,
 		name
@@ -23,4 +24,5 @@ select
 	e.firstname,
 	e.lastname
 from employees as e
-join d on e.dept = d.id;
+join departments as d on e.dept = d.id
+where d.name like 'dev%';
