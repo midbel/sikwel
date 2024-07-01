@@ -23,6 +23,7 @@ const (
 	ruleCteColsMissing    = "cte.columns.missing"
 	ruleCteColsMismatched = "cte.columns.mismatched"
 	ruleSubqueryNotAllow  = "subquery.disallow"
+	ruleExprUnqualified   = "expression.unqalified"
 )
 
 type Level int

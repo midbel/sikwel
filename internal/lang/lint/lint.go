@@ -64,6 +64,7 @@ func (i *Linter) prepareRules() {
 	i.Rules = append(i.Rules, checkColumnsMissingCte)
 	i.Rules = append(i.Rules, checkColumnsMismatchedCte)
 	i.Rules = append(i.Rules, checkForSubqueries)
+	i.Rules = append(i.Rules, checkForUnqualifiedNames)
 }
 
 func (i *Linter) configure(cfg *config.Config) {
