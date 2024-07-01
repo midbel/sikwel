@@ -22,6 +22,7 @@ const (
 	ruleCteDuplicated     = "cte.duplicate"
 	ruleCteColsMissing    = "cte.columns.missing"
 	ruleCteColsMismatched = "cte.columns.mismatched"
+	ruleSubqueryNotAllow  = "subquery.disallow"
 )
 
 type Level int

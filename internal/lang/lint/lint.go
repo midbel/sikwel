@@ -63,6 +63,7 @@ func (i *Linter) prepareRules() {
 	i.Rules = append(i.Rules, checkDuplicateCte)
 	i.Rules = append(i.Rules, checkColumnsMissingCte)
 	i.Rules = append(i.Rules, checkColumnsMismatchedCte)
+	i.Rules = append(i.Rules, checkForSubqueries)
 }
 
 func (i *Linter) configure(cfg *config.Config) {
@@ -126,46 +127,6 @@ func (i *Linter) lintList(stmt ast.List) ([]LintMessage, error) {
 		}
 		list = append(list, others...)
 	}
-	return list, nil
-}
-
-func (i *Linter) lintSets(s1, s2 ast.SelectStatement) ([]LintMessage, error) {
-	var (
-		list   []LintMessage
-		others []LintMessage
-		err    error
-	)
-	if c1, c2 := s1.ColumnsCount(), s2.ColumnsCount(); c1 != c2 || c1 < 0 || c2 < 0 {
-		list = append(list, columnsCountMismatched())
-	}
-	others, err = i.LintStatement(s1)
-	if err != nil {
-		return nil, err
-	}
-	list = append(list, others...)
-	others, err = i.LintStatement(s2)
-	if err != nil {
-		return nil, err
-	}
-	list = append(list, others...)
-	return list, nil
-}
-
-func (i *Linter) lintCte(stmt ast.CteStatement) ([]LintMessage, error) {
-	var list []LintMessage
-	if z := len(stmt.Columns); z != 0 {
-		if c, ok := stmt.Statement.(interface{ ColumnsCount() int }); ok {
-			n := c.ColumnsCount()
-			if n != z {
-				list = append(list, columnsCountMismatched())
-			}
-		}
-	}
-	others, err := i.LintStatement(stmt.Statement)
-	if err != nil {
-		return nil, err
-	}
-	list = append(list, others...)
 	return list, nil
 }
 
@@ -255,6 +216,62 @@ func checkColumnUsedInGroup(stmt ast.SelectStatement) []LintMessage {
 		}
 	}
 	return list
+}
+
+func checkForSubqueries(stmt ast.Statement) ([]LintMessage, error) {
+	switch stmt := stmt.(type) {
+	case ast.SelectStatement:
+		return selectSubqueries(stmt)
+	case ast.UnionStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkForSubqueries)
+	case ast.IntersectStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkForSubqueries)
+	case ast.ExceptStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkForSubqueries)
+	case ast.WithStatement:
+		return handleWithStatement(stmt, checkForSubqueries)
+	case ast.CteStatement:
+		return checkForSubqueries(stmt.Statement)
+	default:
+		return nil, ErrNa
+	}
+}
+
+func selectSubqueries(stmt ast.SelectStatement) ([]LintMessage, error) {
+	isSubquery := func(q ast.Statement) bool {
+		if a, ok := q.(ast.Alias); ok {
+			q = a.Statement
+		}
+		if g, ok := q.(ast.Group); ok {
+			q = g.Statement
+		}
+		_, ok := q.(ast.SelectStatement)
+		return ok
+	}
+	var list []LintMessage
+	for _, c := range stmt.Columns {
+		if isSubquery(c) {
+			list = append(list, subqueryDisallow())
+		}
+	}
+	for _, t := range stmt.Tables {
+		j, ok := t.(ast.Join)
+		if !ok {
+			continue
+		}
+		if isSubquery(j.Table) {
+			list = append(list, subqueryDisallow())
+		}
+	}
+	return list, nil
+}
+
+func subqueryDisallow() LintMessage {
+	return LintMessage{
+		Severity: Error,
+		Message:  "subquery is not allowed",
+		Rule:     ruleSubqueryNotAllow,
+	}
 }
 
 func handleCompoundStatement(q1, q2 ast.Statement, check RuleFunc) ([]LintMessage, error) {
