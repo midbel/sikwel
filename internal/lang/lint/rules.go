@@ -3,17 +3,25 @@ package lint
 import "fmt"
 
 const (
-	ruleCountMulti      = "count.mulitple"
-	ruleCountInvalid    = "count.invalid"
-	ruleExprRewrite     = "expression.rewrite"
-	ruleExprGroup       = "expression.group"
-	ruleExprAggregate   = "expression.aggregate"
-	ruleExprInvalid     = "expression.invalid"
-	ruleJoinCondition   = "join.condition"
-	ruleAliasUnexpected = "alias.unexpected"
-	ruleAliasUndefined  = "alias.undefined"
-	ruleAliasDuplicate  = "alias.duplicate"
-	ruleAliasMissing    = "alias.missing"
+	ruleCountMulti        = "count.multiple"
+	ruleCountInvalid      = "count.invalid"
+	ruleExprRewrite       = "expression.rewrite"
+	ruleExprRewriteNot    = "expression.rewrite.not"
+	ruleExprRewriteIn     = "expression.rewrite.in"
+	ruleExprGroup         = "expression.group"
+	ruleExprAggregate     = "expression.aggregate"
+	ruleExprInvalid       = "expression.invalid"
+	ruleExprUnused        = "expression.unused"
+	ruleJoinCondition     = "join.condition"
+	ruleAliasUnexpected   = "alias.unexpected"
+	ruleAliasUndefined    = "alias.undefined"
+	ruleAliasDuplicate    = "alias.duplicate"
+	ruleAliasMissing      = "alias.missing"
+	ruleAliasExpected     = "alias.expected"
+	ruleCteUnused         = "cte.unused"
+	ruleCteDuplicated     = "cte.duplicate"
+	ruleCteColsMissing    = "cte.columns.missing"
+	ruleCteColsMismatched = "cte.columns.mismatched"
 )
 
 type Level int
@@ -116,37 +124,5 @@ func unexpectedExprType(field, ctx string) LintMessage {
 		Severity: Error,
 		Message:  fmt.Sprintf("%s: unexpected expression type", ctx),
 		Rule:     ruleExprInvalid,
-	}
-}
-
-func unexpectedAlias(alias string) LintMessage {
-	return LintMessage{
-		Severity: Error,
-		Message:  fmt.Sprintf("%s: alias found in predicate", alias),
-		Rule:     ruleAliasUnexpected,
-	}
-}
-
-func undefinedAlias(alias string) LintMessage {
-	return LintMessage{
-		Severity: Error,
-		Message:  fmt.Sprintf("%s: alias not defined", alias),
-		Rule:     ruleAliasUndefined,
-	}
-}
-
-func missingAlias() LintMessage {
-	return LintMessage{
-		Severity: Error,
-		Message:  "expression needs to be used with an alias",
-		Rule:     ruleAliasMissing,
-	}
-}
-
-func duplicatedAlias(alias string) LintMessage {
-	return LintMessage{
-		Severity: Error,
-		Message:  fmt.Sprintf("%s: alias already defined", alias),
-		Rule:     ruleAliasDuplicate,
 	}
 }
