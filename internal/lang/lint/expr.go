@@ -6,6 +6,14 @@ import (
 	"github.com/midbel/sweet/internal/lang/ast"
 )
 
+func checkAsUsage(stmt ast.Statement) ([]LintMessage, error) {
+	return nil, nil
+}
+
+func checkDirectionUsage(stmt ast.Statement) ([]LintMessage, error) {
+	return nil, nil
+}
+
 func checkForUnqualifiedNames(stmt ast.Statement) ([]LintMessage, error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
