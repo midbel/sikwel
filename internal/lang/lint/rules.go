@@ -4,7 +4,6 @@ const (
 	ruleCountMulti           = "count.multiple"
 	ruleExprRewrite          = "expression.rewrite"
 	ruleExprRewriteNot       = "expression.rewrite.not"
-	ruleExprRewriteIn        = "expression.rewrite.in"
 	ruleJoinCondition        = "join.condition"
 	ruleAliasUnexpected      = "alias.unexpected"
 	ruleAliasUndefined       = "alias.undefined"
@@ -20,6 +19,7 @@ const (
 	ruleExprUnqualified      = "expr.unqalified"
 	ruleExprAggregate        = "expr.aggregate"
 	ruleExprInvalid          = "expr.invalid"
+	ruleExprRewriteIn        = "expr.rewrite.in"
 	ruleInconsistentUseAs    = "use.as.inconsistent"
 	ruleInconsistentUseOrder = "use.order.inconsistent"
 )
@@ -60,14 +60,6 @@ func constantExprInJoin() LintMessage {
 		Severity: Warning,
 		Message:  "constant expression used in join condition",
 		Rule:     ruleJoinCondition,
-	}
-}
-
-func oneValueWithInPredicate() LintMessage {
-	return LintMessage{
-		Severity: Warning,
-		Message:  "only one value used with in can be rewritten with comparison operator",
-		Rule:     ruleExprRewrite,
 	}
 }
 

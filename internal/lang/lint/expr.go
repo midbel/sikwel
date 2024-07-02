@@ -115,20 +115,14 @@ func selectInconsistentAs(stmt ast.SelectStatement) ([]LintMessage, error) {
 	for _, c := range stmt.Columns {
 		a, ok := c.(ast.Alias)
 		if !ok {
-			if used {
-				list = append(list, inconsistentAs("select"))
-				break
-			}
 			continue
 		}
 		if !used && a.As {
 			used = true
-			continue
 		}
-		if used && !a.As {
-			list = append(list, inconsistentAs("select"))
-			break
-		}
+	}
+	if used && len(stmt.Columns) > 1 {
+		list = append(list, inconsistentAs("select"))
 	}
 	used = false
 	for _, s := range stmt.Tables {
@@ -137,20 +131,15 @@ func selectInconsistentAs(stmt ast.SelectStatement) ([]LintMessage, error) {
 		}
 		a, ok := s.(ast.Alias)
 		if !ok {
-			if used {
-				list = append(list, inconsistentAs("from"))
-				break
-			}
 			continue
 		}
 		if !used && a.As {
 			used = true
 			continue
 		}
-		if used && !a.As {
-			list = append(list, inconsistentAs("from"))
-			break
-		}
+	}
+	if used && len(stmt.Tables) > 1 {
+		list = append(list, inconsistentAs("from"))
 	}
 	return list, nil
 }

@@ -67,6 +67,12 @@ func (i *Linter) prepareRules() {
 	i.Rules = append(i.Rules, checkForUnqualifiedNames)
 	i.Rules = append(i.Rules, checkAsUsage)
 	i.Rules = append(i.Rules, checkDirectionUsage)
+	i.Rules = append(i.Rules, checkGroupBy)
+	i.Rules = append(i.Rules, checkResultSubquery)
+	i.Rules = append(i.Rules, checkRewriteIn)
+	i.Rules = append(i.Rules, checkRewriteBinary)
+	i.Rules = append(i.Rules, checkJoin)
+	i.Rules = append(i.Rules, checkUnusedColumns)
 }
 
 func (i *Linter) configure(cfg *config.Config) {
@@ -86,13 +92,6 @@ func (i *Linter) LintStatement(stmt ast.Statement) ([]LintMessage, error) {
 		list = append(list, res...)
 	}
 	return list, nil
-}
-
-func (i *Linter) lintIn(stmt ast.In) ([]LintMessage, error) {
-	if vs, ok := stmt.Value.(ast.List); ok && len(vs.Values) == 1 {
-		return []LintMessage{oneValueWithInPredicate()}, nil
-	}
-	return i.LintStatement(stmt.Value)
 }
 
 func (i *Linter) lintBinary(stmt ast.Binary) ([]LintMessage, error) {
@@ -119,6 +118,113 @@ func (i *Linter) lintBinary(stmt ast.Binary) ([]LintMessage, error) {
 		}
 	}
 	return list, nil
+}
+
+func checkUnusedColumns(stmt ast.Statement) ([]LintMessage, error) {
+	return nil, nil
+}
+
+func checkJoin(stmt ast.Statement) ([]LintMessage, error) {
+	switch stmt := stmt.(type) {
+	case ast.SelectStatement:
+		return selectJoin(stmt)
+	case ast.UnionStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkJoin)
+	case ast.IntersectStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkJoin)
+	case ast.ExceptStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkJoin)
+	case ast.WithStatement:
+		return handleWithStatement(stmt, checkJoin)
+	case ast.CteStatement:
+		return checkJoin(stmt.Statement)
+	default:
+		return nil, ErrNa
+	}
+}
+
+func selectJoin(stmt ast.SelectStatement) ([]LintMessage, error) {
+	return nil, nil
+}
+
+func checkRewriteIn(stmt ast.Statement) ([]LintMessage, error) {
+	switch stmt := stmt.(type) {
+	case ast.SelectStatement:
+		return selectRewriteIn(stmt)
+	case ast.UnionStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkRewriteIn)
+	case ast.IntersectStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkRewriteIn)
+	case ast.ExceptStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkRewriteIn)
+	case ast.WithStatement:
+		return handleWithStatement(stmt, checkRewriteIn)
+	case ast.CteStatement:
+		return checkRewriteIn(stmt.Statement)
+	default:
+		return nil, ErrNa
+	}
+}
+
+func selectRewriteIn(stmt ast.SelectStatement) ([]LintMessage, error) {
+	if stmt.Where == nil {
+		return nil, nil
+	}
+	var check func(ast.Statement) ([]LintMessage, error)
+
+	check = func(stmt ast.Statement) ([]LintMessage, error) {
+		switch w := stmt.(type) {
+		case ast.In:
+			vs, ok := w.Value.(ast.List)
+			if !ok {
+				return nil, nil
+			}
+			if len(vs.Values) == 1 {
+				return []LintMessage{rewriteIn()}, nil
+			}
+			return nil, nil
+		case ast.Binary:
+			if !w.IsRelation() {
+				return nil, nil
+			}
+			l1, err1 := check(w.Left)
+			if err1 != nil && !errors.Is(err1, ErrNa) {
+				return nil, err1
+			}
+			l2, err2 := check(w.Right)
+			if err2 != nil && !errors.Is(err2, ErrNa) {
+				return nil, err2
+			}
+			return slices.Concat(l1, l2), nil
+		default:
+			return nil, ErrNa
+		}
+
+	}
+	return check(stmt.Where)
+}
+
+func checkRewriteBinary(stmt ast.Statement) ([]LintMessage, error) {
+	switch stmt := stmt.(type) {
+	case ast.SelectStatement:
+		return selectRewriteBinary(stmt)
+	case ast.UnionStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkRewriteBinary)
+	case ast.IntersectStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkRewriteBinary)
+	case ast.ExceptStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkRewriteBinary)
+	case ast.WithStatement:
+		return handleWithStatement(stmt, checkRewriteBinary)
+	case ast.CteStatement:
+		return checkRewriteBinary(stmt.Statement)
+	default:
+		return nil, ErrNa
+	}
+}
+
+func selectRewriteBinary(stmt ast.SelectStatement) ([]LintMessage, error) {
+	return nil, nil
 }
 
 func checkForSubqueries(stmt ast.Statement) ([]LintMessage, error) {
@@ -174,6 +280,14 @@ func subqueryDisallow() LintMessage {
 		Severity: Error,
 		Message:  "subquery is not allowed",
 		Rule:     ruleSubqueryNotAllow,
+	}
+}
+
+func rewriteIn() LintMessage {
+	return LintMessage{
+		Severity: Warning,
+		Message:  "in predicate could be rewritten",
+		Rule:     ruleExprRewriteIn,
 	}
 }
 
