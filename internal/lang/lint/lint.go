@@ -94,32 +94,6 @@ func (i *Linter) LintStatement(stmt ast.Statement) ([]LintMessage, error) {
 	return list, nil
 }
 
-func (i *Linter) lintBinary(stmt ast.Binary) ([]LintMessage, error) {
-	l1, err1 := i.LintStatement(stmt.Left)
-	if err1 != nil {
-		return nil, err1
-	}
-	l2, err2 := i.LintStatement(stmt.Right)
-	if err2 != nil {
-		return nil, err2
-	}
-	list := slices.Concat(l1, l2)
-
-	if stmt.IsRelation() {
-		return list, nil
-	}
-	if stmt.Op == "!=" {
-		list = append(list, notStandardOperator())
-	}
-	if stmt.Op == "=" || stmt.Op == "<>" {
-		v, ok := stmt.Right.(ast.Value)
-		if ok && v.Constant() {
-			list = append(list, rewritableBinaryExpr())
-		}
-	}
-	return list, nil
-}
-
 func checkUnusedColumns(stmt ast.Statement) ([]LintMessage, error) {
 	return nil, nil
 }
@@ -224,7 +198,39 @@ func checkRewriteBinary(stmt ast.Statement) ([]LintMessage, error) {
 }
 
 func selectRewriteBinary(stmt ast.SelectStatement) ([]LintMessage, error) {
-	return nil, nil
+	if stmt.Where == nil {
+		return nil, nil
+	}
+
+	var check func(ast.Statement) ([]LintMessage, error)
+
+	check = func(stmt ast.Statement) ([]LintMessage, error) {
+		b, ok := stmt.(ast.Binary)
+		if !ok {
+			return nil, ErrNa
+		}
+		if b.IsRelation() {
+			l1, err1 := check(b.Left)
+			if err1 != nil && !errors.Is(err1, ErrNa) {
+				return nil, err1
+			}
+			l2, err2 := check(b.Right)
+			if err2 != nil && !errors.Is(err2, ErrNa) {
+				return nil, err2
+			}
+			return slices.Concat(l1, l2), nil
+		}
+		if b.Op == "=" || b.Op == "<>" {
+			if v, ok := b.Right.(ast.Value); ok && v.Constant() {
+				return []LintMessage{rewriteBinary()}, nil
+			}
+			if v, ok := b.Left.(ast.Value); ok && v.Constant() {
+				return []LintMessage{rewriteBinary()}, nil
+			}
+		}
+		return nil, ErrNa
+	}
+	return check(stmt.Where)
 }
 
 func checkForSubqueries(stmt ast.Statement) ([]LintMessage, error) {
@@ -288,6 +294,14 @@ func rewriteIn() LintMessage {
 		Severity: Warning,
 		Message:  "in predicate could be rewritten",
 		Rule:     ruleExprRewriteIn,
+	}
+}
+
+func rewriteBinary() LintMessage {
+	return LintMessage{
+		Severity: Warning,
+		Message:  "expression can be rewritten",
+		Rule:     ruleExprRewrite,
 	}
 }
 

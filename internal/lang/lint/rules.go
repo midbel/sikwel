@@ -2,7 +2,6 @@ package lint
 
 const (
 	ruleCountMulti           = "count.multiple"
-	ruleExprRewrite          = "expression.rewrite"
 	ruleExprRewriteNot       = "expression.rewrite.not"
 	ruleJoinCondition        = "join.condition"
 	ruleAliasUnexpected      = "alias.unexpected"
@@ -19,6 +18,7 @@ const (
 	ruleExprUnqualified      = "expr.unqalified"
 	ruleExprAggregate        = "expr.aggregate"
 	ruleExprInvalid          = "expr.invalid"
+	ruleExprRewrite          = "expr.rewrite"
 	ruleExprRewriteIn        = "expr.rewrite.in"
 	ruleInconsistentUseAs    = "use.as.inconsistent"
 	ruleInconsistentUseOrder = "use.order.inconsistent"
@@ -60,14 +60,6 @@ func constantExprInJoin() LintMessage {
 		Severity: Warning,
 		Message:  "constant expression used in join condition",
 		Rule:     ruleJoinCondition,
-	}
-}
-
-func rewritableBinaryExpr() LintMessage {
-	return LintMessage{
-		Severity: Warning,
-		Message:  "expression can be rewritten",
-		Rule:     ruleExprRewrite,
 	}
 }
 
