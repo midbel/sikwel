@@ -124,7 +124,10 @@ func selectJoin(stmt ast.SelectStatement) ([]LintMessage, error) {
 func checkRewriteIn(stmt ast.Statement) ([]LintMessage, error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
-		return selectRewriteIn(stmt)
+		if stmt.Where == nil {
+			return nil, nil
+		}
+		return lintIn(stmt.Where)
 	case ast.UnionStatement:
 		return handleCompoundStatement(stmt.Left, stmt.Right, checkRewriteIn)
 	case ast.IntersectStatement:
@@ -135,53 +138,51 @@ func checkRewriteIn(stmt ast.Statement) ([]LintMessage, error) {
 		return handleWithStatement(stmt, checkRewriteIn)
 	case ast.CteStatement:
 		return checkRewriteIn(stmt.Statement)
+	case ast.Binary:
+		return lintIn(stmt)
+	case ast.In:
+		return lintIn(stmt)
 	default:
 		return nil, ErrNa
 	}
 }
 
-func selectRewriteIn(stmt ast.SelectStatement) ([]LintMessage, error) {
-	if stmt.Where == nil {
-		return nil, nil
-	}
-	var check func(ast.Statement) ([]LintMessage, error)
-
-	check = func(stmt ast.Statement) ([]LintMessage, error) {
-		switch w := stmt.(type) {
-		case ast.In:
-			vs, ok := w.Value.(ast.List)
-			if !ok {
-				return nil, nil
-			}
-			if len(vs.Values) == 1 {
-				return []LintMessage{rewriteIn()}, nil
-			}
+func lintIn(stmt ast.Statement) ([]LintMessage, error) {
+	switch stmt := stmt.(type) {
+	case ast.In:
+		vs, ok := stmt.Value.(ast.List)
+		if !ok {
 			return nil, nil
-		case ast.Binary:
-			if !w.IsRelation() {
-				return nil, nil
-			}
-			l1, err1 := check(w.Left)
-			if err1 != nil && !errors.Is(err1, ErrNa) {
-				return nil, err1
-			}
-			l2, err2 := check(w.Right)
-			if err2 != nil && !errors.Is(err2, ErrNa) {
-				return nil, err2
-			}
-			return slices.Concat(l1, l2), nil
-		default:
+		}
+		if len(vs.Values) == 1 {
+			return []LintMessage{rewriteIn()}, nil
+		}
+		return nil, nil
+	case ast.Binary:
+		if !stmt.IsRelation() {
 			return nil, ErrNa
 		}
-
+		l1, err1 := lintIn(stmt.Left)
+		if err1 != nil && !errors.Is(err1, ErrNa) {
+			return nil, err1
+		}
+		l2, err2 := lintIn(stmt.Right)
+		if err2 != nil && !errors.Is(err2, ErrNa) {
+			return nil, err2
+		}
+		return slices.Concat(l1, l2), nil
+	default:
+		return nil, ErrNa
 	}
-	return check(stmt.Where)
 }
 
 func checkRewriteBinary(stmt ast.Statement) ([]LintMessage, error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
-		return selectRewriteBinary(stmt)
+		if stmt.Where == nil {
+			return nil, nil
+		}
+		return lintBinary(stmt.Where)
 	case ast.UnionStatement:
 		return handleCompoundStatement(stmt.Left, stmt.Right, checkRewriteBinary)
 	case ast.IntersectStatement:
@@ -197,40 +198,31 @@ func checkRewriteBinary(stmt ast.Statement) ([]LintMessage, error) {
 	}
 }
 
-func selectRewriteBinary(stmt ast.SelectStatement) ([]LintMessage, error) {
-	if stmt.Where == nil {
-		return nil, nil
-	}
-
-	var check func(ast.Statement) ([]LintMessage, error)
-
-	check = func(stmt ast.Statement) ([]LintMessage, error) {
-		b, ok := stmt.(ast.Binary)
-		if !ok {
-			return nil, ErrNa
-		}
-		if b.IsRelation() {
-			l1, err1 := check(b.Left)
-			if err1 != nil && !errors.Is(err1, ErrNa) {
-				return nil, err1
-			}
-			l2, err2 := check(b.Right)
-			if err2 != nil && !errors.Is(err2, ErrNa) {
-				return nil, err2
-			}
-			return slices.Concat(l1, l2), nil
-		}
-		if b.Op == "=" || b.Op == "<>" {
-			if v, ok := b.Right.(ast.Value); ok && v.Constant() {
-				return []LintMessage{rewriteBinary()}, nil
-			}
-			if v, ok := b.Left.(ast.Value); ok && v.Constant() {
-				return []LintMessage{rewriteBinary()}, nil
-			}
-		}
+func lintBinary(stmt ast.Statement) ([]LintMessage, error) {
+	bin, ok := stmt.(ast.Binary)
+	if !ok {
 		return nil, ErrNa
 	}
-	return check(stmt.Where)
+	if bin.IsRelation() {
+		l1, err1 := lintBinary(bin.Left)
+		if err1 != nil && !errors.Is(err1, ErrNa) {
+			return nil, err1
+		}
+		l2, err2 := lintBinary(bin.Right)
+		if err2 != nil && !errors.Is(err2, ErrNa) {
+			return nil, err2
+		}
+		return slices.Concat(l1, l2), nil
+	}
+	if bin.Op == "=" || bin.Op == "<>" {
+		if v, ok := bin.Right.(ast.Value); ok && v.Constant() {
+			return []LintMessage{rewriteBinary()}, nil
+		}
+		if v, ok := bin.Left.(ast.Value); ok && v.Constant() {
+			return []LintMessage{rewriteBinary()}, nil
+		}
+	}
+	return nil, ErrNa
 }
 
 func checkForSubqueries(stmt ast.Statement) ([]LintMessage, error) {
