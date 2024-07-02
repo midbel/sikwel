@@ -334,6 +334,7 @@ func (v Value) False() bool {
 type Alias struct {
 	Statement
 	Alias string
+	As    bool
 }
 
 type Name struct {

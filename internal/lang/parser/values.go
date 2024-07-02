@@ -60,6 +60,7 @@ func (p *Parser) ParseAlias(stmt ast.Statement) (ast.Statement, error) {
 		stmt = ast.Alias{
 			Statement: stmt,
 			Alias:     p.GetCurrLiteral(),
+			As:        mandatory,
 		}
 		p.Next()
 	default:

@@ -1,29 +1,27 @@
 package lint
 
-import "fmt"
-
 const (
-	ruleCountMulti        = "count.multiple"
-	ruleCountInvalid      = "count.invalid"
-	ruleExprRewrite       = "expression.rewrite"
-	ruleExprRewriteNot    = "expression.rewrite.not"
-	ruleExprRewriteIn     = "expression.rewrite.in"
-	ruleExprGroup         = "expression.group"
-	ruleExprAggregate     = "expression.aggregate"
-	ruleExprInvalid       = "expression.invalid"
-	ruleExprUnused        = "expression.unused"
-	ruleJoinCondition     = "join.condition"
-	ruleAliasUnexpected   = "alias.unexpected"
-	ruleAliasUndefined    = "alias.undefined"
-	ruleAliasDuplicate    = "alias.duplicate"
-	ruleAliasMissing      = "alias.missing"
-	ruleAliasExpected     = "alias.expected"
-	ruleCteUnused         = "cte.unused"
-	ruleCteDuplicated     = "cte.duplicate"
-	ruleCteColsMissing    = "cte.columns.missing"
-	ruleCteColsMismatched = "cte.columns.mismatched"
-	ruleSubqueryNotAllow  = "subquery.disallow"
-	ruleExprUnqualified   = "expression.unqalified"
+	ruleCountMulti           = "count.multiple"
+	ruleExprRewrite          = "expression.rewrite"
+	ruleExprRewriteNot       = "expression.rewrite.not"
+	ruleExprRewriteIn        = "expression.rewrite.in"
+	ruleJoinCondition        = "join.condition"
+	ruleAliasUnexpected      = "alias.unexpected"
+	ruleAliasUndefined       = "alias.undefined"
+	ruleAliasDuplicate       = "alias.duplicate"
+	ruleAliasMissing         = "alias.missing"
+	ruleAliasExpected        = "alias.expected"
+	ruleCteUnused            = "cte.unused"
+	ruleCteDuplicated        = "cte.duplicate"
+	ruleCteColsMissing       = "cte.columns.missing"
+	ruleCteColsMismatched    = "cte.columns.mismatched"
+	ruleSubqueryNotAllow     = "subquery.disallow"
+	ruleSubqueryCountInvalid = "subquery.count.invalid"
+	ruleExprUnqualified      = "expr.unqalified"
+	ruleExprAggregate        = "expr.aggregate"
+	ruleExprInvalid          = "expr.invalid"
+	ruleInconsistentUseAs    = "use.as.inconsistent"
+	ruleInconsistentUseOrder = "use.order.inconsistent"
 )
 
 type Level int
@@ -86,45 +84,5 @@ func notStandardOperator() LintMessage {
 		Severity: Warning,
 		Message:  "non standard operator found",
 		Rule:     ruleExprRewrite,
-	}
-}
-
-func countMultipleFields() LintMessage {
-	return LintMessage{
-		Severity: Error,
-		Message:  "subquery should only return one field",
-		Rule:     ruleCountMulti,
-	}
-}
-
-func columnsCountMismatched() LintMessage {
-	return LintMessage{
-		Severity: Error,
-		Message:  "columns count mismatched",
-		Rule:     ruleCountInvalid,
-	}
-}
-
-func fieldNotInGroup(field string) LintMessage {
-	return LintMessage{
-		Severity: Error,
-		Message:  fmt.Sprintf("%s: field should be used in a 'group by' clause or with an aggregate function", field),
-		Rule:     ruleExprGroup,
-	}
-}
-
-func aggregateFunctionExpected(ident string) LintMessage {
-	return LintMessage{
-		Severity: Error,
-		Message:  fmt.Sprintf("%s: aggregate function expected", ident),
-		Rule:     ruleExprAggregate,
-	}
-}
-
-func unexpectedExprType(field, ctx string) LintMessage {
-	return LintMessage{
-		Severity: Error,
-		Message:  fmt.Sprintf("%s: unexpected expression type", ctx),
-		Rule:     ruleExprInvalid,
 	}
 }

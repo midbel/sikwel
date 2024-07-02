@@ -2,12 +2,157 @@ package lint
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/midbel/sweet/internal/lang/ast"
 )
 
+func checkResultSubquery(stmt ast.Statement) ([]LintMessage, error) {
+	switch stmt := stmt.(type) {
+	case ast.SelectStatement:
+		return selectResultSubquery(stmt)
+	case ast.UnionStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkResultSubquery)
+	case ast.IntersectStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkResultSubquery)
+	case ast.ExceptStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkResultSubquery)
+	case ast.WithStatement:
+		return handleWithStatement(stmt, checkResultSubquery)
+	case ast.CteStatement:
+		return checkResultSubquery(stmt.Statement)
+	default:
+		return nil, ErrNa
+	}
+}
+
+func selectResultSubquery(stmt ast.SelectStatement) ([]LintMessage, error) {
+	var list []LintMessage
+	for _, c := range stmt.Columns {
+		q, ok := c.(ast.SelectStatement)
+		if !ok {
+			continue
+		}
+		if len(q.Columns) != 1 {
+			list = append(list, subqueryColumnMismatch())
+		}
+	}
+	return list, nil
+}
+
+func checkGroupBy(stmt ast.Statement) ([]LintMessage, error) {
+	switch stmt := stmt.(type) {
+	case ast.SelectStatement:
+		return selectGroupBy(stmt)
+	case ast.UnionStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkGroupBy)
+	case ast.IntersectStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkGroupBy)
+	case ast.ExceptStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkGroupBy)
+	case ast.WithStatement:
+		return handleWithStatement(stmt, checkGroupBy)
+	case ast.CteStatement:
+		return checkGroupBy(stmt.Statement)
+	default:
+		return nil, ErrNa
+	}
+}
+
+func selectGroupBy(stmt ast.SelectStatement) ([]LintMessage, error) {
+	if len(stmt.Groups) == 0 {
+		return nil, nil
+	}
+	var (
+		list   []LintMessage
+		groups = ast.GetNamesFromStmt(stmt.Groups)
+	)
+	for _, c := range stmt.Columns {
+		if a, ok := c.(ast.Alias); ok {
+			c = a.Statement
+		}
+		switch c := c.(type) {
+		case ast.Value:
+		case ast.Name:
+			if !slices.Contains(groups, c.Ident()) {
+				list = append(list, exprNotInGroupBy(c.Ident()))
+			}
+		case ast.Call:
+			if !c.IsAggregate() {
+				list = append(list, aggregateExpected(c.GetIdent()))
+			}
+		default:
+			list = append(list, unexpectedExpr(""))
+		}
+	}
+	return list, nil
+}
+
 func checkAsUsage(stmt ast.Statement) ([]LintMessage, error) {
-	return nil, nil
+	switch stmt := stmt.(type) {
+	case ast.SelectStatement:
+		return selectInconsistentAs(stmt)
+	case ast.UnionStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkAsUsage)
+	case ast.IntersectStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkAsUsage)
+	case ast.ExceptStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkAsUsage)
+	case ast.WithStatement:
+		return handleWithStatement(stmt, checkAsUsage)
+	case ast.CteStatement:
+		return checkAsUsage(stmt.Statement)
+	default:
+		return nil, ErrNa
+	}
+}
+
+func selectInconsistentAs(stmt ast.SelectStatement) ([]LintMessage, error) {
+	var (
+		list []LintMessage
+		used bool
+	)
+	for _, c := range stmt.Columns {
+		a, ok := c.(ast.Alias)
+		if !ok {
+			if used {
+				list = append(list, inconsistentAs("select"))
+				break
+			}
+			continue
+		}
+		if !used && a.As {
+			used = true
+			continue
+		}
+		if used && !a.As {
+			list = append(list, inconsistentAs("select"))
+			break
+		}
+	}
+	used = false
+	for _, s := range stmt.Tables {
+		if j, ok := s.(ast.Join); ok {
+			s = j.Table
+		}
+		a, ok := s.(ast.Alias)
+		if !ok {
+			if used {
+				list = append(list, inconsistentAs("from"))
+				break
+			}
+			continue
+		}
+		if !used && a.As {
+			used = true
+			continue
+		}
+		if used && !a.As {
+			list = append(list, inconsistentAs("from"))
+			break
+		}
+	}
+	return list, nil
 }
 
 func checkDirectionUsage(stmt ast.Statement) ([]LintMessage, error) {
@@ -58,5 +203,53 @@ func unqualifiedName(name string) LintMessage {
 		Severity: Error,
 		Message:  fmt.Sprintf("%s: expr is not qualified", name),
 		Rule:     ruleExprUnqualified,
+	}
+}
+
+func inconsistentAs(clause string) LintMessage {
+	return LintMessage{
+		Severity: Warning,
+		Message:  fmt.Sprintf("%s: inconsistent use of AS", clause),
+		Rule:     ruleInconsistentUseAs,
+	}
+}
+
+func inconsistentOrder() LintMessage {
+	return LintMessage{
+		Severity: Warning,
+		Message:  "inconsistent use of ASC/DESC",
+		Rule:     ruleInconsistentUseOrder,
+	}
+}
+
+func aggregateExpected(ident string) LintMessage {
+	return LintMessage{
+		Severity: Error,
+		Message:  fmt.Sprintf("%s: not an aggregate function", ident),
+		Rule:     ruleExprAggregate,
+	}
+}
+
+func exprNotInGroupBy(ident string) LintMessage {
+	return LintMessage{
+		Severity: Error,
+		Message:  fmt.Sprintf("%s: expression should appear in group by", ident),
+		Rule:     ruleExprInvalid,
+	}
+}
+
+func unexpectedExpr(ident string) LintMessage {
+	return LintMessage{
+		Severity: Error,
+		Message:  "%s: unexpected expression",
+		Rule:     ruleExprInvalid,
+	}
+}
+
+func subqueryColumnMismatch() LintMessage {
+	return LintMessage{
+		Severity: Error,
+		Message:  "subquery should only return 1 column",
+		Rule:     ruleSubqueryCountInvalid,
 	}
 }

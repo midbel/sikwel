@@ -65,6 +65,8 @@ func (i *Linter) prepareRules() {
 	i.Rules = append(i.Rules, checkColumnsMismatchedCte)
 	i.Rules = append(i.Rules, checkForSubqueries)
 	i.Rules = append(i.Rules, checkForUnqualifiedNames)
+	i.Rules = append(i.Rules, checkAsUsage)
+	i.Rules = append(i.Rules, checkDirectionUsage)
 }
 
 func (i *Linter) configure(cfg *config.Config) {
@@ -117,106 +119,6 @@ func (i *Linter) lintBinary(stmt ast.Binary) ([]LintMessage, error) {
 		}
 	}
 	return list, nil
-}
-
-func (i *Linter) lintList(stmt ast.List) ([]LintMessage, error) {
-	var list []LintMessage
-	for _, v := range stmt.Values {
-		others, err := i.LintStatement(v)
-		if err != nil {
-			return nil, err
-		}
-		list = append(list, others...)
-	}
-	return list, nil
-}
-
-func (i *Linter) lintValues(stmt ast.ValuesStatement) ([]LintMessage, error) {
-	if len(stmt.List) <= 1 {
-		return nil, nil
-	}
-	var (
-		list  []LintMessage
-		count = 1
-	)
-	others, err := i.LintStatement(stmt.List[0])
-	if err != nil {
-		return nil, err
-	}
-	list = append(list, others...)
-	if vs, ok := stmt.List[0].(ast.List); ok {
-		count = len(vs.Values)
-	}
-	for _, vs := range stmt.List[1:] {
-		others, err := i.LintStatement(vs)
-		if err != nil {
-			return nil, err
-		}
-		list = append(list, others...)
-
-		n := 1
-		if vs, ok := vs.(ast.List); ok {
-			n = len(vs.Values)
-		}
-		if count != n {
-			list = append(list, columnsCountMismatched())
-		}
-	}
-	return list, nil
-}
-
-func checkFieldsFromSubqueries(stmt ast.SelectStatement) []LintMessage {
-	var list []LintMessage
-	for _, c := range stmt.Columns {
-		s, ok := c.(ast.SelectStatement)
-		if !ok {
-			continue
-		}
-		if len(s.Columns) != 1 {
-			list = append(list, countMultipleFields())
-		}
-	}
-	return nil
-}
-
-func checkColumnUsedInGroup(stmt ast.SelectStatement) []LintMessage {
-	if len(stmt.Groups) == 0 {
-		return nil
-	}
-	var (
-		groups = ast.GetNamesFromStmt(stmt.Groups)
-		list   []LintMessage
-	)
-	for _, c := range stmt.Columns {
-		switch c := c.(type) {
-		case ast.Alias:
-			call, ok := c.Statement.(ast.Call)
-			if ok {
-				if ok = call.IsAggregate(); !ok {
-					list = append(list, aggregateFunctionExpected(call.GetIdent()))
-				}
-			}
-			name, ok := c.Statement.(ast.Name)
-			if !ok {
-				list = append(list, unexpectedExprType("", "GROUP BY"))
-			}
-			if ok = slices.Contains(groups, name.Ident()); !ok {
-				list = append(list, fieldNotInGroup(name.Ident()))
-			}
-		case ast.Call:
-			if ok := c.IsAggregate(); !ok {
-				list = append(list, aggregateFunctionExpected(c.GetIdent()))
-			}
-		case ast.Name:
-			ok := slices.Contains(groups, c.Name())
-			if !ok {
-				list = append(list, fieldNotInGroup(c.Name()))
-			}
-		default:
-			list = append(list, unexpectedExprType("", "GROUP BY"))
-		}
-	}
-	return list
 }
 
 func checkForSubqueries(stmt ast.Statement) ([]LintMessage, error) {

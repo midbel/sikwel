@@ -26,18 +26,19 @@ func GetFormatter() lang.Formatter {
 type Writer struct {
 	inner *bufio.Writer
 
-	Compact      bool
-	UseQuote     bool
-	UseAs        bool
-	UseIndent    int
-	UseSpace     bool
-	UseColor     bool
-	UseCrlf      bool
-	UseKeepSpace bool
-	PrependComma bool
-	KeepComment  bool
-	Upperize     UpperMode
-	Rules        RewriteRule
+	Compact       bool
+	UseQuote      bool
+	UseAs         bool
+	UseIndent     int
+	UseSpace      bool
+	UseColor      bool
+	UseCrlf       bool
+	UseKeepSpace  bool
+	PrependComma  bool
+	KeepComment   bool
+	ForceOptional bool
+	Upperize      UpperMode
+	Rules         RewriteRule
 
 	noColor   bool
 	currDepth int
