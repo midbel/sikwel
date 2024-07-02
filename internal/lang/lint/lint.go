@@ -155,7 +155,7 @@ func lintIn(stmt ast.Statement) ([]LintMessage, error) {
 			return nil, nil
 		}
 		if len(vs.Values) == 1 {
-			return []LintMessage{rewriteIn()}, nil
+			return makeArray(rewriteIn()), nil
 		}
 		return nil, nil
 	case ast.Binary:
@@ -216,10 +216,10 @@ func lintBinary(stmt ast.Statement) ([]LintMessage, error) {
 	}
 	if bin.Op == "=" || bin.Op == "<>" {
 		if v, ok := bin.Right.(ast.Value); ok && v.Constant() {
-			return []LintMessage{rewriteBinary()}, nil
+			return makeArray(rewriteBinary()), nil
 		}
 		if v, ok := bin.Left.(ast.Value); ok && v.Constant() {
-			return []LintMessage{rewriteBinary()}, nil
+			return makeArray(rewriteBinary()), nil
 		}
 	}
 	return nil, ErrNa
@@ -326,4 +326,8 @@ func handleWithStatement(with ast.WithStatement, check RuleFunc) ([]LintMessage,
 		list = append(list, ms...)
 	}
 	return list, err
+}
+
+func makeArray[T LintMessage](el T) []T {
+	return []T{el}
 }

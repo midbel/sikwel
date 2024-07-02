@@ -28,10 +28,10 @@ func checkEnforcedAlias(stmt ast.Statement) ([]LintMessage, error) {
 
 func selectEnforcedAlias(stmt ast.SelectStatement) ([]LintMessage, error) {
 	if cs := ast.GetAliasFromStmt(stmt.Columns); len(cs) == 0 {
-		return []LintMessage{enforcedAlias()}, nil
+		return makeArray(enforcedAlias()), nil
 	}
 	if ts := ast.GetAliasFromStmt(stmt.Tables); len(ts) == 0 {
-		return []LintMessage{enforcedAlias()}, nil
+		return makeArray(enforcedAlias()), nil
 	}
 	return nil, nil
 }
