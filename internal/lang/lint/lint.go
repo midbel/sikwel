@@ -438,7 +438,7 @@ func constantJoin() LintMessage {
 	return LintMessage{
 		Severity: Error,
 		Message:  "join expression composed of constant values",
-		Rule:     ruleExprJoinConst,
+		Rule:     ruleConstExprJoin,
 	}
 }
 
@@ -446,7 +446,7 @@ func constantOnlyExpr() LintMessage {
 	return LintMessage{
 		Severity: Error,
 		Message:  "expression composed of constant values",
-		Rule:     ruleExprBinConst,
+		Rule:     ruleConstExprBin,
 	}
 }
 

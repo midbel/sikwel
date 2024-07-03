@@ -210,7 +210,7 @@ func selectUnqualifiedNames(stmt ast.SelectStatement) ([]LintMessage, error) {
 func unqualifiedName(name string) LintMessage {
 	return LintMessage{
 		Severity: Error,
-		Message:  fmt.Sprintf("%s: expr is not qualified", name),
+		Message:  fmt.Sprintf("%s should be fully qualified", name),
 		Rule:     ruleExprUnqualified,
 	}
 }
@@ -234,7 +234,7 @@ func inconsistentOrder() LintMessage {
 func aggregateExpected(ident string) LintMessage {
 	return LintMessage{
 		Severity: Error,
-		Message:  fmt.Sprintf("%s: not an aggregate function", ident),
+		Message:  fmt.Sprintf("%s should be an aggregate function", ident),
 		Rule:     ruleExprAggregate,
 	}
 }
@@ -242,7 +242,7 @@ func aggregateExpected(ident string) LintMessage {
 func exprNotInGroupBy(ident string) LintMessage {
 	return LintMessage{
 		Severity: Error,
-		Message:  fmt.Sprintf("%s: expression should be in group by", ident),
+		Message:  fmt.Sprintf("%s should be used in group by clause", ident),
 		Rule:     ruleExprInvalid,
 	}
 }
