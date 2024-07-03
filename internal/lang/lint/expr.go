@@ -38,7 +38,7 @@ func selectResultSubquery(stmt ast.SelectStatement) ([]LintMessage, error) {
 			continue
 		}
 		if len(q.Columns) != 1 {
-			list = append(list, subqueryColumnMismatch())
+			list = append(list, subqueryTooManyResult())
 		}
 	}
 	others, err := handleSelectStatement(stmt, checkResultSubquery)
@@ -242,7 +242,7 @@ func aggregateExpected(ident string) LintMessage {
 func exprNotInGroupBy(ident string) LintMessage {
 	return LintMessage{
 		Severity: Error,
-		Message:  fmt.Sprintf("%s: expression should appear in group by", ident),
+		Message:  fmt.Sprintf("%s: expression should be in group by", ident),
 		Rule:     ruleExprInvalid,
 	}
 }
@@ -255,10 +255,10 @@ func unexpectedExpr(ident string) LintMessage {
 	}
 }
 
-func subqueryColumnMismatch() LintMessage {
+func subqueryTooManyResult() LintMessage {
 	return LintMessage{
 		Severity: Error,
-		Message:  "subquery should only return 1 column",
-		Rule:     ruleSubqueryCountInvalid,
+		Message:  "too many result returned by subquery",
+		Rule:     ruleSubqueryTooMany,
 	}
 }

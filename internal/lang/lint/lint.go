@@ -421,16 +421,16 @@ func subqueryDisallow() LintMessage {
 func rewriteIn() LintMessage {
 	return LintMessage{
 		Severity: Warning,
-		Message:  "in predicate could be rewritten",
-		Rule:     ruleExprRewriteIn,
+		Message:  "in predicate should be rewritten",
+		Rule:     ruleRewriteExprIn,
 	}
 }
 
 func rewriteBinary() LintMessage {
 	return LintMessage{
 		Severity: Warning,
-		Message:  "expression can be rewritten",
-		Rule:     ruleExprRewrite,
+		Message:  "expression should be rewritten",
+		Rule:     ruleRewriteExpr,
 	}
 }
 
