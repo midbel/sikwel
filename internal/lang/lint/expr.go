@@ -259,6 +259,6 @@ func subqueryTooManyResult() LintMessage {
 	return LintMessage{
 		Severity: Error,
 		Message:  "too many result returned by subquery",
-		Rule:     ruleSubqueryTooMany,
+		Rule:     ruleSubqueryColsMismatched,
 	}
 }
