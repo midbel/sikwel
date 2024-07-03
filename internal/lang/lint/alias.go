@@ -21,19 +21,25 @@ func checkEnforcedAlias(stmt ast.Statement) ([]LintMessage, error) {
 		return handleWithStatement(stmt, checkEnforcedAlias)
 	case ast.CteStatement:
 		return checkEnforcedAlias(stmt.Statement)
+	case ast.Join:
+		return checkEnforcedAlias(stmt.Table)
+	case ast.Group:
+		return checkEnforcedAlias(stmt.Statement)
 	default:
 		return nil, ErrNa
 	}
 }
 
 func selectEnforcedAlias(stmt ast.SelectStatement) ([]LintMessage, error) {
+	var list []LintMessage
 	if cs := ast.GetAliasFromStmt(stmt.Columns); len(cs) == 0 {
-		return makeArray(enforcedAlias()), nil
+		list = append(list, enforcedAlias())
 	}
 	if ts := ast.GetAliasFromStmt(stmt.Tables); len(ts) == 0 {
-		return makeArray(enforcedAlias()), nil
+		list = append(list, enforcedAlias())
 	}
-	return nil, nil
+	others, err := handleSelectStatement(stmt, checkEnforcedAlias)
+	return slices.Concat(list, others), err
 }
 
 func checkUniqueAlias(stmt ast.Statement) ([]LintMessage, error) {
@@ -49,6 +55,10 @@ func checkUniqueAlias(stmt ast.Statement) ([]LintMessage, error) {
 	case ast.WithStatement:
 		return handleWithStatement(stmt, checkUniqueAlias)
 	case ast.CteStatement:
+		return checkUniqueAlias(stmt.Statement)
+	case ast.Join:
+		return checkUniqueAlias(stmt.Table)
+	case ast.Group:
 		return checkUniqueAlias(stmt.Statement)
 	default:
 		return nil, ErrNa
@@ -74,7 +84,8 @@ func selectUniqueAlias(stmt ast.SelectStatement) ([]LintMessage, error) {
 			list = append(list, duplicatedAlias(tables[i]))
 		}
 	}
-	return list, nil
+	others, err := handleSelectStatement(stmt, checkUniqueAlias)
+	return slices.Concat(list, others), err
 }
 
 func checkUndefinedAlias(stmt ast.Statement) ([]LintMessage, error) {
@@ -90,6 +101,10 @@ func checkUndefinedAlias(stmt ast.Statement) ([]LintMessage, error) {
 	case ast.WithStatement:
 		return handleWithStatement(stmt, checkUndefinedAlias)
 	case ast.CteStatement:
+		return checkUndefinedAlias(stmt.Statement)
+	case ast.Join:
+		return checkUndefinedAlias(stmt.Table)
+	case ast.Group:
 		return checkUndefinedAlias(stmt.Statement)
 	default:
 		return nil, ErrNa
@@ -115,7 +130,8 @@ func selectUndefinedAlias(stmt ast.SelectStatement) ([]LintMessage, error) {
 			list = append(list, undefinedAlias(schema))
 		}
 	}
-	return list, nil
+	others, err := handleSelectStatement(stmt, checkUndefinedAlias)
+	return slices.Concat(list, others), err
 }
 
 func checkMissingAlias(stmt ast.Statement) ([]LintMessage, error) {
@@ -131,6 +147,10 @@ func checkMissingAlias(stmt ast.Statement) ([]LintMessage, error) {
 	case ast.WithStatement:
 		return handleWithStatement(stmt, checkMissingAlias)
 	case ast.CteStatement:
+		return checkMissingAlias(stmt.Statement)
+	case ast.Join:
+		return checkMissingAlias(stmt.Table)
+	case ast.Group:
 		return checkMissingAlias(stmt.Statement)
 	default:
 		return nil, ErrNa
@@ -159,7 +179,8 @@ func selectMissingAlias(stmt ast.SelectStatement) ([]LintMessage, error) {
 			list = append(list, missingAlias())
 		}
 	}
-	return list, nil
+	others, err := handleSelectStatement(stmt, checkMissingAlias)
+	return slices.Concat(list, others), err
 }
 
 func checkMisusedAlias(stmt ast.Statement) ([]LintMessage, error) {
@@ -175,6 +196,10 @@ func checkMisusedAlias(stmt ast.Statement) ([]LintMessage, error) {
 	case ast.WithStatement:
 		return handleWithStatement(stmt, checkMisusedAlias)
 	case ast.CteStatement:
+		return checkMisusedAlias(stmt.Statement)
+	case ast.Join:
+		return checkMisusedAlias(stmt.Table)
+	case ast.Group:
 		return checkMisusedAlias(stmt.Statement)
 	default:
 		return nil, ErrNa
@@ -192,7 +217,8 @@ func selectMisusedAlias(stmt ast.SelectStatement) ([]LintMessage, error) {
 			list = append(list, unexpectedAlias(a))
 		}
 	}
-	return list, nil
+	others, err := handleSelectStatement(stmt, checkMisusedAlias)
+	return slices.Concat(list, others), err
 }
 
 func enforcedAlias() LintMessage {

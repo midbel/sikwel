@@ -1,9 +1,6 @@
 package lint
 
 const (
-	ruleCountMulti           = "count.multiple"
-	ruleExprRewriteNot       = "expression.rewrite.not"
-	ruleJoinCondition        = "join.condition"
 	ruleAliasUnexpected      = "alias.unexpected"
 	ruleAliasUndefined       = "alias.undefined"
 	ruleAliasDuplicate       = "alias.duplicate"
@@ -20,6 +17,9 @@ const (
 	ruleExprInvalid          = "expr.invalid"
 	ruleExprRewrite          = "expr.rewrite"
 	ruleExprRewriteIn        = "expr.rewrite.in"
+	ruleExprRewriteNot       = "expr.rewrite.not"
+	ruleExprJoinConst        = "expr.join.constant"
+	ruleExprBinConst         = "expr.bin.constant"
 	ruleInconsistentUseAs    = "use.as.inconsistent"
 	ruleInconsistentUseOrder = "use.order.inconsistent"
 )
@@ -53,20 +53,4 @@ type LintMessage struct {
 	Severity Level
 	Rule     string
 	Message  string
-}
-
-func constantExprInJoin() LintMessage {
-	return LintMessage{
-		Severity: Warning,
-		Message:  "constant expression used in join condition",
-		Rule:     ruleJoinCondition,
-	}
-}
-
-func notStandardOperator() LintMessage {
-	return LintMessage{
-		Severity: Warning,
-		Message:  "non standard operator found",
-		Rule:     ruleExprRewrite,
-	}
 }

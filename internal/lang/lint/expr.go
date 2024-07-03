@@ -21,6 +21,10 @@ func checkResultSubquery(stmt ast.Statement) ([]LintMessage, error) {
 		return handleWithStatement(stmt, checkResultSubquery)
 	case ast.CteStatement:
 		return checkResultSubquery(stmt.Statement)
+	case ast.Join:
+		return checkResultSubquery(stmt.Table)
+	case ast.Group:
+		return checkResultSubquery(stmt.Statement)
 	default:
 		return nil, ErrNa
 	}
@@ -37,7 +41,8 @@ func selectResultSubquery(stmt ast.SelectStatement) ([]LintMessage, error) {
 			list = append(list, subqueryColumnMismatch())
 		}
 	}
-	return list, nil
+	others, err := handleSelectStatement(stmt, checkResultSubquery)
+	return slices.Concat(list, others), err
 }
 
 func checkGroupBy(stmt ast.Statement) ([]LintMessage, error) {
@@ -53,6 +58,10 @@ func checkGroupBy(stmt ast.Statement) ([]LintMessage, error) {
 	case ast.WithStatement:
 		return handleWithStatement(stmt, checkGroupBy)
 	case ast.CteStatement:
+		return checkGroupBy(stmt.Statement)
+	case ast.Join:
+		return checkGroupBy(stmt.Table)
+	case ast.Group:
 		return checkGroupBy(stmt.Statement)
 	default:
 		return nil, ErrNa
@@ -85,7 +94,8 @@ func selectGroupBy(stmt ast.SelectStatement) ([]LintMessage, error) {
 			list = append(list, unexpectedExpr(""))
 		}
 	}
-	return list, nil
+	others, err := handleSelectStatement(stmt, checkGroupBy)
+	return slices.Concat(list, others), err
 }
 
 func checkAsUsage(stmt ast.Statement) ([]LintMessage, error) {
@@ -101,6 +111,10 @@ func checkAsUsage(stmt ast.Statement) ([]LintMessage, error) {
 	case ast.WithStatement:
 		return handleWithStatement(stmt, checkAsUsage)
 	case ast.CteStatement:
+		return checkAsUsage(stmt.Statement)
+	case ast.Join:
+		return checkAsUsage(stmt.Table)
+	case ast.Group:
 		return checkAsUsage(stmt.Statement)
 	default:
 		return nil, ErrNa
@@ -141,7 +155,8 @@ func selectInconsistentAs(stmt ast.SelectStatement) ([]LintMessage, error) {
 	if used && len(stmt.Tables) > 1 {
 		list = append(list, inconsistentAs("from"))
 	}
-	return list, nil
+	others, err := handleSelectStatement(stmt, checkAsUsage)
+	return slices.Concat(list, others), err
 }
 
 func checkDirectionUsage(stmt ast.Statement) ([]LintMessage, error) {
@@ -161,6 +176,10 @@ func checkForUnqualifiedNames(stmt ast.Statement) ([]LintMessage, error) {
 	case ast.WithStatement:
 		return handleWithStatement(stmt, checkForUnqualifiedNames)
 	case ast.CteStatement:
+		return checkForUnqualifiedNames(stmt.Statement)
+	case ast.Join:
+		return checkForUnqualifiedNames(stmt.Table)
+	case ast.Group:
 		return checkForUnqualifiedNames(stmt.Statement)
 	default:
 		return nil, ErrNa
@@ -184,7 +203,8 @@ func selectUnqualifiedNames(stmt ast.SelectStatement) ([]LintMessage, error) {
 			list = append(list, unqualifiedName(n.Ident()))
 		}
 	}
-	return list, nil
+	others, err := handleSelectStatement(stmt, checkForUnqualifiedNames)
+	return slices.Concat(list, others), err
 }
 
 func unqualifiedName(name string) LintMessage {
