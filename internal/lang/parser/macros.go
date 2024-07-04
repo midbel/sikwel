@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/midbel/sweet/internal/config"
 	"github.com/midbel/sweet/internal/token"
 )
 
@@ -76,6 +77,40 @@ func (p *Parser) ParseFormatMacro() error {
 }
 
 func (p *Parser) ParseLintMacro() error {
+	p.Next()
+	if !p.Is(token.Ident) && !p.Is(token.Literal) && !p.Is(token.Keyword) {
+		return p.Unexpected("lint(key)")
+	}
+	rule := strings.ToLower(p.GetCurrLiteral())
+	p.Next()
+
+	if !p.Is(token.Ident) && !p.Is(token.Keyword) && !p.Is(token.Number) {
+		return p.Unexpected("lint(level/enabled)")
+	}
+	if val := p.GetCurrLiteral(); val == "on" || val == "off" {
+		p.Config.Set(rule, val == "on")
+		p.Next()
+		if !p.Is(token.EOL) {
+			return p.Unexpected("lint(eol)")
+		}
+		p.Next()
+		return nil
+	}
+	sub := config.Make()
+	if p.Is(token.Ident) {
+		sub.Set("level", p.GetCurrLiteral())
+		p.Next()
+	}
+	if p.Is(token.Number) {
+		prio, _ := strconv.Atoi(p.GetCurrLiteral())
+		sub.Set("priority", prio)
+		p.Next()
+	}
+	p.Config.Set(rule, sub)
+	if !p.Is(token.EOL) {
+		return p.wantError("lint", ";")
+	}
+	p.Next()
 	return nil
 }
 

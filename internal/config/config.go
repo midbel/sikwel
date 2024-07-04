@@ -37,6 +37,18 @@ func Load(r io.Reader) (*Config, error) {
 	return p.Parse()
 }
 
+func (c *Config) Empty() bool {
+	return len(c.values) == 0
+}
+
+func (c *Config) Keys() []string {
+	var keys []string
+	for k := range c.values {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
 func (c *Config) Sub(key string) *Config {
 	switch other := c.values[key].(type) {
 	case *Config:

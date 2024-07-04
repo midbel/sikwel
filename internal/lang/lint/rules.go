@@ -18,12 +18,60 @@ const (
 	ruleExprInvalid            = "expr.invalid"
 	ruleConstExprJoin          = "const.expr.join"
 	ruleConstExprBin           = "const.expr.bin"
-	ruleRewriteExpr            = "rewrite.expr."
+	ruleRewriteExpr            = "rewrite.expr"
 	ruleRewriteExprIn          = "rewrite.expr.in"
 	ruleRewriteExprNot         = "rewrite.expr.not"
 	ruleInconsistentUseAs      = "inconsistent.use.as"
 	ruleInconsistentUseOrder   = "inconsistent.use.order"
 )
+
+var allRules = map[string][]RuleFunc{
+	"alias": {
+		checkUniqueAlias,
+		checkUndefinedAlias,
+		checkMissingAlias,
+		checkMisusedAlias,
+	},
+	ruleAliasUnexpected: {},
+	ruleAliasUndefined:  {},
+	ruleAliasDuplicate:  {},
+	ruleAliasMissing:    {},
+	ruleAliasExpected:   {},
+	"cte": {
+		checkUnusedCte,
+		checkDuplicateCte,
+	},
+	ruleCteUnused:     {},
+	ruleCteDuplicated: {},
+	"cte.columns": {
+		checkColumnsMissingCte,
+		checkColumnsMismatchedCte,
+	},
+	ruleCteColsMissing:         {},
+	ruleCteColsMismatched:      {},
+	ruleCteColsUnused:          {},
+	"subquery":                 {},
+	ruleSubqueryNotAllow:       {},
+	"subquery.columns":         {},
+	ruleSubqueryColsMismatched: {},
+	"expr":                     {},
+	ruleExprUnqualified:        {},
+	ruleExprAggregate:          {},
+	ruleExprInvalid:            {},
+	"const":                    {},
+	ruleConstExprJoin:          {},
+	ruleConstExprBin:           {},
+	"rewrite":                  {},
+	"rewrite.expr":             {},
+	ruleRewriteExpr:            {},
+	ruleRewriteExprIn:          {},
+	ruleRewriteExprNot:         {},
+	"inconsistent": {
+		checkAsUsage,
+	},
+	ruleInconsistentUseAs:    {},
+	ruleInconsistentUseOrder: {},
+}
 
 type Level int
 
@@ -39,6 +87,21 @@ func (e Level) String() string {
 		return "error"
 	default:
 		return "other"
+	}
+}
+
+func getLevelFromName(name string) Level {
+	switch name {
+	case "", "default":
+		return Default
+	case "info":
+		return Info
+	case "warning":
+		return Warning
+	case "error":
+		return Error
+	default:
+		return -1
 	}
 }
 

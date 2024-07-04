@@ -2,6 +2,7 @@ package lint
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"slices"
 
@@ -30,6 +31,9 @@ func (i *Linter) Lint(r io.Reader) ([]LintMessage, error) {
 	p, err := parser.NewParser(r)
 	if err != nil {
 		return nil, err
+	}
+	if ps, ok := p.(*parser.Parser); ok {
+		i.configure(ps.Config)
 	}
 	var list []LintMessage
 	for {
@@ -76,8 +80,52 @@ func (i *Linter) prepareRules() {
 	i.Rules = append(i.Rules, checkUnusedColumns)
 }
 
-func (i *Linter) configure(cfg *config.Config) {
+func customizeRule(fn RuleFunc, enabled bool, level Level) RuleFunc {
+	return func(stmt ast.Statement) ([]LintMessage, error) {
+		if !enabled {
+			return nil, nil
+		}
+		ms, err := fn(stmt)
+		if level == Default {
+			return ms, err
+		}
+		for i := range ms {
+			ms[i].Severity = level
+		}
+		return ms, err
+	}
+}
 
+func (i *Linter) configure(cfg *config.Config) error {
+	var rules []RuleFunc
+	for _, k := range cfg.Keys() {
+		set, ok := allRules[k]
+		if !ok {
+			return fmt.Errorf("unknown rule %q", k)
+		}
+		var (
+			enabled  bool
+			level    Level
+			priority int
+		)
+
+		v := cfg.Get(k)
+		if b, ok := v.(bool); ok {
+			enabled = b
+		} else if x, ok := v.(*config.Config); ok {
+			level = getLevelFromName(x.GetString("level"))
+			if level < Default {
+				return fmt.Errorf("unknown level %q", x.GetString("level"))
+			}
+			priority = int(x.GetInt("priority"))
+		}
+		_ = priority
+		for _, fn := range set {
+			fn = customizeRule(fn, enabled, level)
+			rules = append(rules, fn)
+		}
+	}
+	return nil
 }
 
 func (i *Linter) LintStatement(stmt ast.Statement) ([]LintMessage, error) {
