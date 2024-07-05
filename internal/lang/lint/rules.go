@@ -144,10 +144,16 @@ type rulesMap map[string]registeredRule
 
 func getDefaultRules() rulesMap {
 	all := make(rulesMap)
-	all.register(ruleAliasUnexpected, checkMisusedAlias)
-	all.register(ruleAliasUndefined, checkUndefinedAlias)
-	all.register(ruleAliasDuplicate, checkUniqueAlias)
-	all.register(ruleAliasMissing, checkMissingAlias)
+	all.register(ruleAliasUnexpected, allRules[ruleAliasUnexpected])
+	all.register(ruleAliasUndefined, allRules[ruleAliasUndefined])
+	all.register(ruleAliasDuplicate, allRules[ruleAliasDuplicate])
+	all.register(ruleAliasMissing, allRules[ruleAliasMissing])
+	all.register(ruleCteUnused, allRules[ruleCteUnused])
+	all.register(ruleCteDuplicated, allRules[ruleCteDuplicated])
+	all.register(ruleCteColsMissing, allRules[ruleCteColsMissing])
+	all.register(ruleCteColsMismatched, allRules[ruleCteColsMismatched])
+	all.register(ruleConstExprJoin, allRules[ruleConstExprJoin])
+	all.register(ruleConstExprBin, allRules[ruleConstExprBin])
 	return all
 }
 
