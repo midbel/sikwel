@@ -130,16 +130,20 @@ type rulesMap map[string]registeredRule
 
 func getDefaultRules() rulesMap {
 	all := make(rulesMap)
-	all.register(ruleAliasUnexpected, allRules[ruleAliasUnexpected])
-	all.register(ruleAliasUndefined, allRules[ruleAliasUndefined])
-	all.register(ruleAliasDuplicate, allRules[ruleAliasDuplicate])
-	all.register(ruleAliasMissing, allRules[ruleAliasMissing])
-	all.register(ruleCteUnused, allRules[ruleCteUnused])
-	all.register(ruleCteDuplicated, allRules[ruleCteDuplicated])
-	all.register(ruleCteColsMissing, allRules[ruleCteColsMissing])
-	all.register(ruleCteColsMismatched, allRules[ruleCteColsMismatched])
-	all.register(ruleConstExprJoin, allRules[ruleConstExprJoin])
-	all.register(ruleConstExprBin, allRules[ruleConstExprBin])
+	all.register(ruleAliasUnexpected)
+	all.register(ruleAliasUndefined)
+	all.register(ruleAliasDuplicate)
+	all.register(ruleAliasMissing)
+	all.register(ruleCteUnused)
+	all.register(ruleCteDuplicated)
+	all.register(ruleCteColsMissing)
+	all.register(ruleCteColsMismatched)
+	all.register(ruleConstExprJoin)
+	all.register(ruleConstExprBin)
+	all.register(ruleConstExprBin)
+	all.register(ruleSubqueryColsMismatched)
+	all.register(ruleInconsistentUseAs)
+	all.register(ruleInconsistentUseOrder)
 	return all
 }
 
@@ -168,8 +172,8 @@ func (r rulesMap) Register(name string, priority int, fn RuleFunc) {
 	}
 }
 
-func (r rulesMap) register(name string, fn RuleFunc) {
-	r.Register(name, defaultPriority, fn)
+func (r rulesMap) register(name string) {
+	r.Register(name, defaultPriority, allRules[name])
 }
 
 func customizeRule(fn RuleFunc, enabled bool, level Level) RuleFunc {
