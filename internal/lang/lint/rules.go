@@ -9,13 +9,6 @@ import (
 )
 
 const (
-	ruleAlias                  = "alias"
-	ruleCte                    = "cte"
-	ruleSubquery               = "subquery"
-	ruleExpr                   = "expr"
-	ruleConst                  = "const"
-	ruleRewrite                = "rewrite"
-	ruleInconsistent           = "inconsistent"
 	ruleAliasUnexpected        = "alias.unexpected"
 	ruleAliasUndefined         = "alias.undefined"
 	ruleAliasDuplicate         = "alias.duplicate"
@@ -69,13 +62,6 @@ var allRules = map[string]RuleFunc{
 
 func GetRuleNames() []string {
 	return []string{
-		ruleAlias,
-		ruleCte,
-		ruleSubquery,
-		ruleExpr,
-		ruleConst,
-		ruleRewrite,
-		ruleInconsistent,
 		ruleAliasUnexpected,
 		ruleAliasUndefined,
 		ruleAliasDuplicate,

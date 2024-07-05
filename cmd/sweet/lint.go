@@ -28,14 +28,7 @@ func runLint(args []string) error {
 	}
 
 	if showList {
-		for _, i := range linter.Rules() {
-			enabled := "\u2717"
-			if i.Enabled {
-				enabled = "\u2713"
-			}
-			fmt.Printf("%s %s", enabled, i.Rule)
-			fmt.Println()
-		}
+		printRules(linter.Rules())
 		return nil
 	}
 
@@ -58,4 +51,15 @@ func runLint(args []string) error {
 		}
 	}
 	return nil
+}
+
+func printRules(infos []lint.LintInfo) {
+	for _, i := range infos {
+		enabled := "\u2717"
+		if i.Enabled {
+			enabled = "\u2713"
+		}
+		fmt.Printf("%s %s", enabled, i.Rule)
+		fmt.Println()
+	}
 }

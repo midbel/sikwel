@@ -71,6 +71,21 @@ func (i *Linter) Lint(r io.Reader) ([]LintMessage, error) {
 	return list, nil
 }
 
+func (i *Linter) LintStatement(stmt ast.Statement) ([]LintMessage, error) {
+	var list []LintMessage
+	for _, r := range i.rules.Get() {
+		res, err := r(stmt)
+		if err != nil {
+			if errors.Is(err, ErrNa) {
+				continue
+			}
+			return nil, err
+		}
+		list = append(list, res...)
+	}
+	return list, nil
+}
+
 func (i *Linter) configure(cfg *config.Config) error {
 	for _, k := range cfg.Keys() {
 		set, err := getRulesByName(k)
@@ -100,21 +115,6 @@ func (i *Linter) configure(cfg *config.Config) error {
 		}
 	}
 	return nil
-}
-
-func (i *Linter) LintStatement(stmt ast.Statement) ([]LintMessage, error) {
-	var list []LintMessage
-	for _, r := range i.rules.Get() {
-		res, err := r(stmt)
-		if err != nil {
-			if errors.Is(err, ErrNa) {
-				continue
-			}
-			return nil, err
-		}
-		list = append(list, res...)
-	}
-	return list, nil
 }
 
 func checkJoin(stmt ast.Statement) ([]LintMessage, error) {
