@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/midbel/sweet/internal/lang/ast"
+	"github.com/midbel/sweet/internal/rules"
 )
 
 func checkDuplicateCte(stmt ast.Statement) ([]LintMessage, error) {
@@ -101,7 +102,7 @@ func checkColumnsMismatchedCte(stmt ast.Statement) ([]LintMessage, error) {
 
 func cteColumnsMismatched(cte string) LintMessage {
 	return LintMessage{
-		Severity: Error,
+		Severity: rules.Error,
 		Message:  fmt.Sprintf("%s: columns count mismatched", cte),
 		Rule:     ruleCteColsMismatched,
 	}
@@ -109,7 +110,7 @@ func cteColumnsMismatched(cte string) LintMessage {
 
 func cteColumnsMissing(cte string) LintMessage {
 	return LintMessage{
-		Severity: Error,
+		Severity: rules.Error,
 		Message:  fmt.Sprintf("%s: no columns defined for cte", cte),
 		Rule:     ruleCteColsMissing,
 	}
@@ -117,7 +118,7 @@ func cteColumnsMissing(cte string) LintMessage {
 
 func cteDuplicate(cte string) LintMessage {
 	return LintMessage{
-		Severity: Error,
+		Severity: rules.Error,
 		Message:  fmt.Sprintf("%s: cte already defined", cte),
 		Rule:     ruleCteDuplicated,
 	}
@@ -125,7 +126,7 @@ func cteDuplicate(cte string) LintMessage {
 
 func cteUnused(cte string) LintMessage {
 	return LintMessage{
-		Severity: Error,
+		Severity: rules.Error,
 		Message:  fmt.Sprintf("%s: cte declared but not used", cte),
 		Rule:     ruleCteUnused,
 	}

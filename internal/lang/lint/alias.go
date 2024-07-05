@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/midbel/sweet/internal/lang/ast"
+	"github.com/midbel/sweet/internal/rules"
 )
 
 func checkEnforcedAlias(stmt ast.Statement) ([]LintMessage, error) {
@@ -223,7 +224,7 @@ func selectMisusedAlias(stmt ast.SelectStatement) ([]LintMessage, error) {
 
 func enforcedAlias() LintMessage {
 	return LintMessage{
-		Severity: Error,
+		Severity: rules.Error,
 		Message:  "alias expected",
 		Rule:     ruleAliasExpected,
 	}
@@ -231,7 +232,7 @@ func enforcedAlias() LintMessage {
 
 func unexpectedAlias(alias string) LintMessage {
 	return LintMessage{
-		Severity: Error,
+		Severity: rules.Error,
 		Message:  fmt.Sprintf("%s: alias not allowed in where clause", alias),
 		Rule:     ruleAliasUnexpected,
 	}
@@ -239,7 +240,7 @@ func unexpectedAlias(alias string) LintMessage {
 
 func undefinedAlias(alias string) LintMessage {
 	return LintMessage{
-		Severity: Error,
+		Severity: rules.Error,
 		Message:  fmt.Sprintf("%s: alias not defined", alias),
 		Rule:     ruleAliasUndefined,
 	}
@@ -247,7 +248,7 @@ func undefinedAlias(alias string) LintMessage {
 
 func missingAlias() LintMessage {
 	return LintMessage{
-		Severity: Error,
+		Severity: rules.Error,
 		Message:  "alias needed but missing",
 		Rule:     ruleAliasMissing,
 	}
@@ -255,7 +256,7 @@ func missingAlias() LintMessage {
 
 func duplicatedAlias(alias string) LintMessage {
 	return LintMessage{
-		Severity: Error,
+		Severity: rules.Error,
 		Message:  fmt.Sprintf("%s: alias already defined", alias),
 		Rule:     ruleAliasDuplicate,
 	}

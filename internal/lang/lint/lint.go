@@ -9,30 +9,31 @@ import (
 	"github.com/midbel/sweet/internal/config"
 	"github.com/midbel/sweet/internal/lang/ast"
 	"github.com/midbel/sweet/internal/lang/parser"
+	"github.com/midbel/sweet/internal/rules"
 )
 
 var ErrNa = errors.New("not applicable")
 
 type Linter struct {
-	MinLevel   Level
+	MinLevel   rules.Level
 	Max        int
 	AbortOnErr bool
-	rules      rulesMap
+	rules      rules.Map[ast.Statement]
 }
 
 func NewLinter() *Linter {
 	i := Linter{
-		MinLevel: Info,
+		MinLevel: rules.Info,
 		Max:      0,
 		rules:    getDefaultRules(),
 	}
 	return &i
 }
 
-func (i *Linter) Rules() []LintInfo {
-	var infos []LintInfo
+func (i *Linter) Rules() []rules.LintInfo {
+	var infos []rules.LintInfo
 	for _, n := range GetRuleNames() {
-		g := LintInfo{
+		g := rules.LintInfo{
 			Rule: n,
 		}
 		_, g.Enabled = i.rules[n]
@@ -94,7 +95,7 @@ func (i *Linter) configure(cfg *config.Config) error {
 		}
 		var (
 			enabled  bool
-			level    Level
+			level    rules.Level
 			priority = defaultPriority
 		)
 
@@ -102,8 +103,8 @@ func (i *Linter) configure(cfg *config.Config) error {
 		if b, ok := v.(bool); ok {
 			enabled = b
 		} else if x, ok := v.(*config.Config); ok {
-			level = getLevelFromName(x.GetString("level"))
-			if level < Default {
+			level = rules.GetLevelFromName(x.GetString("level"))
+			if level < rules.Default {
 				return fmt.Errorf("unknown level %q", x.GetString("level"))
 			}
 			priority = int(x.GetInt("priority"))
@@ -430,7 +431,7 @@ func selectSubqueries(stmt ast.SelectStatement) ([]LintMessage, error) {
 
 func subqueryDisallow() LintMessage {
 	return LintMessage{
-		Severity: Error,
+		Severity: rules.Error,
 		Message:  "subquery is not allowed",
 		Rule:     ruleSubqueryNotAllow,
 	}
@@ -438,7 +439,7 @@ func subqueryDisallow() LintMessage {
 
 func rewriteIn() LintMessage {
 	return LintMessage{
-		Severity: Warning,
+		Severity: rules.Warning,
 		Message:  "in predicate should be rewritten",
 		Rule:     ruleRewriteExprIn,
 	}
@@ -446,7 +447,7 @@ func rewriteIn() LintMessage {
 
 func rewriteBinary() LintMessage {
 	return LintMessage{
-		Severity: Warning,
+		Severity: rules.Warning,
 		Message:  "expression should be rewritten",
 		Rule:     ruleRewriteExpr,
 	}
@@ -454,7 +455,7 @@ func rewriteBinary() LintMessage {
 
 func constantJoin() LintMessage {
 	return LintMessage{
-		Severity: Error,
+		Severity: rules.Error,
 		Message:  "join expression composed of constant values",
 		Rule:     ruleConstExprJoin,
 	}
@@ -462,7 +463,7 @@ func constantJoin() LintMessage {
 
 func constantOnlyExpr() LintMessage {
 	return LintMessage{
-		Severity: Error,
+		Severity: rules.Error,
 		Message:  "expression composed of constant values",
 		Rule:     ruleConstExprBin,
 	}

@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/midbel/sweet/internal/lang/ast"
+	"github.com/midbel/sweet/internal/rules"
 )
 
 func checkResultSubquery(stmt ast.Statement) ([]LintMessage, error) {
@@ -209,7 +210,7 @@ func selectUnqualifiedNames(stmt ast.SelectStatement) ([]LintMessage, error) {
 
 func unqualifiedName(name string) LintMessage {
 	return LintMessage{
-		Severity: Error,
+		Severity: rules.Error,
 		Message:  fmt.Sprintf("%s should be fully qualified", name),
 		Rule:     ruleExprUnqualified,
 	}
@@ -217,7 +218,7 @@ func unqualifiedName(name string) LintMessage {
 
 func inconsistentAs(clause string) LintMessage {
 	return LintMessage{
-		Severity: Warning,
+		Severity: rules.Warning,
 		Message:  fmt.Sprintf("%s: inconsistent use of AS", clause),
 		Rule:     ruleInconsistentUseAs,
 	}
@@ -225,7 +226,7 @@ func inconsistentAs(clause string) LintMessage {
 
 func inconsistentOrder() LintMessage {
 	return LintMessage{
-		Severity: Warning,
+		Severity: rules.Warning,
 		Message:  "inconsistent use of ASC/DESC",
 		Rule:     ruleInconsistentUseOrder,
 	}
@@ -233,7 +234,7 @@ func inconsistentOrder() LintMessage {
 
 func aggregateExpected(ident string) LintMessage {
 	return LintMessage{
-		Severity: Error,
+		Severity: rules.Error,
 		Message:  fmt.Sprintf("%s should be an aggregate function", ident),
 		Rule:     ruleExprAggregate,
 	}
@@ -241,7 +242,7 @@ func aggregateExpected(ident string) LintMessage {
 
 func exprNotInGroupBy(ident string) LintMessage {
 	return LintMessage{
-		Severity: Error,
+		Severity: rules.Error,
 		Message:  fmt.Sprintf("%s should be used in group by clause", ident),
 		Rule:     ruleExprInvalid,
 	}
@@ -249,7 +250,7 @@ func exprNotInGroupBy(ident string) LintMessage {
 
 func unexpectedExpr(ident string) LintMessage {
 	return LintMessage{
-		Severity: Error,
+		Severity: rules.Error,
 		Message:  "%s: unexpected expression",
 		Rule:     ruleExprInvalid,
 	}
@@ -257,7 +258,7 @@ func unexpectedExpr(ident string) LintMessage {
 
 func subqueryTooManyResult() LintMessage {
 	return LintMessage{
-		Severity: Error,
+		Severity: rules.Error,
 		Message:  "too many result returned by subquery",
 		Rule:     ruleSubqueryColsMismatched,
 	}

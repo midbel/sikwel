@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/midbel/sweet/internal/lang/lint"
+	"github.com/midbel/sweet/internal/rules"
 )
 
 func runLint(args []string) error {
@@ -53,7 +54,7 @@ func runLint(args []string) error {
 	return nil
 }
 
-func printRules(infos []lint.LintInfo) {
+func printRules(infos []rules.LintInfo) {
 	for _, i := range infos {
 		enabled := "\u2717"
 		if i.Enabled {

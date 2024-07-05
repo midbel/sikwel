@@ -2,10 +2,10 @@ package lint
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/midbel/sweet/internal/lang/ast"
+	"github.com/midbel/sweet/internal/rules"
 )
 
 const (
@@ -33,7 +33,11 @@ const (
 	ruleInconsistentUseOrder   = "inconsistent.use.order"
 )
 
-type RuleFunc func(ast.Statement) ([]LintMessage, error)
+type LintMessage = rules.LintMessage
+
+type RuleFunc = rules.RuleFunc[ast.Statement]
+
+type registeredRule = rules.RegisteredRule[ast.Statement]
 
 var allRules = map[string]RuleFunc{
 	ruleAliasUnexpected:        checkMisusedAlias,
@@ -61,30 +65,11 @@ var allRules = map[string]RuleFunc{
 }
 
 func GetRuleNames() []string {
-	return []string{
-		ruleAliasUnexpected,
-		ruleAliasUndefined,
-		ruleAliasDuplicate,
-		ruleAliasMissing,
-		ruleAliasExpected,
-		ruleCteUnused,
-		ruleCteDuplicated,
-		ruleCteColsMissing,
-		ruleCteColsMismatched,
-		ruleCteColsUnused,
-		ruleSubqueryNotAllow,
-		ruleSubqueryColsMismatched,
-		ruleExprUnqualified,
-		ruleExprAggregate,
-		ruleExprInvalid,
-		ruleConstExprJoin,
-		ruleConstExprBin,
-		ruleRewriteExpr,
-		ruleRewriteExprIn,
-		ruleRewriteExprNot,
-		ruleInconsistentUseAs,
-		ruleInconsistentUseOrder,
+	var ns []string
+	for n := range allRules {
+		ns = append(ns, n)
 	}
+	return ns
 }
 
 func getRulesByName(rule string) ([]registeredRule, error) {
@@ -120,69 +105,37 @@ func getRulesByName(rule string) ([]registeredRule, error) {
 
 const defaultPriority = 100
 
-type registeredRule struct {
-	Name     string
-	Func     RuleFunc
-	Priority int
-}
-
-type rulesMap map[string]registeredRule
-
-func getDefaultRules() rulesMap {
-	all := make(rulesMap)
-	all.register(ruleAliasUnexpected)
-	all.register(ruleAliasUndefined)
-	all.register(ruleAliasDuplicate)
-	all.register(ruleAliasMissing)
-	all.register(ruleCteUnused)
-	all.register(ruleCteDuplicated)
-	all.register(ruleCteColsMissing)
-	all.register(ruleCteColsMismatched)
-	all.register(ruleConstExprJoin)
-	all.register(ruleConstExprBin)
-	all.register(ruleConstExprBin)
-	all.register(ruleSubqueryColsMismatched)
-	all.register(ruleInconsistentUseAs)
-	all.register(ruleInconsistentUseOrder)
-	return all
-}
-
-func (r rulesMap) Get() []RuleFunc {
-	var (
-		tmp []registeredRule
-		all []RuleFunc
-	)
-	for _, fn := range r {
-		tmp = append(tmp, fn)
+func getDefaultRules() rules.Map[ast.Statement] {
+	list := []string{
+		ruleAliasUnexpected,
+		ruleAliasUndefined,
+		ruleAliasDuplicate,
+		ruleAliasMissing,
+		ruleCteUnused,
+		ruleCteDuplicated,
+		ruleCteColsMissing,
+		ruleCteColsMismatched,
+		ruleConstExprJoin,
+		ruleConstExprBin,
+		ruleConstExprBin,
+		ruleSubqueryColsMismatched,
+		ruleInconsistentUseAs,
+		ruleInconsistentUseOrder,
 	}
-	slices.SortFunc(tmp, func(a, b registeredRule) int {
-		return a.Priority - b.Priority
-	})
-	for i := range tmp {
-		all = append(all, tmp[i].Func)
+	all := make(rules.Map[ast.Statement])
+	for _, n := range list {
+		all.Register(n, defaultPriority, allRules[n])
 	}
 	return all
 }
 
-func (r rulesMap) Register(name string, priority int, fn RuleFunc) {
-	r[name] = registeredRule{
-		Name:     name,
-		Func:     fn,
-		Priority: priority,
-	}
-}
-
-func (r rulesMap) register(name string) {
-	r.Register(name, defaultPriority, allRules[name])
-}
-
-func customizeRule(fn RuleFunc, enabled bool, level Level) RuleFunc {
+func customizeRule(fn RuleFunc, enabled bool, level rules.Level) RuleFunc {
 	return func(stmt ast.Statement) ([]LintMessage, error) {
 		if !enabled {
 			return nil, nil
 		}
 		ms, err := fn(stmt)
-		if level == Default {
+		if level == rules.Default {
 			return ms, err
 		}
 		for i := range ms {
@@ -190,55 +143,4 @@ func customizeRule(fn RuleFunc, enabled bool, level Level) RuleFunc {
 		}
 		return ms, err
 	}
-}
-
-type Level int
-
-func (e Level) String() string {
-	switch e {
-	case Debug:
-		return "debug"
-	case Info:
-		return "info"
-	case Warning:
-		return "warning"
-	case Error:
-		return "error"
-	default:
-		return "other"
-	}
-}
-
-func getLevelFromName(name string) Level {
-	switch name {
-	case "", "default":
-		return Default
-	case "info":
-		return Info
-	case "warning":
-		return Warning
-	case "error":
-		return Error
-	default:
-		return -1
-	}
-}
-
-const (
-	Default Level = iota
-	Debug
-	Info
-	Warning
-	Error
-)
-
-type LintMessage struct {
-	Severity Level
-	Rule     string
-	Message  string
-}
-
-type LintInfo struct {
-	Rule    string
-	Enabled bool
 }
