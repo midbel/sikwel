@@ -1,6 +1,10 @@
 package lint
 
 import (
+	"fmt"
+	"slices"
+	"strings"
+
 	"github.com/midbel/sweet/internal/lang/ast"
 )
 
@@ -36,6 +40,146 @@ const (
 	ruleInconsistentUseOrder   = "inconsistent.use.order"
 )
 
+type RuleFunc func(ast.Statement) ([]LintMessage, error)
+
+var allRules = map[string]RuleFunc{
+	ruleAliasUnexpected:        checkMisusedAlias,
+	ruleAliasUndefined:         checkUndefinedAlias,
+	ruleAliasDuplicate:         checkUniqueAlias,
+	ruleAliasMissing:           checkMissingAlias,
+	ruleAliasExpected:          checkEnforcedAlias,
+	ruleCteUnused:              checkUnusedCte,
+	ruleCteDuplicated:          checkDuplicateCte,
+	ruleCteColsMissing:         checkColumnsMissingCte,
+	ruleCteColsMismatched:      checkColumnsMismatchedCte,
+	ruleCteColsUnused:          checkColumnsUnsedCte,
+	ruleSubqueryNotAllow:       checkSubqueriesNotAllow,
+	ruleSubqueryColsMismatched: checkResultSubquery,
+	ruleExprUnqualified:        checkForUnqualifiedNames,
+	ruleExprAggregate:          nil,
+	ruleExprInvalid:            nil,
+	ruleConstExprJoin:          checkJoin,
+	ruleConstExprBin:           checkConstantBinary,
+	ruleRewriteExpr:            nil,
+	ruleRewriteExprIn:          checkRewriteIn,
+	ruleRewriteExprNot:         nil,
+	ruleInconsistentUseAs:      checkAsUsage,
+	ruleInconsistentUseOrder:   checkDirectionUsage,
+}
+
+func GetRuleNames() []string {
+	return []string{
+		ruleAlias,
+		ruleCte,
+		ruleSubquery,
+		ruleExpr,
+		ruleConst,
+		ruleRewrite,
+		ruleInconsistent,
+		ruleAliasUnexpected,
+		ruleAliasUndefined,
+		ruleAliasDuplicate,
+		ruleAliasMissing,
+		ruleAliasExpected,
+		ruleCteUnused,
+		ruleCteDuplicated,
+		ruleCteColsMissing,
+		ruleCteColsMismatched,
+		ruleCteColsUnused,
+		ruleSubqueryNotAllow,
+		ruleSubqueryColsMismatched,
+		ruleExprUnqualified,
+		ruleExprAggregate,
+		ruleExprInvalid,
+		ruleConstExprJoin,
+		ruleConstExprBin,
+		ruleRewriteExpr,
+		ruleRewriteExprIn,
+		ruleRewriteExprNot,
+		ruleInconsistentUseAs,
+		ruleInconsistentUseOrder,
+	}
+}
+
+func getRulesByName(rule string) ([]registeredRule, error) {
+	var (
+		set   []registeredRule
+		group string
+		parts = strings.Split(rule, ".")
+	)
+	if len(parts) == 3 {
+		fn, ok := allRules[rule]
+		if !ok {
+			return nil, fmt.Errorf("no such rule %s", rule)
+		}
+		r := registeredRule{
+			Name: rule,
+			Func: fn,
+		}
+		return append(set, r), nil
+	}
+	group = strings.Join(parts[:len(parts)-1], ".")
+	for k, fn := range allRules {
+		if !strings.HasPrefix(k, group) {
+			continue
+		}
+		r := registeredRule{
+			Name: k,
+			Func: fn,
+		}
+		set = append(set, r)
+	}
+	return set, nil
+}
+
+const defaultPriority = 100
+
+type registeredRule struct {
+	Name     string
+	Func     RuleFunc
+	Priority int
+}
+
+type rulesMap map[string]registeredRule
+
+func getDefaultRules() rulesMap {
+	all := make(rulesMap)
+	all.register(ruleAliasUnexpected, checkMisusedAlias)
+	all.register(ruleAliasUndefined, checkUndefinedAlias)
+	all.register(ruleAliasDuplicate, checkUniqueAlias)
+	all.register(ruleAliasMissing, checkMissingAlias)
+	return all
+}
+
+func (r rulesMap) Get() []RuleFunc {
+	var (
+		tmp []registeredRule
+		all []RuleFunc
+	)
+	for _, fn := range r {
+		tmp = append(tmp, fn)
+	}
+	slices.SortFunc(tmp, func(a, b registeredRule) int {
+		return a.Priority - b.Priority
+	})
+	for i := range tmp {
+		all = append(all, tmp[i].Func)
+	}
+	return all
+}
+
+func (r rulesMap) Register(name string, priority int, fn RuleFunc) {
+	r[name] = registeredRule{
+		Name:     name,
+		Func:     fn,
+		Priority: priority,
+	}
+}
+
+func (r rulesMap) register(name string, fn RuleFunc) {
+	r.Register(name, defaultPriority, fn)
+}
+
 func customizeRule(fn RuleFunc, enabled bool, level Level) RuleFunc {
 	return func(stmt ast.Statement) ([]LintMessage, error) {
 		if !enabled {
@@ -50,96 +194,6 @@ func customizeRule(fn RuleFunc, enabled bool, level Level) RuleFunc {
 		}
 		return ms, err
 	}
-}
-
-type rulesMap map[string][]RuleFunc
-
-func (r rulesMap) Get(rule string) ([]RuleFunc, error) {
-	return nil, nil
-}
-
-var allRules = rulesMap{
-	ruleAlias: {
-		checkUniqueAlias,
-		checkUndefinedAlias,
-		checkMissingAlias,
-		checkMisusedAlias,
-	},
-	ruleAliasUnexpected: {
-		checkMisusedAlias,
-	},
-	ruleAliasUndefined: {
-		checkUndefinedAlias,
-	},
-	ruleAliasDuplicate: {
-		checkUniqueAlias,
-	},
-	ruleAliasMissing: {
-		checkMissingAlias,
-	},
-	ruleAliasExpected: {
-		checkEnforcedAlias,
-	},
-	ruleCte: {
-		checkUnusedCte,
-		checkDuplicateCte,
-	},
-	ruleCteUnused: {
-		checkUnusedCte,
-	},
-	ruleCteDuplicated: {
-		checkDuplicateCte,
-	},
-	"cte.columns": {
-		checkColumnsMissingCte,
-		checkColumnsMismatchedCte,
-	},
-	ruleCteColsMissing: {
-		checkColumnsMissingCte,
-	},
-	ruleCteColsMismatched: {
-		checkColumnsMismatchedCte,
-	},
-	ruleCteColsUnused: {},
-	ruleSubquery: {
-		checkForSubqueries,
-		checkResultSubquery,
-	},
-	ruleSubqueryNotAllow: {
-		checkForSubqueries,
-	},
-	"subquery.columns": {
-		checkResultSubquery,
-	},
-	ruleSubqueryColsMismatched: {
-		checkResultSubquery,
-	},
-	ruleExpr: {
-		checkForUnqualifiedNames,
-	},
-	ruleExprUnqualified: {
-		checkForUnqualifiedNames,
-	},
-	ruleExprAggregate: {},
-	ruleExprInvalid:   {},
-	ruleConst:         {},
-	ruleConstExprJoin: {},
-	ruleConstExprBin:  {},
-	ruleRewrite: {
-		checkRewriteBinary,
-		checkRewriteIn,
-	},
-	ruleRewriteExpr: {
-		checkRewriteBinary,
-		checkRewriteIn,
-	},
-	ruleRewriteExprIn:  {},
-	ruleRewriteExprNot: {},
-	ruleInconsistent: {
-		checkAsUsage,
-	},
-	ruleInconsistentUseAs:    {},
-	ruleInconsistentUseOrder: {},
 }
 
 type Level int

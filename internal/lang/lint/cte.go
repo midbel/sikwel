@@ -73,6 +73,10 @@ func checkColumnsMissingCte(stmt ast.Statement) ([]LintMessage, error) {
 	return list, nil
 }
 
+func checkColumnsUnsedCte(stmt ast.Statement) ([]LintMessage, error) {
+	return nil, nil
+}
+
 func checkColumnsMismatchedCte(stmt ast.Statement) ([]LintMessage, error) {
 	with, ok := stmt.(ast.WithStatement)
 	if !ok {

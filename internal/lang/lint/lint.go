@@ -13,18 +13,24 @@ import (
 
 var ErrNa = errors.New("not applicable")
 
-type RuleFunc func(ast.Statement) ([]LintMessage, error)
-
 type Linter struct {
-	MinLevel Level
-	Max      int
-	Rules    []RuleFunc
+	MinLevel   Level
+	Max        int
+	AbortOnErr bool
+	Rules      rulesMap
 }
 
 func NewLinter() *Linter {
-	var i Linter
-	i.prepareRules()
+	i := Linter{
+		MinLevel: Info,
+		Max:      0,
+		Rules:    getDefaultRules(),
+	}
 	return &i
+}
+
+func (i *Linter) Rules() []string {
+	return GetRuleNames()
 }
 
 func (i *Linter) Lint(r io.Reader) ([]LintMessage, error) {
@@ -57,40 +63,16 @@ func (i *Linter) Lint(r io.Reader) ([]LintMessage, error) {
 	return list, nil
 }
 
-func (i *Linter) prepareRules() {
-	i.Rules = append(i.Rules, checkEnforcedAlias)
-	i.Rules = append(i.Rules, checkUniqueAlias)
-	i.Rules = append(i.Rules, checkUndefinedAlias)
-	i.Rules = append(i.Rules, checkMissingAlias)
-	i.Rules = append(i.Rules, checkMisusedAlias)
-	i.Rules = append(i.Rules, checkUnusedCte)
-	i.Rules = append(i.Rules, checkDuplicateCte)
-	i.Rules = append(i.Rules, checkColumnsMissingCte)
-	i.Rules = append(i.Rules, checkColumnsMismatchedCte)
-	i.Rules = append(i.Rules, checkForSubqueries)
-	i.Rules = append(i.Rules, checkForUnqualifiedNames)
-	i.Rules = append(i.Rules, checkAsUsage)
-	i.Rules = append(i.Rules, checkDirectionUsage)
-	i.Rules = append(i.Rules, checkGroupBy)
-	i.Rules = append(i.Rules, checkResultSubquery)
-	i.Rules = append(i.Rules, checkRewriteIn)
-	i.Rules = append(i.Rules, checkRewriteBinary)
-	i.Rules = append(i.Rules, checkConstantBinary)
-	i.Rules = append(i.Rules, checkJoin)
-	i.Rules = append(i.Rules, checkUnusedColumns)
-}
-
 func (i *Linter) configure(cfg *config.Config) error {
-	var rules []RuleFunc
 	for _, k := range cfg.Keys() {
-		set, ok := allRules[k]
-		if !ok {
-			return fmt.Errorf("unknown rule %q", k)
+		set, err := getRulesByName(k)
+		if err != nil {
+			return err
 		}
 		var (
 			enabled  bool
 			level    Level
-			priority int
+			priority = defaultPriority
 		)
 
 		v := cfg.Get(k)
@@ -103,10 +85,9 @@ func (i *Linter) configure(cfg *config.Config) error {
 			}
 			priority = int(x.GetInt("priority"))
 		}
-		_ = priority
 		for _, fn := range set {
-			fn = customizeRule(fn, enabled, level)
-			rules = append(rules, fn)
+			fn.Func = customizeRule(fn.Func, enabled, level)
+			i.Rules.Register(fn.Name, priority, fn.Func)
 		}
 	}
 	return nil
@@ -114,7 +95,7 @@ func (i *Linter) configure(cfg *config.Config) error {
 
 func (i *Linter) LintStatement(stmt ast.Statement) ([]LintMessage, error) {
 	var list []LintMessage
-	for _, r := range i.Rules {
+	for _, r := range i.Rules.Get() {
 		res, err := r(stmt)
 		if err != nil {
 			if errors.Is(err, ErrNa) {
@@ -125,10 +106,6 @@ func (i *Linter) LintStatement(stmt ast.Statement) ([]LintMessage, error) {
 		list = append(list, res...)
 	}
 	return list, nil
-}
-
-func checkUnusedColumns(stmt ast.Statement) ([]LintMessage, error) {
-	return nil, nil
 }
 
 func checkJoin(stmt ast.Statement) ([]LintMessage, error) {
@@ -389,24 +366,24 @@ func lintBinary(stmt ast.Statement) ([]LintMessage, error) {
 	return nil, ErrNa
 }
 
-func checkForSubqueries(stmt ast.Statement) ([]LintMessage, error) {
+func checkSubqueriesNotAllow(stmt ast.Statement) ([]LintMessage, error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
 		return selectSubqueries(stmt)
 	case ast.UnionStatement:
-		return handleCompoundStatement(stmt.Left, stmt.Right, checkForSubqueries)
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkSubqueriesNotAllow)
 	case ast.IntersectStatement:
-		return handleCompoundStatement(stmt.Left, stmt.Right, checkForSubqueries)
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkSubqueriesNotAllow)
 	case ast.ExceptStatement:
-		return handleCompoundStatement(stmt.Left, stmt.Right, checkForSubqueries)
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkSubqueriesNotAllow)
 	case ast.WithStatement:
-		return handleWithStatement(stmt, checkForSubqueries)
+		return handleWithStatement(stmt, checkSubqueriesNotAllow)
 	case ast.CteStatement:
-		return checkForSubqueries(stmt.Statement)
+		return checkSubqueriesNotAllow(stmt.Statement)
 	case ast.Join:
-		return checkForSubqueries(stmt.Table)
+		return checkSubqueriesNotAllow(stmt.Table)
 	case ast.Group:
-		return checkForSubqueries(stmt.Statement)
+		return checkSubqueriesNotAllow(stmt.Statement)
 	default:
 		return nil, ErrNa
 	}
@@ -438,7 +415,7 @@ func selectSubqueries(stmt ast.SelectStatement) ([]LintMessage, error) {
 			list = append(list, subqueryDisallow())
 		}
 	}
-	others, err := handleSelectStatement(stmt, checkForSubqueries)
+	others, err := handleSelectStatement(stmt, checkSubqueriesNotAllow)
 	return slices.Concat(list, others), err
 }
 
