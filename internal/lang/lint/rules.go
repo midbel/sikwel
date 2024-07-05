@@ -241,3 +241,8 @@ type LintMessage struct {
 	Rule     string
 	Message  string
 }
+
+type LintInfo struct {
+	Rule    string
+	Enabled bool
+}

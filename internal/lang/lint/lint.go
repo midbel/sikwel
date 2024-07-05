@@ -17,20 +17,28 @@ type Linter struct {
 	MinLevel   Level
 	Max        int
 	AbortOnErr bool
-	Rules      rulesMap
+	rules      rulesMap
 }
 
 func NewLinter() *Linter {
 	i := Linter{
 		MinLevel: Info,
 		Max:      0,
-		Rules:    getDefaultRules(),
+		rules:    getDefaultRules(),
 	}
 	return &i
 }
 
-func (i *Linter) Rules() []string {
-	return GetRuleNames()
+func (i *Linter) Rules() []LintInfo {
+	var infos []LintInfo
+	for _, n := range GetRuleNames() {
+		g := LintInfo{
+			Rule: n,
+		}
+		_, g.Enabled = i.rules[n]
+		infos = append(infos, g)
+	}
+	return infos
 }
 
 func (i *Linter) Lint(r io.Reader) ([]LintMessage, error) {
@@ -84,10 +92,11 @@ func (i *Linter) configure(cfg *config.Config) error {
 				return fmt.Errorf("unknown level %q", x.GetString("level"))
 			}
 			priority = int(x.GetInt("priority"))
+			enabled = true
 		}
 		for _, fn := range set {
 			fn.Func = customizeRule(fn.Func, enabled, level)
-			i.Rules.Register(fn.Name, priority, fn.Func)
+			i.rules.Register(fn.Name, priority, fn.Func)
 		}
 	}
 	return nil
@@ -95,7 +104,7 @@ func (i *Linter) configure(cfg *config.Config) error {
 
 func (i *Linter) LintStatement(stmt ast.Statement) ([]LintMessage, error) {
 	var list []LintMessage
-	for _, r := range i.Rules.Get() {
+	for _, r := range i.rules.Get() {
 		res, err := r(stmt)
 		if err != nil {
 			if errors.Is(err, ErrNa) {

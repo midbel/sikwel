@@ -28,12 +28,12 @@ func runLint(args []string) error {
 	}
 
 	if showList {
-		for _, rule := range linter.Rules() {
-			enabled := "X"
-			if true {
-				enabled = "V"
+		for _, i := range linter.Rules() {
+			enabled := "\u2717"
+			if i.Enabled {
+				enabled = "\u2713"
 			}
-			fmt.Printf("%s %s", enabled, rule)
+			fmt.Printf("%s %s", enabled, i.Rule)
 			fmt.Println()
 		}
 		return nil

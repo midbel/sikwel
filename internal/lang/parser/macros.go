@@ -87,7 +87,8 @@ func (p *Parser) ParseLintMacro() error {
 	if !p.Is(token.Ident) && !p.Is(token.Keyword) && !p.Is(token.Number) {
 		return p.Unexpected("lint(level/enabled)")
 	}
-	if val := p.GetCurrLiteral(); val == "on" || val == "off" {
+	val := p.GetCurrLiteral()
+	if val = strings.ToLower(val); val == "on" || val == "off" {
 		p.Config.Set(rule, val == "on")
 		p.Next()
 		if !p.Is(token.EOL) {
