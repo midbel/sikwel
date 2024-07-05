@@ -1,6 +1,17 @@
 package lint
 
+import (
+	"github.com/midbel/sweet/internal/lang/ast"
+)
+
 const (
+	ruleAlias                  = "alias"
+	ruleCte                    = "cte"
+	ruleSubquery               = "subquery"
+	ruleExpr                   = "expr"
+	ruleConst                  = "const"
+	ruleRewrite                = "rewrite"
+	ruleInconsistent           = "inconsistent"
 	ruleAliasUnexpected        = "alias.unexpected"
 	ruleAliasUndefined         = "alias.undefined"
 	ruleAliasDuplicate         = "alias.duplicate"
@@ -25,48 +36,106 @@ const (
 	ruleInconsistentUseOrder   = "inconsistent.use.order"
 )
 
-var allRules = map[string][]RuleFunc{
-	"alias": {
+func customizeRule(fn RuleFunc, enabled bool, level Level) RuleFunc {
+	return func(stmt ast.Statement) ([]LintMessage, error) {
+		if !enabled {
+			return nil, nil
+		}
+		ms, err := fn(stmt)
+		if level == Default {
+			return ms, err
+		}
+		for i := range ms {
+			ms[i].Severity = level
+		}
+		return ms, err
+	}
+}
+
+type rulesMap map[string][]RuleFunc
+
+func (r rulesMap) Get(rule string) ([]RuleFunc, error) {
+	return nil, nil
+}
+
+var allRules = rulesMap{
+	ruleAlias: {
 		checkUniqueAlias,
 		checkUndefinedAlias,
 		checkMissingAlias,
 		checkMisusedAlias,
 	},
-	ruleAliasUnexpected: {},
-	ruleAliasUndefined:  {},
-	ruleAliasDuplicate:  {},
-	ruleAliasMissing:    {},
-	ruleAliasExpected:   {},
-	"cte": {
+	ruleAliasUnexpected: {
+		checkMisusedAlias,
+	},
+	ruleAliasUndefined: {
+		checkUndefinedAlias,
+	},
+	ruleAliasDuplicate: {
+		checkUniqueAlias,
+	},
+	ruleAliasMissing: {
+		checkMissingAlias,
+	},
+	ruleAliasExpected: {
+		checkEnforcedAlias,
+	},
+	ruleCte: {
 		checkUnusedCte,
 		checkDuplicateCte,
 	},
-	ruleCteUnused:     {},
-	ruleCteDuplicated: {},
+	ruleCteUnused: {
+		checkUnusedCte,
+	},
+	ruleCteDuplicated: {
+		checkDuplicateCte,
+	},
 	"cte.columns": {
 		checkColumnsMissingCte,
 		checkColumnsMismatchedCte,
 	},
-	ruleCteColsMissing:         {},
-	ruleCteColsMismatched:      {},
-	ruleCteColsUnused:          {},
-	"subquery":                 {},
-	ruleSubqueryNotAllow:       {},
-	"subquery.columns":         {},
-	ruleSubqueryColsMismatched: {},
-	"expr":                     {},
-	ruleExprUnqualified:        {},
-	ruleExprAggregate:          {},
-	ruleExprInvalid:            {},
-	"const":                    {},
-	ruleConstExprJoin:          {},
-	ruleConstExprBin:           {},
-	"rewrite":                  {},
-	"rewrite.expr":             {},
-	ruleRewriteExpr:            {},
-	ruleRewriteExprIn:          {},
-	ruleRewriteExprNot:         {},
-	"inconsistent": {
+	ruleCteColsMissing: {
+		checkColumnsMissingCte,
+	},
+	ruleCteColsMismatched: {
+		checkColumnsMismatchedCte,
+	},
+	ruleCteColsUnused: {},
+	ruleSubquery: {
+		checkForSubqueries,
+		checkResultSubquery,
+	},
+	ruleSubqueryNotAllow: {
+		checkForSubqueries,
+	},
+	"subquery.columns": {
+		checkResultSubquery,
+	},
+	ruleSubqueryColsMismatched: {
+		checkResultSubquery,
+	},
+	ruleExpr: {
+		checkForUnqualifiedNames,
+	},
+	ruleExprUnqualified: {
+		checkForUnqualifiedNames,
+	},
+	ruleExprAggregate: {},
+	ruleExprInvalid:   {},
+	ruleConst:         {},
+	ruleConstExprJoin: {},
+	ruleConstExprBin:  {},
+	ruleRewrite: {
+		checkRewriteBinary,
+		checkRewriteIn,
+	},
+	ruleRewriteExpr: {
+		checkRewriteBinary,
+		checkRewriteIn,
+	},
+	ruleRewriteExprIn:  {},
+	ruleRewriteExprNot: {},
+	ruleInconsistent: {
 		checkAsUsage,
 	},
 	ruleInconsistentUseAs:    {},

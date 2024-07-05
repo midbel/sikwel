@@ -80,22 +80,6 @@ func (i *Linter) prepareRules() {
 	i.Rules = append(i.Rules, checkUnusedColumns)
 }
 
-func customizeRule(fn RuleFunc, enabled bool, level Level) RuleFunc {
-	return func(stmt ast.Statement) ([]LintMessage, error) {
-		if !enabled {
-			return nil, nil
-		}
-		ms, err := fn(stmt)
-		if level == Default {
-			return ms, err
-		}
-		for i := range ms {
-			ms[i].Severity = level
-		}
-		return ms, err
-	}
-}
-
 func (i *Linter) configure(cfg *config.Config) error {
 	var rules []RuleFunc
 	for _, k := range cfg.Keys() {
