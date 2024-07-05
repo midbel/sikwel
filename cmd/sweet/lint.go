@@ -33,7 +33,7 @@ func runLint(args []string) error {
 		return nil
 	}
 
-	process := func(file string) ([]lint.LintMessage, error) {
+	process := func(file string) ([]rules.LintMessage, error) {
 		r, err := os.Open(file)
 		if err != nil {
 			return nil, err

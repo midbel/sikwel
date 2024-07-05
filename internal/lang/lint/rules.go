@@ -33,8 +33,6 @@ const (
 	ruleInconsistentUseOrder   = "inconsistent.use.order"
 )
 
-type LintMessage = rules.LintMessage
-
 type RuleFunc = rules.RuleFunc[ast.Statement]
 
 type registeredRule = rules.RegisteredRule[ast.Statement]
@@ -130,7 +128,7 @@ func getDefaultRules() rules.Map[ast.Statement] {
 }
 
 func customizeRule(fn RuleFunc, enabled bool, level rules.Level) RuleFunc {
-	return func(stmt ast.Statement) ([]LintMessage, error) {
+	return func(stmt ast.Statement) ([]rules.LintMessage, error) {
 		if !enabled {
 			return nil, nil
 		}

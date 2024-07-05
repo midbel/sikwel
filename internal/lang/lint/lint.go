@@ -42,7 +42,7 @@ func (i *Linter) Rules() []rules.LintInfo {
 	return infos
 }
 
-func (i *Linter) Lint(r io.Reader) ([]LintMessage, error) {
+func (i *Linter) Lint(r io.Reader) ([]rules.LintMessage, error) {
 	p, err := parser.NewParser(r)
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func (i *Linter) Lint(r io.Reader) ([]LintMessage, error) {
 	if ps, ok := p.(*parser.Parser); ok {
 		i.configure(ps.Config)
 	}
-	var list []LintMessage
+	var list []rules.LintMessage
 	for {
 		stmt, err := p.Parse()
 		if err != nil {
@@ -72,8 +72,8 @@ func (i *Linter) Lint(r io.Reader) ([]LintMessage, error) {
 	return list, nil
 }
 
-func (i *Linter) LintStatement(stmt ast.Statement) ([]LintMessage, error) {
-	var list []LintMessage
+func (i *Linter) LintStatement(stmt ast.Statement) ([]rules.LintMessage, error) {
+	var list []rules.LintMessage
 	for _, r := range i.rules.Get() {
 		res, err := r(stmt)
 		if err != nil {
@@ -118,7 +118,7 @@ func (i *Linter) configure(cfg *config.Config) error {
 	return nil
 }
 
-func checkJoin(stmt ast.Statement) ([]LintMessage, error) {
+func checkJoin(stmt ast.Statement) ([]rules.LintMessage, error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
 		return handleSelectStatement(stmt, checkJoin)
@@ -141,7 +141,7 @@ func checkJoin(stmt ast.Statement) ([]LintMessage, error) {
 	}
 }
 
-func joinWithConstant(stmt ast.Join) ([]LintMessage, error) {
+func joinWithConstant(stmt ast.Join) ([]rules.LintMessage, error) {
 	var check func(ast.Statement) bool
 
 	check = func(stmt ast.Statement) bool {
@@ -166,7 +166,7 @@ func joinWithConstant(stmt ast.Join) ([]LintMessage, error) {
 	return nil, nil
 }
 
-func checkRewriteIn(stmt ast.Statement) ([]LintMessage, error) {
+func checkRewriteIn(stmt ast.Statement) ([]rules.LintMessage, error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
 		return selectRewriteIn(stmt)
@@ -193,7 +193,7 @@ func checkRewriteIn(stmt ast.Statement) ([]LintMessage, error) {
 	}
 }
 
-func selectRewriteIn(stmt ast.SelectStatement) ([]LintMessage, error) {
+func selectRewriteIn(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
 	list, err := lintIn(stmt.Where)
 	if err != nil && !errors.Is(err, ErrNa) {
 		return nil, err
@@ -202,7 +202,7 @@ func selectRewriteIn(stmt ast.SelectStatement) ([]LintMessage, error) {
 	return slices.Concat(list, others), err
 }
 
-func joinRewriteIn(stmt ast.Join) ([]LintMessage, error) {
+func joinRewriteIn(stmt ast.Join) ([]rules.LintMessage, error) {
 	list, err := checkRewriteIn(stmt.Where)
 	if err != nil && !errors.Is(err, ErrNa) {
 		return nil, err
@@ -211,7 +211,7 @@ func joinRewriteIn(stmt ast.Join) ([]LintMessage, error) {
 	return slices.Concat(list, others), err
 }
 
-func lintIn(stmt ast.Statement) ([]LintMessage, error) {
+func lintIn(stmt ast.Statement) ([]rules.LintMessage, error) {
 	switch stmt := stmt.(type) {
 	case ast.In:
 		vs, ok := stmt.Value.(ast.List)
@@ -240,7 +240,7 @@ func lintIn(stmt ast.Statement) ([]LintMessage, error) {
 	}
 }
 
-func checkConstantBinary(stmt ast.Statement) ([]LintMessage, error) {
+func checkConstantBinary(stmt ast.Statement) ([]rules.LintMessage, error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
 		return selectConstantBinary(stmt)
@@ -263,8 +263,8 @@ func checkConstantBinary(stmt ast.Statement) ([]LintMessage, error) {
 	}
 }
 
-func selectConstantBinary(stmt ast.SelectStatement) ([]LintMessage, error) {
-	var list []LintMessage
+func selectConstantBinary(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
+	var list []rules.LintMessage
 	if isConstant(stmt.Where) {
 		list = append(list, constantOnlyExpr())
 	}
@@ -272,8 +272,8 @@ func selectConstantBinary(stmt ast.SelectStatement) ([]LintMessage, error) {
 	return slices.Concat(list, others), err
 }
 
-func joinConstantBinary(stmt ast.Join) ([]LintMessage, error) {
-	var list []LintMessage
+func joinConstantBinary(stmt ast.Join) ([]rules.LintMessage, error) {
+	var list []rules.LintMessage
 	if isConstant(stmt.Where) {
 		list = append(list, constantOnlyExpr())
 	}
@@ -308,7 +308,7 @@ func isConstant(stmt ast.Statement) bool {
 	}
 }
 
-func checkRewriteBinary(stmt ast.Statement) ([]LintMessage, error) {
+func checkRewriteBinary(stmt ast.Statement) ([]rules.LintMessage, error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
 		return selectRewriteBinary(stmt)
@@ -331,7 +331,7 @@ func checkRewriteBinary(stmt ast.Statement) ([]LintMessage, error) {
 	}
 }
 
-func selectRewriteBinary(stmt ast.SelectStatement) ([]LintMessage, error) {
+func selectRewriteBinary(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
 	list, err := lintBinary(stmt.Where)
 	if err != nil && !errors.Is(err, ErrNa) {
 		return nil, err
@@ -340,7 +340,7 @@ func selectRewriteBinary(stmt ast.SelectStatement) ([]LintMessage, error) {
 	return slices.Concat(list, others), err
 }
 
-func joinRewriteBinary(stmt ast.Join) ([]LintMessage, error) {
+func joinRewriteBinary(stmt ast.Join) ([]rules.LintMessage, error) {
 	list, err := checkRewriteBinary(stmt.Where)
 	if err != nil && !errors.Is(err, ErrNa) {
 		return nil, err
@@ -349,7 +349,7 @@ func joinRewriteBinary(stmt ast.Join) ([]LintMessage, error) {
 	return slices.Concat(list, others), err
 }
 
-func lintBinary(stmt ast.Statement) ([]LintMessage, error) {
+func lintBinary(stmt ast.Statement) ([]rules.LintMessage, error) {
 	bin, ok := stmt.(ast.Binary)
 	if !ok {
 		return nil, ErrNa
@@ -376,7 +376,7 @@ func lintBinary(stmt ast.Statement) ([]LintMessage, error) {
 	return nil, ErrNa
 }
 
-func checkSubqueriesNotAllow(stmt ast.Statement) ([]LintMessage, error) {
+func checkSubqueriesNotAllow(stmt ast.Statement) ([]rules.LintMessage, error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
 		return selectSubqueries(stmt)
@@ -399,7 +399,7 @@ func checkSubqueriesNotAllow(stmt ast.Statement) ([]LintMessage, error) {
 	}
 }
 
-func selectSubqueries(stmt ast.SelectStatement) ([]LintMessage, error) {
+func selectSubqueries(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
 	isSubquery := func(q ast.Statement) bool {
 		if a, ok := q.(ast.Alias); ok {
 			q = a.Statement
@@ -410,7 +410,7 @@ func selectSubqueries(stmt ast.SelectStatement) ([]LintMessage, error) {
 		_, ok := q.(ast.SelectStatement)
 		return ok
 	}
-	var list []LintMessage
+	var list []rules.LintMessage
 	for _, c := range stmt.Columns {
 		if isSubquery(c) {
 			list = append(list, subqueryDisallow())
@@ -429,47 +429,47 @@ func selectSubqueries(stmt ast.SelectStatement) ([]LintMessage, error) {
 	return slices.Concat(list, others), err
 }
 
-func subqueryDisallow() LintMessage {
-	return LintMessage{
+func subqueryDisallow() rules.LintMessage {
+	return rules.LintMessage{
 		Severity: rules.Error,
 		Message:  "subquery is not allowed",
 		Rule:     ruleSubqueryNotAllow,
 	}
 }
 
-func rewriteIn() LintMessage {
-	return LintMessage{
+func rewriteIn() rules.LintMessage {
+	return rules.LintMessage{
 		Severity: rules.Warning,
 		Message:  "in predicate should be rewritten",
 		Rule:     ruleRewriteExprIn,
 	}
 }
 
-func rewriteBinary() LintMessage {
-	return LintMessage{
+func rewriteBinary() rules.LintMessage {
+	return rules.LintMessage{
 		Severity: rules.Warning,
 		Message:  "expression should be rewritten",
 		Rule:     ruleRewriteExpr,
 	}
 }
 
-func constantJoin() LintMessage {
-	return LintMessage{
+func constantJoin() rules.LintMessage {
+	return rules.LintMessage{
 		Severity: rules.Error,
 		Message:  "join expression composed of constant values",
 		Rule:     ruleConstExprJoin,
 	}
 }
 
-func constantOnlyExpr() LintMessage {
-	return LintMessage{
+func constantOnlyExpr() rules.LintMessage {
+	return rules.LintMessage{
 		Severity: rules.Error,
 		Message:  "expression composed of constant values",
 		Rule:     ruleConstExprBin,
 	}
 }
 
-func handleCompoundStatement(q1, q2 ast.Statement, check RuleFunc) ([]LintMessage, error) {
+func handleCompoundStatement(q1, q2 ast.Statement, check RuleFunc) ([]rules.LintMessage, error) {
 	list1, err := check(q1)
 	if err != nil && !errors.Is(err, ErrNa) {
 		return nil, err
@@ -481,8 +481,8 @@ func handleCompoundStatement(q1, q2 ast.Statement, check RuleFunc) ([]LintMessag
 	return append(list1, list2...), nil
 }
 
-func handleWithStatement(with ast.WithStatement, check RuleFunc) ([]LintMessage, error) {
-	var list []LintMessage
+func handleWithStatement(with ast.WithStatement, check RuleFunc) ([]rules.LintMessage, error) {
+	var list []rules.LintMessage
 	for _, q := range with.Queries {
 		ms, err := check(q)
 		if err != nil {
@@ -500,8 +500,8 @@ func handleWithStatement(with ast.WithStatement, check RuleFunc) ([]LintMessage,
 	return list, err
 }
 
-func handleSelectStatement(stmt ast.SelectStatement, check RuleFunc) ([]LintMessage, error) {
-	var list []LintMessage
+func handleSelectStatement(stmt ast.SelectStatement, check RuleFunc) ([]rules.LintMessage, error) {
+	var list []rules.LintMessage
 	for _, c := range stmt.Columns {
 		msg, err := check(c)
 		if err != nil && !errors.Is(err, ErrNa) {
@@ -519,6 +519,6 @@ func handleSelectStatement(stmt ast.SelectStatement, check RuleFunc) ([]LintMess
 	return list, nil
 }
 
-func makeArray[T LintMessage](el T) []T {
+func makeArray[T rules.LintMessage](el T) []T {
 	return []T{el}
 }

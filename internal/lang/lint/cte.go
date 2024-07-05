@@ -7,14 +7,14 @@ import (
 	"github.com/midbel/sweet/internal/rules"
 )
 
-func checkDuplicateCte(stmt ast.Statement) ([]LintMessage, error) {
+func checkDuplicateCte(stmt ast.Statement) ([]rules.LintMessage, error) {
 	with, ok := stmt.(ast.WithStatement)
 	if !ok {
 		return nil, ErrNa
 	}
 	var (
 		seen = make(map[string]struct{})
-		list []LintMessage
+		list []rules.LintMessage
 	)
 	for _, q := range with.Queries {
 		c, ok := q.(ast.CteStatement)
@@ -30,14 +30,14 @@ func checkDuplicateCte(stmt ast.Statement) ([]LintMessage, error) {
 	return list, nil
 }
 
-func checkUnusedCte(stmt ast.Statement) ([]LintMessage, error) {
+func checkUnusedCte(stmt ast.Statement) ([]rules.LintMessage, error) {
 	with, ok := stmt.(ast.WithStatement)
 	if !ok {
 		return nil, ErrNa
 	}
 	var (
 		all  = make(map[string]struct{})
-		list []LintMessage
+		list []rules.LintMessage
 	)
 	for _, q := range with.Queries {
 		c, ok := q.(ast.CteStatement)
@@ -56,12 +56,12 @@ func checkUnusedCte(stmt ast.Statement) ([]LintMessage, error) {
 	return list, nil
 }
 
-func checkColumnsMissingCte(stmt ast.Statement) ([]LintMessage, error) {
+func checkColumnsMissingCte(stmt ast.Statement) ([]rules.LintMessage, error) {
 	with, ok := stmt.(ast.WithStatement)
 	if !ok {
 		return nil, ErrNa
 	}
-	var list []LintMessage
+	var list []rules.LintMessage
 	for _, q := range with.Queries {
 		c, ok := q.(ast.CteStatement)
 		if !ok {
@@ -74,16 +74,16 @@ func checkColumnsMissingCte(stmt ast.Statement) ([]LintMessage, error) {
 	return list, nil
 }
 
-func checkColumnsUnsedCte(stmt ast.Statement) ([]LintMessage, error) {
+func checkColumnsUnsedCte(stmt ast.Statement) ([]rules.LintMessage, error) {
 	return nil, nil
 }
 
-func checkColumnsMismatchedCte(stmt ast.Statement) ([]LintMessage, error) {
+func checkColumnsMismatchedCte(stmt ast.Statement) ([]rules.LintMessage, error) {
 	with, ok := stmt.(ast.WithStatement)
 	if !ok {
 		return nil, ErrNa
 	}
-	var list []LintMessage
+	var list []rules.LintMessage
 	for _, q := range with.Queries {
 		c, ok := q.(ast.CteStatement)
 		if !ok {
@@ -100,32 +100,32 @@ func checkColumnsMismatchedCte(stmt ast.Statement) ([]LintMessage, error) {
 	return list, nil
 }
 
-func cteColumnsMismatched(cte string) LintMessage {
-	return LintMessage{
+func cteColumnsMismatched(cte string) rules.LintMessage {
+	return rules.LintMessage{
 		Severity: rules.Error,
 		Message:  fmt.Sprintf("%s: columns count mismatched", cte),
 		Rule:     ruleCteColsMismatched,
 	}
 }
 
-func cteColumnsMissing(cte string) LintMessage {
-	return LintMessage{
+func cteColumnsMissing(cte string) rules.LintMessage {
+	return rules.LintMessage{
 		Severity: rules.Error,
 		Message:  fmt.Sprintf("%s: no columns defined for cte", cte),
 		Rule:     ruleCteColsMissing,
 	}
 }
 
-func cteDuplicate(cte string) LintMessage {
-	return LintMessage{
+func cteDuplicate(cte string) rules.LintMessage {
+	return rules.LintMessage{
 		Severity: rules.Error,
 		Message:  fmt.Sprintf("%s: cte already defined", cte),
 		Rule:     ruleCteDuplicated,
 	}
 }
 
-func cteUnused(cte string) LintMessage {
-	return LintMessage{
+func cteUnused(cte string) rules.LintMessage {
+	return rules.LintMessage{
 		Severity: rules.Error,
 		Message:  fmt.Sprintf("%s: cte declared but not used", cte),
 		Rule:     ruleCteUnused,
