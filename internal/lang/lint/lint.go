@@ -235,6 +235,85 @@ func constantJoin() rules.LintMessage {
 	}
 }
 
+func handleExpr(stmt ast.Statement, check RuleFunc) ([]rules.LintMessage, error) {
+	var list []rules.LintMessage
+	switch stmt := stmt.(type) {
+	case ast.Case:
+		msg, err := check(stmt.Cdt)
+		if err != nil && !errors.Is(err, ErrNa) {
+			return nil, err
+		}
+		list = slices.Concat(list, msg)
+		for _, b := range stmt.Body {
+			msg, err = check(b)
+			if err != nil && !errors.Is(err, ErrNa) {
+				return nil, err
+			}
+			list = slices.Concat(list, msg)
+		}
+		msg, err = check(stmt.Else)
+		if err != nil && !errors.Is(err, ErrNa) {
+			return nil, err
+		}
+		list = slices.Concat(list, msg)
+	case ast.Between:
+		l0, err := check(stmt.Ident)
+		if err != nil && !errors.Is(err, ErrNa) {
+			return nil, err
+		}
+		l1, err := check(stmt.Lower)
+		if err != nil && !errors.Is(err, ErrNa) {
+			break
+		}
+		l2, err := check(stmt.Upper)
+		if err != nil && !errors.Is(err, ErrNa) {
+			break
+		}
+		list = slices.Concat(l0, l1, l2)
+	case ast.In:
+		l0, err := check(stmt.Ident)
+		if err != nil && !errors.Is(err, ErrNa) {
+			return nil, err
+		}
+		l1, err := check(stmt.Value)
+		if err != nil && !errors.Is(err, ErrNa) {
+			break
+		}
+		list = slices.Concat(l0, l1)
+	case ast.Is:
+		l0, err := check(stmt.Ident)
+		if err != nil && !errors.Is(err, ErrNa) {
+			return nil, err
+		}
+		l1, err := check(stmt.Value)
+		if err != nil && !errors.Is(err, ErrNa) {
+			break
+		}
+		list = slices.Concat(l0, l1)
+	case ast.List:
+		for _, v := range stmt.Values {
+			others, err := check(v)
+			if err != nil && !errors.Is(err, ErrNa) {
+				return nil, err
+			}
+			list = slices.Concat(list, others)
+		}
+	case ast.Binary:
+		l0, err := check(stmt.Left)
+		if err != nil && !errors.Is(err, ErrNa) {
+			return nil, err
+		}
+		l1, err := check(stmt.Right)
+		if err != nil && !errors.Is(err, ErrNa) {
+			break
+		}
+		list = slices.Concat(l0, l1)
+	default:
+		return nil, ErrNa
+	}
+	return list, nil
+}
+
 func handleCompoundStatement(q1, q2 ast.Statement, check RuleFunc) ([]rules.LintMessage, error) {
 	list1, err := check(q1)
 	if err != nil && !errors.Is(err, ErrNa) {
@@ -273,14 +352,21 @@ func handleSelectStatement(stmt ast.SelectStatement, check RuleFunc) ([]rules.Li
 		if err != nil && !errors.Is(err, ErrNa) {
 			return nil, err
 		}
-		list = append(list, msg...)
+		list = slices.Concat(list, msg)
 	}
 	for _, c := range stmt.Tables {
 		msg, err := check(c)
 		if err != nil && !errors.Is(err, ErrNa) {
 			return nil, err
 		}
-		list = append(list, msg...)
+		list = slices.Concat(list, msg)
+	}
+	if stmt.Where != nil {
+		others, err := handleExpr(stmt.Where, check)
+		if err != nil && !errors.Is(err, ErrNa) {
+			return nil, err
+		}
+		list = slices.Concat(list, others)
 	}
 	return list, nil
 }

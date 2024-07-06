@@ -61,4 +61,20 @@ select * from employees where dept isnull;
 
 select * from employees where dept in departments;
 
-@include 'values.sql';
+select 
+	firstname as "first",
+	lastname as "last"
+from employees as e
+join (
+	select 
+		id as pk, 
+		name as deptname
+	from departments as d 
+	where name='it'
+) as d on d.id=e.dept
+where manager in (
+	select
+		name as n
+	from managers 
+	where active is true
+);

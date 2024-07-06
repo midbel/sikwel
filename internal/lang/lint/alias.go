@@ -33,10 +33,10 @@ func checkEnforcedAlias(stmt ast.Statement) ([]rules.LintMessage, error) {
 
 func selectEnforcedAlias(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
 	var list []rules.LintMessage
-	if cs := ast.GetAliasFromStmt(stmt.Columns); len(cs) != len(stmt.Columns) {
+	if cs := ast.GetAliasFromStmt(stmt.Columns); len(cs) == 0 {
 		list = append(list, enforcedAlias())
 	}
-	if ts := ast.GetAliasFromStmt(stmt.Tables); len(ts) != len(stmt.Tables) {
+	if ts := ast.GetAliasFromStmt(stmt.Tables); len(ts) == 0 {
 		list = append(list, enforcedAlias())
 	}
 	others, err := handleSelectStatement(stmt, checkEnforcedAlias)

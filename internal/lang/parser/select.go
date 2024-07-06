@@ -135,7 +135,14 @@ func (p *Parser) ParseSelect() (ast.Statement, error) {
 }
 
 func (p *Parser) ParseColumns() ([]ast.Statement, error) {
-	var list []ast.Statement
+	var (
+		list   []ast.Statement
+		withAs = p.withAlias
+	)
+	p.withAlias = true
+	defer func() {
+		p.withAlias = withAs
+	}()
 	for !p.Done() && !p.IsKeyword("FROM") {
 		stmt, err := p.StartExpression()
 		if err = wrapError("fields", err); err != nil {
