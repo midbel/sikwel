@@ -8,6 +8,74 @@ import (
 	"github.com/midbel/sweet/internal/rules"
 )
 
+func checkConstantBinary(stmt ast.Statement) ([]rules.LintMessage, error) {
+	switch stmt := stmt.(type) {
+	case ast.SelectStatement:
+		return selectConstantBinary(stmt)
+	case ast.UnionStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkConstantBinary)
+	case ast.IntersectStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkConstantBinary)
+	case ast.ExceptStatement:
+		return handleCompoundStatement(stmt.Left, stmt.Right, checkConstantBinary)
+	case ast.WithStatement:
+		return handleWithStatement(stmt, checkConstantBinary)
+	case ast.CteStatement:
+		return checkConstantBinary(stmt.Statement)
+	case ast.Join:
+		return joinConstantBinary(stmt)
+	case ast.Group:
+		return checkConstantBinary(stmt.Statement)
+	default:
+		return nil, ErrNa
+	}
+}
+
+func selectConstantBinary(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
+	var list []rules.LintMessage
+	if isConstant(stmt.Where) {
+		list = append(list, constantOnlyExpr())
+	}
+	others, err := handleSelectStatement(stmt, checkConstantBinary)
+	return slices.Concat(list, others), err
+}
+
+func joinConstantBinary(stmt ast.Join) ([]rules.LintMessage, error) {
+	var list []rules.LintMessage
+	if isConstant(stmt.Where) {
+		list = append(list, constantOnlyExpr())
+	}
+	others, err := checkConstantBinary(stmt.Table)
+	return slices.Concat(list, others), err
+}
+
+func isConstant(stmt ast.Statement) bool {
+	switch s := stmt.(type) {
+	case ast.Value:
+		return true
+	case ast.List:
+		for _, v := range s.Values {
+			if !isConstant(v) {
+				return false
+			}
+		}
+		return true
+	case ast.Binary:
+		if s.IsRelation() {
+			return isConstant(s.Left) || isConstant(s.Right)
+		}
+		return isConstant(s.Left) && isConstant(s.Right)
+	case ast.Is:
+		return isConstant(s.Ident)
+	case ast.In:
+		return isConstant(s.Ident) && isConstant(s.Value)
+	case ast.Between:
+		return isConstant(s.Ident) && isConstant(s.Lower) && isConstant(s.Upper)
+	default:
+		return false
+	}
+}
+
 func checkResultSubquery(stmt ast.Statement) ([]rules.LintMessage, error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
@@ -261,5 +329,13 @@ func subqueryTooManyResult() rules.LintMessage {
 		Severity: rules.Error,
 		Message:  "too many result returned by subquery",
 		Rule:     ruleSubqueryColsMismatched,
+	}
+}
+
+func constantOnlyExpr() rules.LintMessage {
+	return rules.LintMessage{
+		Severity: rules.Error,
+		Message:  "expression composed of constant values",
+		Rule:     ruleConstExprBin,
 	}
 }
