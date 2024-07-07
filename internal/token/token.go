@@ -30,6 +30,10 @@ func (t Token) IsValue() bool {
 	return t.Type == Ident || t.Type == Literal || t.Type == Number
 }
 
+func (t Token) IsPlaceholder() bool {
+	return t.Type == Placeholder || t.Type == NamedHolder || t.Type == PositionHolder
+}
+
 func (t Token) AsSymbol() Symbol {
 	sym := Symbol{
 		Type: t.Type,
@@ -111,6 +115,12 @@ func (t Token) String() string {
 		return "<greater-than>"
 	case Ge:
 		return "<greater-eq>"
+	case Placeholder:
+		return "<placeholder>"
+	case PositionHolder:
+		prefix = "position"
+	case NamedHolder:
+		prefix = "name"
 	case Macro:
 		prefix = "macro"
 	case Ident:

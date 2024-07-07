@@ -3,6 +3,9 @@ package token
 const (
 	EOL rune = -(iota + 1)
 	EOF
+	Placeholder
+	NamedHolder
+	PositionHolder
 	Dot
 	Comment
 	Ident

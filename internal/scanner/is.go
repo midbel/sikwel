@@ -26,7 +26,14 @@ const (
 	arobase    = '@'
 	percent    = '%'
 	tilde      = '~'
+	question   = '?'
+	colon      = ':'
+	dollar     = '$'
 )
+
+func IsPlaceholder(r rune) bool {
+	return r == question || r == colon || r == dollar
+}
 
 func IsMacro(r rune) bool {
 	return r == arobase
