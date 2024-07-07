@@ -7,7 +7,25 @@ import (
 	"github.com/midbel/sweet/internal/lang/ast"
 )
 
-func (w *Writer) FormatName(name ast.Name) {
+func (w *Writer) FormatPlaceholder(name ast.Placeholder) error {
+	if name.Statement == nil {
+		w.WriteString("?")
+		return nil
+	}
+	switch stmt := name.Statement.(type) {
+	case ast.Value:
+		w.WriteString("$")
+		w.WriteString(stmt.Literal)
+	case ast.Name:
+		w.WriteString(":")
+		w.FormatName(stmt)
+	default:
+		return w.CanNotUse("placeholder", name.Statement)
+	}
+	return nil
+}
+
+func (w *Writer) FormatName(name ast.Name) error {
 	for i := range name.Parts {
 		if i > 0 {
 			w.WriteString(".")
@@ -24,6 +42,7 @@ func (w *Writer) FormatName(name ast.Name) {
 		}
 		w.WriteString(str)
 	}
+	return nil
 }
 
 func (w *Writer) FormatAlias(alias ast.Alias) error {

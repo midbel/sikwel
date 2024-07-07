@@ -262,6 +262,8 @@ func (w *Writer) FormatBody(list ast.List) error {
 func (w *Writer) FormatExpr(stmt ast.Statement, nl bool) error {
 	var err error
 	switch stmt := stmt.(type) {
+	case ast.Placeholder:
+		w.FormatPlaceholder(stmt)
 	case ast.Name:
 		w.FormatName(stmt)
 	case ast.Value:
