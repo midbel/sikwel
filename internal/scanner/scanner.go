@@ -95,10 +95,30 @@ func (s *Scanner) Scan() token.Token {
 		s.scanOperator(&tok)
 	case IsMacro(s.char):
 		s.scanMacro(&tok)
+	case IsPlaceholder(s.char):
+		s.scanPlaceholder(&tok)
 	default:
 		tok.Type = token.Invalid
 	}
 	return tok
+}
+
+func (s *Scanner) scanPlaceholder(tok *token.Token) {
+	switch s.char {
+	case question:
+		s.Read()
+		tok.Type = token.Placeholder
+	case colon:
+		s.Read()
+		s.scanIdent(tok)
+		tok.Type = token.NamedHolder
+	case dollar:
+		s.Read()
+		s.scanNumber(tok)
+		tok.Type = token.PositionHolder
+	default:
+		tok.Type = token.Invalid
+	}
 }
 
 func (s *Scanner) scanMacro(tok *token.Token) {

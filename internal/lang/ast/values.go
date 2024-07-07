@@ -311,6 +311,10 @@ func (i List) Len() int {
 	return len(i.Values)
 }
 
+type Placeholder struct {
+	Statement
+}
+
 type Value struct {
 	Literal string
 }

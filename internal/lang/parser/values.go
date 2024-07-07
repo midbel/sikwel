@@ -7,6 +7,30 @@ import (
 	"github.com/midbel/sweet/internal/token"
 )
 
+func (p *Parser) ParsePlaceholder() (ast.Statement, error) {
+	var stmt ast.Placeholder
+	switch {
+	case p.Is(token.Placeholder):
+		p.Next()
+	case p.Is(token.NamedHolder):
+		stmt.Statement = ast.Name{
+			Parts: []string{p.GetCurrLiteral()},
+		}
+		p.Next()
+	case p.Is(token.PositionHolder):
+		if _, err := strconv.Atoi(p.GetCurrLiteral()); err != nil {
+			return nil, err
+		}
+		stmt.Statement = ast.Value{
+			Literal: p.GetCurrLiteral(),
+		}
+		p.Next()
+	default:
+		return nil, p.Unexpected("placeholder")
+	}
+	return stmt, nil
+}
+
 func (p *Parser) ParseLiteral() (ast.Statement, error) {
 	stmt := ast.Value{
 		Literal: p.GetCurrLiteral(),

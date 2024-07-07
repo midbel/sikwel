@@ -56,7 +56,7 @@ func runParse(args []string) error {
 	set.StringVar(&dialect, "dialect", "", "SQL dialect")
 	if err := set.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
-
+			return nil
 		}
 		return err
 	}
