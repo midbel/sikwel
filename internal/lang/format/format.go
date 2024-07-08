@@ -151,15 +151,6 @@ func (w *Writer) startStatement(stmt ast.Statement) error {
 	defer w.Flush()
 
 	w.Reset()
-	com, ok := stmt.(ast.Commented)
-	if ok {
-		if w.KeepComment {
-			for _, s := range com.Before {
-				w.WriteComment(s)
-			}
-		}
-		stmt = com.Statement
-	}
 	err := w.FormatStatement(stmt)
 	if err == nil {
 		w.WriteEOL()

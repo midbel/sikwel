@@ -174,33 +174,28 @@ func (p *Parser) restore() {
 }
 
 func (p *Parser) parse() (ast.Statement, error) {
-	var (
-		com ast.Commented
-		err error
-	)
-	for p.Is(token.Comment) {
-		com.Before = append(com.Before, p.GetCurrLiteral())
-		p.Next()
-	}
+	// var (
+	// 	com ast.Commented
+	// 	err error
+	// )
+	// for p.Is(token.Comment) {
+	// 	com.Before = append(com.Before, p.GetCurrLiteral())
+	// 	p.Next()
+	// }
 	if p.Is(token.Macro) {
 		if err := p.ParseMacro(); err != nil {
 			return nil, err
 		}
 		return p.Parse()
 	}
-	if com.Statement, err = p.ParseStatement(); err != nil {
+	stmt, err := p.ParseStatement()
+	if err != nil {
 		return nil, err
 	}
 	if !p.Is(token.EOL) {
 		return nil, p.wantError("statement", ";")
 	}
-	eol := p.Curr()
-	p.Next()
-	if p.Is(token.Comment) && eol.Line == p.Curr().Line {
-		com.After = p.GetCurrLiteral()
-		p.Next()
-	}
-	return com.Statement, nil
+	return stmt, nil
 }
 
 func (p *Parser) RegisterParseFunc(kw string, fn func() (ast.Statement, error)) {

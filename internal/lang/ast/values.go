@@ -155,12 +155,6 @@ func ReplaceExpr(b Binary) Statement {
 	}
 }
 
-type Commented struct {
-	Before []string
-	After  string
-	Statement
-}
-
 type Group struct {
 	Statement
 }
