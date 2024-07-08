@@ -90,6 +90,9 @@ func (p *Parser) start() error {
 }
 
 func (p *Parser) Parse() (ast.Statement, error) {
+	if p.Done() {
+		return nil, io.EOF
+	}
 	p.reset()
 	stmt, err := p.parse()
 	if err != nil {
@@ -174,28 +177,48 @@ func (p *Parser) restore() {
 }
 
 func (p *Parser) parse() (ast.Statement, error) {
-	// var (
-	// 	com ast.Commented
-	// 	err error
-	// )
-	// for p.Is(token.Comment) {
-	// 	com.Before = append(com.Before, p.GetCurrLiteral())
-	// 	p.Next()
-	// }
 	if p.Is(token.Macro) {
 		if err := p.ParseMacro(); err != nil {
 			return nil, err
 		}
 		return p.Parse()
 	}
-	stmt, err := p.ParseStatement()
+	com, err := p.parseComment()
 	if err != nil {
 		return nil, err
 	}
-	if !p.Is(token.EOL) {
-		return nil, p.wantError("statement", ";")
+	if p.Is(token.EOF) {
+		return com, nil
 	}
-	return stmt, nil
+	if com.Statement, err = p.ParseStatement(); err != nil {
+		return nil, err
+	}
+	return p.parseEOL(com)
+}
+
+func (p *Parser) parseComment() (ast.Comment, error) {
+	var com ast.Comment
+	for p.Is(token.Comment) {
+		com.Before = append(com.Before, p.GetCurrLiteral())
+		p.Next()
+	}
+	return com, nil
+}
+
+func (p *Parser) parseEOL(com ast.Comment) (ast.Statement, error) {
+	eol := p.curr
+	if !p.Is(token.EOL) {
+		return nil, p.Unexpected(";")
+	}
+	p.Next()
+	if p.Is(token.Comment) && eol.Line == p.curr.Line {
+		com.After = p.GetCurrLiteral()
+		p.Next()
+	}
+	if com.Commented() {
+		return com, nil
+	}
+	return com.Statement, nil
 }
 
 func (p *Parser) RegisterParseFunc(kw string, fn func() (ast.Statement, error)) {
