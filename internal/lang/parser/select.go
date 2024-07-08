@@ -139,7 +139,6 @@ func (p *Parser) ParseColumns() ([]ast.Statement, error) {
 		list   []ast.Statement
 		withAs = p.withAlias
 	)
-	p.withAlias = true
 	defer func() {
 		p.withAlias = withAs
 	}()
@@ -148,6 +147,7 @@ func (p *Parser) ParseColumns() ([]ast.Statement, error) {
 			err    error
 			com, _ = p.parseComment()
 		)
+		p.withAlias = true
 		com.Statement, err = p.StartExpression()
 		if err = wrapError("fields", err); err != nil {
 			return nil, err
