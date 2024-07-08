@@ -144,7 +144,11 @@ func (p *Parser) ParseColumns() ([]ast.Statement, error) {
 		p.withAlias = withAs
 	}()
 	for !p.Done() && !p.IsKeyword("FROM") {
-		stmt, err := p.StartExpression()
+		var (
+			err    error
+			com, _ = p.parseComment()
+		)
+		com.Statement, err = p.StartExpression()
 		if err = wrapError("fields", err); err != nil {
 			return nil, err
 		}
@@ -158,7 +162,15 @@ func (p *Parser) ParseColumns() ([]ast.Statement, error) {
 		default:
 			return nil, p.Unexpected("fields")
 		}
-		list = append(list, stmt)
+		if p.Is(token.Comment) {
+			com.After = p.GetCurrLiteral()
+			p.Next()
+		}
+		if com.Commented() {
+			list = append(list, com)
+		} else {
+			list = append(list, com.Statement)
+		}
 	}
 	if !p.IsKeyword("FROM") {
 		return nil, p.Unexpected("fields")

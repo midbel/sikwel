@@ -151,23 +151,15 @@ func (w *Writer) startStatement(stmt ast.Statement) error {
 	defer w.Flush()
 
 	w.Reset()
-	if com, ok := stmt.(ast.Comment); ok {
-		for _, c := range com.Before {
-			w.formatComment(c)
-			w.WriteNL()
-		}
-		stmt = com.Statement
-	}
-	if stmt == nil {
+	query := w.formatCommentBefore(stmt)
+	if query == nil {
 		return nil
 	}
-	err := w.FormatStatement(stmt)
+	err := w.FormatStatement(query)
 	if err == nil {
 		w.WriteEOL()
-	}
-	if com, ok := stmt.(ast.Comment); ok {
-		w.WriteBlank()
-		w.formatComment(com.After)
+		w.formatCommentAfter(stmt)
+		w.WriteNL()
 	}
 	return err
 }
@@ -313,6 +305,35 @@ func (w *Writer) FormatExpr(stmt ast.Statement, nl bool) error {
 		err = w.FormatStatement(stmt)
 	}
 	return err
+}
+
+func (w *Writer) formatCommentAfter(stmt ast.Statement) {
+	com, ok := stmt.(ast.Comment)
+	if !ok {
+		return
+	}
+	if w.Compact || !w.KeepComment {
+		return
+	}
+	if com.After != "" {
+		w.WriteBlank()
+		w.formatComment(com.After)
+	}
+}
+
+func (w *Writer) formatCommentBefore(stmt ast.Statement) ast.Statement {
+	com, ok := stmt.(ast.Comment)
+	if !ok {
+		return stmt
+	}
+	if !w.Compact && w.KeepComment {
+		for i := range com.Before {
+			w.WritePrefix()
+			w.formatComment(com.Before[i])
+			w.WriteNL()
+		}
+	}
+	return com.Statement
 }
 
 func (w *Writer) formatComment(line string) {
@@ -636,7 +657,6 @@ func (w *Writer) WriteComment(str string) {
 
 func (w *Writer) WriteEOL() {
 	w.WriteString(";")
-	w.WriteNL()
 }
 
 func (w *Writer) WriteQuoted(str string) {

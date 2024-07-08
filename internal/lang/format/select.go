@@ -150,15 +150,19 @@ func (w *Writer) FormatSelect(stmt ast.SelectStatement) error {
 func (w *Writer) FormatSelectColumns(columns []ast.Statement) error {
 	w.Enter()
 	defer w.Leave()
-	for i, v := range columns {
+	for i := range columns {
 		if i > 0 {
-			w.WriteString(",")
 			w.WriteNL()
 		}
+		stmt := w.formatCommentBefore(columns[i])
 		w.WritePrefix()
-		if err := w.FormatExpr(v, false); err != nil {
+		if err := w.FormatExpr(stmt, false); err != nil {
 			return err
 		}
+		if i < len(columns)-1 {
+			w.WriteString(",")
+		}
+		w.formatCommentAfter(columns[i])
 	}
 	return nil
 }
