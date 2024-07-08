@@ -215,10 +215,7 @@ func (p *Parser) parseEOL(com ast.Comment) (ast.Statement, error) {
 		com.After = p.GetCurrLiteral()
 		p.Next()
 	}
-	if com.Commented() {
-		return com, nil
-	}
-	return com.Statement, nil
+	return ast.GetStatementFromComment(com), nil
 }
 
 func (p *Parser) RegisterParseFunc(kw string, fn func() (ast.Statement, error)) {

@@ -166,11 +166,7 @@ func (p *Parser) ParseColumns() ([]ast.Statement, error) {
 			com.After = p.GetCurrLiteral()
 			p.Next()
 		}
-		if com.Commented() {
-			list = append(list, com)
-		} else {
-			list = append(list, com.Statement)
-		}
+		list = append(list, ast.GetStatementFromComment(com))
 	}
 	if !p.IsKeyword("FROM") {
 		return nil, p.Unexpected("fields")
