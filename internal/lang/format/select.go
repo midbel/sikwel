@@ -264,18 +264,22 @@ func (w *Writer) FormatGroupBy(groups []ast.Statement) error {
 	if len(groups) == 0 {
 		return nil
 	}
+	w.Enter()
+	defer w.Leave()
+
 	w.WriteKeyword("GROUP BY")
 	w.WriteBlank()
-	for i, s := range groups {
-		if i > 0 {
+	for i := range groups {
+		w.WriteNL()
+		stmt := w.formatCommentBefore(groups[i])
+		w.WritePrefix()
+		if err := w.FormatExpr(stmt, false); err != nil {
+			return err
+		}
+		if i < len(groups)-1 {
 			w.WriteString(",")
-			w.WriteBlank()
 		}
-		n, ok := s.(ast.Name)
-		if !ok {
-			return w.CanNotUse("group by", s)
-		}
-		w.FormatName(n)
+		w.formatCommentAfter(groups[i])
 	}
 	return nil
 }
@@ -358,20 +362,26 @@ func (w *Writer) FormatOrderBy(orders []ast.Statement) error {
 	if len(orders) == 0 {
 		return nil
 	}
+	w.Enter()
+	defer w.Leave()
+
 	w.WriteKeyword("ORDER BY")
-	w.WriteBlank()
-	for i, s := range orders {
-		if i > 0 {
-			w.WriteString(",")
-			w.WriteBlank()
-		}
-		order, ok := s.(ast.Order)
+	for i := range orders {
+		w.WriteNL()
+		stmt := w.formatCommentBefore(orders[i])
+		w.WritePrefix()
+
+		o, ok := stmt.(ast.Order)
 		if !ok {
-			return w.CanNotUse("order by", s)
+			return w.CanNotUse("order by", stmt)
 		}
-		if err := w.formatOrder(order); err != nil {
+		if err := w.formatOrder(o); err != nil {
 			return err
 		}
+		if i < len(orders)-1 {
+			w.WriteString(",")
+		}
+		w.formatCommentAfter(orders[i])
 	}
 	return nil
 }

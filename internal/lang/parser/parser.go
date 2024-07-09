@@ -15,6 +15,8 @@ import (
 	"github.com/midbel/sweet/internal/token"
 )
 
+type ItemFunc func() (ast.Statement, error)
+
 type Parser struct {
 	*frame
 	*config.Config
@@ -194,6 +196,29 @@ func (p *Parser) parse() (ast.Statement, error) {
 		return nil, err
 	}
 	return p.parseEOL(com)
+}
+
+func (p *Parser) parseItem(get ItemFunc) (ast.Statement, error) {
+	com, err := p.parseComment()
+	if com.Statement, err = get(); err != nil {
+		return nil, err
+	}
+	curr := p.curr
+	switch {
+	case p.Is(token.Comma):
+		p.Next()
+	case p.Is(token.Keyword):
+	case p.Is(token.EOL):
+	case p.Is(token.Rparen):
+	case p.Is(token.Comment):
+	default:
+		return nil, p.Unexpected("item")
+	}
+	if p.Is(token.Comment) && p.curr.Line == curr.Line {
+		com.After = p.GetCurrLiteral()
+		p.Next()
+	}
+	return ast.GetStatementFromComment(com), nil
 }
 
 func (p *Parser) parseComment() (ast.Comment, error) {

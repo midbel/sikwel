@@ -143,30 +143,12 @@ func (p *Parser) ParseColumns() ([]ast.Statement, error) {
 		p.withAlias = withAs
 	}()
 	for !p.Done() && !p.IsKeyword("FROM") {
-		var (
-			err    error
-			com, _ = p.parseComment()
-		)
 		p.withAlias = true
-		com.Statement, err = p.StartExpression()
-		if err = wrapError("fields", err); err != nil {
+		stmt, err := p.parseItem(p.StartExpression)
+		if err != nil {
 			return nil, err
 		}
-		switch {
-		case p.Is(token.Comma):
-			p.Next()
-			if p.IsKeyword("FROM") {
-				return nil, p.Unexpected("fields")
-			}
-		case p.IsKeyword("FROM"):
-		default:
-			return nil, p.Unexpected("fields")
-		}
-		if p.Is(token.Comment) {
-			com.After = p.GetCurrLiteral()
-			p.Next()
-		}
-		list = append(list, ast.GetStatementFromComment(com))
+		list = append(list, stmt)
 	}
 	if !p.IsKeyword("FROM") {
 		return nil, p.Unexpected("fields")
@@ -275,26 +257,15 @@ func (p *Parser) ParseGroupBy() ([]ast.Statement, error) {
 		return nil, nil
 	}
 	p.Next()
-	var (
-		list []ast.Statement
-		err  error
-	)
-	for !p.Done() && !p.QueryEnds() {
-		var stmt ast.Statement
-		stmt, err = p.ParseIdentifier()
+	var list []ast.Statement
+	for !p.Done() && !p.QueryEnds() && !p.Is(token.Keyword) {
+		stmt, err := p.parseItem(p.ParseIdentifier)
 		if err != nil {
 			return nil, err
 		}
 		list = append(list, stmt)
-		if !p.Is(token.Comma) {
-			break
-		}
-		p.Next()
-		if p.QueryEnds() && !p.Is(token.Keyword) {
-			return nil, p.Unexpected("group by")
-		}
 	}
-	return list, err
+	return list, nil
 }
 
 func (p *Parser) ParseHaving() (ast.Statement, error) {
@@ -464,20 +435,16 @@ func (p *Parser) ParseOrderBy() ([]ast.Statement, error) {
 	if !p.IsKeyword("ORDER BY") {
 		return nil, nil
 	}
-	p.Next()
-	var (
-		list []ast.Statement
-		err  error
-	)
-	for !p.Done() && !p.QueryEnds() {
-		var stmt ast.Statement
-		stmt, err = p.ParseIdentifier()
+
+	get := func() (ast.Statement, error) {
+		stmt, err := p.ParseIdentifier()
 		if err != nil {
 			return nil, err
 		}
 		order := ast.Order{
 			Statement: stmt,
 		}
+
 		if p.IsKeyword("ASC") {
 			order.Dir = ast.AscOrder
 			p.Next()
@@ -493,14 +460,20 @@ func (p *Parser) ParseOrderBy() ([]ast.Statement, error) {
 			order.Nulls = p.GetCurrLiteral()
 			p.Next()
 		}
-		list = append(list, order)
-		if !p.Is(token.Comma) {
-			break
+		return order, nil
+	}
+
+	p.Next()
+	var (
+		list []ast.Statement
+		err  error
+	)
+	for !p.Done() && !p.QueryEnds() && !p.Is(token.Keyword) && !p.Is(token.Rparen) {
+		stmt, err := p.parseItem(get)
+		if err != nil {
+			return nil, err
 		}
-		p.Next()
-		if p.QueryEnds() || p.Is(token.Rparen) || p.Is(token.Keyword) {
-			return nil, p.Unexpected("order by")
-		}
+		list = append(list, stmt)
 	}
 	return list, err
 }
