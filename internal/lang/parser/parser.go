@@ -197,29 +197,6 @@ func (p *Parser) parse() (ast.Statement, error) {
 	return stmt, nil
 }
 
-// func (p *Parser) parseItem(get ItemFunc) (ast.Statement, error) {
-// 	com, err := p.parseComment()
-// 	if com.Statement, err = get(); err != nil {
-// 		return nil, err
-// 	}
-// 	curr := p.curr
-// 	switch {
-// 	case p.Is(token.Comma):
-// 		p.Next()
-// 	case p.Is(token.Keyword):
-// 	case p.Is(token.EOL):
-// 	case p.Is(token.Rparen):
-// 	case p.Is(token.Comment):
-// 	default:
-// 		return nil, p.Unexpected("item")
-// 	}
-// 	if p.Is(token.Comment) && p.curr.Line == curr.Line {
-// 		com.After = p.GetCurrLiteral()
-// 		p.Next()
-// 	}
-// 	return ast.GetStatementFromComment(com), nil
-// }
-
 func (p *Parser) RegisterParseFunc(kw string, fn func() (ast.Statement, error)) {
 	kw = strings.ToUpper(kw)
 	p.keywords[kw] = fn
