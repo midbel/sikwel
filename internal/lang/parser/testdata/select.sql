@@ -1,4 +1,3 @@
--- all from employees
 select * from employees;
 select * from db.employees e;
 select * from employees limit 10;
@@ -19,7 +18,7 @@ where salary >= 1000 and dept='it';
 select e.dept, count(e.id) 
 from employees e 
 where e.salary >= 1000 and e.manager is null group by e.dept;
--- test with CTE
+
 with managers as (
 	select
 	id,

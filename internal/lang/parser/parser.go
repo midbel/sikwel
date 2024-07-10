@@ -185,63 +185,40 @@ func (p *Parser) parse() (ast.Statement, error) {
 		}
 		return p.Parse()
 	}
-	com, err := p.parseComment()
+	fmt.Println(p.curr, p.peek)
+	stmt, err := p.ParseStatement()
 	if err != nil {
 		return nil, err
 	}
-	if p.Is(token.EOF) {
-		return com, nil
-	}
-	if com.Statement, err = p.ParseStatement(); err != nil {
-		return nil, err
-	}
-	return p.parseEOL(com)
-}
-
-func (p *Parser) parseItem(get ItemFunc) (ast.Statement, error) {
-	com, err := p.parseComment()
-	if com.Statement, err = get(); err != nil {
-		return nil, err
-	}
-	curr := p.curr
-	switch {
-	case p.Is(token.Comma):
-		p.Next()
-	case p.Is(token.Keyword):
-	case p.Is(token.EOL):
-	case p.Is(token.Rparen):
-	case p.Is(token.Comment):
-	default:
-		return nil, p.Unexpected("item")
-	}
-	if p.Is(token.Comment) && p.curr.Line == curr.Line {
-		com.After = p.GetCurrLiteral()
-		p.Next()
-	}
-	return ast.GetStatementFromComment(com), nil
-}
-
-func (p *Parser) parseComment() (ast.Comment, error) {
-	var com ast.Comment
-	for p.Is(token.Comment) {
-		com.Before = append(com.Before, p.GetCurrLiteral())
-		p.Next()
-	}
-	return com, nil
-}
-
-func (p *Parser) parseEOL(com ast.Comment) (ast.Statement, error) {
-	eol := p.curr
 	if !p.Is(token.EOL) {
-		return nil, p.Unexpected(";")
+		return nil, p.Unexpected("statement")
 	}
 	p.Next()
-	if p.Is(token.Comment) && eol.Line == p.curr.Line {
-		com.After = p.GetCurrLiteral()
-		p.Next()
-	}
-	return ast.GetStatementFromComment(com), nil
+	return stmt, nil
 }
+
+// func (p *Parser) parseItem(get ItemFunc) (ast.Statement, error) {
+// 	com, err := p.parseComment()
+// 	if com.Statement, err = get(); err != nil {
+// 		return nil, err
+// 	}
+// 	curr := p.curr
+// 	switch {
+// 	case p.Is(token.Comma):
+// 		p.Next()
+// 	case p.Is(token.Keyword):
+// 	case p.Is(token.EOL):
+// 	case p.Is(token.Rparen):
+// 	case p.Is(token.Comment):
+// 	default:
+// 		return nil, p.Unexpected("item")
+// 	}
+// 	if p.Is(token.Comment) && p.curr.Line == curr.Line {
+// 		com.After = p.GetCurrLiteral()
+// 		p.Next()
+// 	}
+// 	return ast.GetStatementFromComment(com), nil
+// }
 
 func (p *Parser) RegisterParseFunc(kw string, fn func() (ast.Statement, error)) {
 	kw = strings.ToUpper(kw)

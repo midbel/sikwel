@@ -144,9 +144,19 @@ func (p *Parser) ParseColumns() ([]ast.Statement, error) {
 	}()
 	for !p.Done() && !p.IsKeyword("FROM") {
 		p.withAlias = true
-		stmt, err := p.parseItem(p.StartExpression)
+		stmt, err := p.StartExpression()
 		if err != nil {
 			return nil, err
+		}
+		switch {
+		case p.Is(token.Comma):
+			p.Next()
+			if p.IsKeyword("FROM") {
+				return nil, p.Unexpected("column")
+			}
+		case p.Is(token.Keyword):
+		default:
+			return nil, p.Unexpected("column")
 		}
 		list = append(list, stmt)
 	}
@@ -263,9 +273,20 @@ func (p *Parser) ParseGroupBy() ([]ast.Statement, error) {
 	p.Next()
 	var list []ast.Statement
 	for !p.Done() && !p.QueryEnds() && !p.Is(token.Keyword) {
-		stmt, err := p.parseItem(p.ParseIdentifier)
+		stmt, err := p.ParseIdentifier()
 		if err != nil {
 			return nil, err
+		}
+		switch {
+		case p.Is(token.Comma):
+			p.Next()
+			if p.Is(token.Keyword) || p.Is(token.EOL) {
+				return nil, p.Unexpected("group by")
+			}
+		case p.Is(token.Keyword):
+		case p.Is(token.EOL):
+		default:
+			return nil, p.Unexpected("group by")
 		}
 		list = append(list, stmt)
 	}
@@ -476,9 +497,21 @@ func (p *Parser) ParseOrderBy() ([]ast.Statement, error) {
 		err  error
 	)
 	for !p.Done() && !p.QueryEnds() && !p.Is(token.Keyword) && !p.Is(token.Rparen) {
-		stmt, err := p.parseItem(get)
+		stmt, err := get()
 		if err != nil {
 			return nil, err
+		}
+		switch {
+		case p.Is(token.Comma):
+			p.Next()
+			if p.Is(token.Keyword) || p.Is(token.EOL) || p.Is(token.Rparen) {
+				return nil, p.Unexpected("group by")
+			}
+		case p.Is(token.Keyword):
+		case p.Is(token.EOL):
+		case p.Is(token.Rparen):
+		default:
+			return nil, p.Unexpected("group by")
 		}
 		list = append(list, stmt)
 	}
