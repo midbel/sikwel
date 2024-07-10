@@ -247,8 +247,12 @@ func (p *Parser) ParseWhere() (ast.Statement, error) {
 		return nil, nil
 	}
 	p.Next()
-	p.toggleAlias()
-	defer p.toggleAlias()
+
+	withAs := p.withAlias
+	p.withAlias = false
+	defer func() {
+		p.withAlias = withAs
+	}()
 	return p.StartExpression()
 }
 
@@ -273,8 +277,11 @@ func (p *Parser) ParseHaving() (ast.Statement, error) {
 		return nil, nil
 	}
 	p.Next()
-	p.toggleAlias()
-	defer p.toggleAlias()
+	withAs := p.withAlias
+	p.withAlias = false
+	defer func() {
+		p.withAlias = withAs
+	}()
 	return p.StartExpression()
 }
 
@@ -293,7 +300,7 @@ func (p *Parser) ParseWindows() ([]ast.Statement, error) {
 			return nil, err
 		}
 		if !p.IsKeyword("AS") {
-			return nil, p.Unexpected("windoow")
+			return nil, p.Unexpected("window")
 		}
 		p.Next()
 		if win.Window, err = p.ParseWindow(); err != nil {
