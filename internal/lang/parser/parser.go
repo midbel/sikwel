@@ -185,7 +185,6 @@ func (p *Parser) parse() (ast.Statement, error) {
 		}
 		return p.Parse()
 	}
-	fmt.Println(p.curr, p.peek)
 	stmt, err := p.ParseStatement()
 	if err != nil {
 		return nil, err
