@@ -152,17 +152,13 @@ func (w *Writer) FormatSelectColumns(columns []ast.Statement) error {
 	defer w.Leave()
 	for i := range columns {
 		if i > 0 {
+			w.WriteString(",")
 			w.WriteNL()
 		}
-		stmt := w.formatCommentBefore(columns[i])
 		w.WritePrefix()
-		if err := w.FormatExpr(stmt, false); err != nil {
+		if err := w.FormatExpr(columns[i], false); err != nil {
 			return err
 		}
-		if i < len(columns)-1 {
-			w.WriteString(",")
-		}
-		w.formatCommentAfter(columns[i])
 	}
 	return nil
 }
@@ -270,16 +266,14 @@ func (w *Writer) FormatGroupBy(groups []ast.Statement) error {
 	w.WriteKeyword("GROUP BY")
 	w.WriteBlank()
 	for i := range groups {
-		w.WriteNL()
-		stmt := w.formatCommentBefore(groups[i])
+		if i > 0 {
+			w.WriteString(",")
+			w.WriteNL()
+		}
 		w.WritePrefix()
-		if err := w.FormatExpr(stmt, false); err != nil {
+		if err := w.FormatExpr(groups[i], false); err != nil {
 			return err
 		}
-		if i < len(groups)-1 {
-			w.WriteString(",")
-		}
-		w.formatCommentAfter(groups[i])
 	}
 	return nil
 }
@@ -367,21 +361,19 @@ func (w *Writer) FormatOrderBy(orders []ast.Statement) error {
 
 	w.WriteKeyword("ORDER BY")
 	for i := range orders {
-		w.WriteNL()
-		stmt := w.formatCommentBefore(orders[i])
-		w.WritePrefix()
-
-		o, ok := stmt.(ast.Order)
-		if !ok {
-			return w.CanNotUse("order by", stmt)
+		if i > 0 {
+			w.WriteString(",")
+			w.WriteNL()
 		}
+
+		o, ok := orders[i].(ast.Order)
+		if !ok {
+			return w.CanNotUse("order by", orders[i])
+		}
+		w.WritePrefix()
 		if err := w.formatOrder(o); err != nil {
 			return err
 		}
-		if i < len(orders)-1 {
-			w.WriteString(",")
-		}
-		w.formatCommentAfter(orders[i])
 	}
 	return nil
 }

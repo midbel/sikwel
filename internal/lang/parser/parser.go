@@ -185,14 +185,33 @@ func (p *Parser) parse() (ast.Statement, error) {
 		}
 		return p.Parse()
 	}
-	stmt, err := p.ParseStatement()
+	return p.parseItem(func() (ast.Statement, error) {
+		stmt, err := p.ParseStatement()
+		if err != nil {
+			return nil, err
+		}
+		if !p.Is(token.EOL) {
+			return nil, p.Unexpected("statement")
+		}
+		p.Next()
+		return stmt, nil
+	})
+}
+
+func (p *Parser) parseItem(parse ItemFunc) (ast.Statement, error) {
+	for p.Is(token.Comment) {
+		p.Next()
+	}
+	var (
+		pos       = p.curr.Position
+		stmt, err = parse()
+	)
 	if err != nil {
 		return nil, err
 	}
-	if !p.Is(token.EOL) {
-		return nil, p.Unexpected("statement")
+	if p.Is(token.Comment) && pos.Column < p.curr.Column {
+		p.Next()
 	}
-	p.Next()
 	return stmt, nil
 }
 

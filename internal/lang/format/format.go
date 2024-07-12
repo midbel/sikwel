@@ -151,14 +151,9 @@ func (w *Writer) startStatement(stmt ast.Statement) error {
 	defer w.Flush()
 
 	w.Reset()
-	query := w.formatCommentBefore(stmt)
-	if query == nil {
-		return nil
-	}
-	err := w.FormatStatement(query)
+	err := w.FormatStatement(stmt)
 	if err == nil {
 		w.WriteEOL()
-		w.formatCommentAfter(stmt)
 		w.WriteNL()
 	}
 	return err
@@ -305,44 +300,6 @@ func (w *Writer) FormatExpr(stmt ast.Statement, nl bool) error {
 		err = w.FormatStatement(stmt)
 	}
 	return err
-}
-
-func (w *Writer) formatCommentAfter(stmt ast.Statement) {
-	com, ok := stmt.(ast.Comment)
-	if !ok {
-		return
-	}
-	if w.Compact || !w.KeepComment {
-		return
-	}
-	if com.After != "" {
-		w.WriteBlank()
-		w.formatComment(com.After)
-	}
-}
-
-func (w *Writer) formatCommentBefore(stmt ast.Statement) ast.Statement {
-	com, ok := stmt.(ast.Comment)
-	if !ok {
-		return stmt
-	}
-	if !w.Compact && w.KeepComment {
-		for i := range com.Before {
-			w.WritePrefix()
-			w.formatComment(com.Before[i])
-			w.WriteNL()
-		}
-	}
-	return com.Statement
-}
-
-func (w *Writer) formatComment(line string) {
-	if w.Compact {
-		return
-	}
-	w.WriteString("--")
-	w.WriteBlank()
-	w.WriteString(line)
 }
 
 func (w *Writer) formatNot(stmt ast.Not, _ bool) error {

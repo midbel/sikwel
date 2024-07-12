@@ -4,17 +4,13 @@ import (
 	"fmt"
 )
 
-type Statement interface{}
-
-func WrapWithParens(st Statement) bool {
-	switch st.(type) {
-	case SelectStatement:
-	case ValuesStatement:
-	default:
-		return false
-	}
-	return true
+type Node struct {
+	Statement
+	Before []string
+	After  string
 }
+
+type Statement interface{}
 
 type Limit struct {
 	Count  int

@@ -73,23 +73,6 @@ func ReplaceExpr(b Binary) Statement {
 	}
 }
 
-type Comment struct {
-	Before []string
-	After  string
-	Statement
-}
-
-func GetStatementFromComment(com Comment) Statement {
-	if com.Commented() {
-		return com
-	}
-	return com.Statement
-}
-
-func (c Comment) Commented() bool {
-	return len(c.Before) > 0 || c.After != ""
-}
-
 type Group struct {
 	Statement
 }
