@@ -15,16 +15,24 @@ func (p *Parser) parseWith() (ast.Statement, error) {
 		stmt.Recursive = true
 		p.Next()
 	}
-	for !p.Done() && !p.Is(token.Keyword) {
+
+	get := func() (ast.Statement, error) {
 		cte, err := p.parseSubquery()
-		if err = wrapError("subquery", err); err != nil {
+		if err != nil {
+			return nil, err
+		}
+		return cte, p.EnsureEnd("with", token.Comma, token.Keyword)
+	}
+
+	for !p.Done() && !p.Is(token.Keyword) {
+		cte, err := p.parseItem(get)
+		if err != nil {
 			return nil, err
 		}
 		stmt.Queries = append(stmt.Queries, cte)
-		if err = p.EnsureEnd("with", token.Comma, token.Keyword); err != nil {
-			return nil, err
-		}
 	}
+	p.Leave()
+
 	stmt.Statement, err = p.ParseStatement()
 	return stmt, wrapError("with", err)
 }
