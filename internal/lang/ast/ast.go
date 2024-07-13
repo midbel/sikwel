@@ -10,6 +10,13 @@ type Node struct {
 	After  string
 }
 
+func (n Node) Get() Statement {
+	if len(n.Before) == 0 && n.After == "" {
+		return n.Statement
+	}
+	return n
+}
+
 type Statement interface{}
 
 type Limit struct {

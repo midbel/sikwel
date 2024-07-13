@@ -151,9 +151,12 @@ func (w *Writer) startStatement(stmt ast.Statement) error {
 	defer w.Flush()
 
 	w.Reset()
+	w.writeCommentBefore(stmt)
 	err := w.FormatStatement(stmt)
 	if err == nil {
+		w.WriteNL()
 		w.WriteEOL()
+		w.writeCommentAfter(stmt)
 		w.WriteNL()
 	}
 	return err
@@ -162,6 +165,8 @@ func (w *Writer) startStatement(stmt ast.Statement) error {
 func (w *Writer) FormatStatement(stmt ast.Statement) error {
 	var err error
 	switch stmt := stmt.(type) {
+	case ast.Node:
+		err = w.FormatStatement(stmt.Statement)
 	case ast.GrantStatement:
 		err = w.FormatGrant(stmt)
 	case ast.RevokeStatement:
@@ -232,10 +237,46 @@ func (w *Writer) FormatStatement(stmt ast.Statement) error {
 		err = w.FormatWhile(stmt)
 	case ast.Case:
 		err = w.FormatCase(stmt)
+	case ast.Join:
+		err = w.formatJoin(stmt)
 	default:
-		err = fmt.Errorf("unsupported statement type %T", stmt)
+		err = w.FormatExpr(stmt, false)
 	}
 	return err
+}
+
+func (w *Writer) writeCommentAfter(stmt ast.Statement) {
+	if !w.KeepComment {
+		return
+	}
+	n, ok := stmt.(ast.Node)
+	if !ok {
+		return
+	}
+	if n.After == "" {
+		return
+	}
+	w.WriteBlank()
+	w.WriteString("--")
+	w.WriteBlank()
+	w.WriteString(n.After)
+}
+
+func (w *Writer) writeCommentBefore(stmt ast.Statement) {
+	if !w.KeepComment {
+		return
+	}
+	n, ok := stmt.(ast.Node)
+	if !ok {
+		return
+	}
+	for i := range n.Before {
+		w.WritePrefix()
+		w.WriteString("--")
+		w.WriteBlank()
+		w.WriteString(n.Before[i])
+		w.WriteNL()
+	}
 }
 
 func (w *Writer) FormatBody(list ast.List) error {
@@ -254,6 +295,8 @@ func (w *Writer) FormatBody(list ast.List) error {
 func (w *Writer) FormatExpr(stmt ast.Statement, nl bool) error {
 	var err error
 	switch stmt := stmt.(type) {
+	case ast.Node:
+		return w.FormatExpr(stmt.Statement, nl)
 	case ast.Placeholder:
 		w.FormatPlaceholder(stmt)
 	case ast.Name:
@@ -286,6 +329,8 @@ func (w *Writer) FormatExpr(stmt ast.Statement, nl bool) error {
 		err = w.formatIn(stmt, false, nl)
 	case ast.Collate:
 		err = w.formatCollate(stmt, nl)
+	case ast.Order:
+		err = w.formatOrder(stmt)
 	case ast.Cast:
 		err = w.FormatCast(stmt, nl)
 	case ast.Exists:
@@ -297,7 +342,8 @@ func (w *Writer) FormatExpr(stmt ast.Statement, nl bool) error {
 	case ast.When:
 		err = w.FormatWhen(stmt)
 	default:
-		err = w.FormatStatement(stmt)
+		// err = w.FormatStatement(stmt)
+		return fmt.Errorf("%T unsupported expression type", stmt)
 	}
 	return err
 }

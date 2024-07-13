@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"errors"
 	"strconv"
 
 	"github.com/midbel/sweet/internal/lang/ast"
@@ -135,15 +136,7 @@ func (p *Parser) ParseSelect() (ast.Statement, error) {
 }
 
 func (p *Parser) ParseColumns() ([]ast.Statement, error) {
-	var (
-		list   []ast.Statement
-		withAs = p.withAlias
-	)
-	defer func() {
-		p.withAlias = withAs
-	}()
-	for !p.Done() && !p.IsKeyword("FROM") {
-		p.withAlias = true
+	get := func() (ast.Statement, error) {
 		stmt, err := p.StartExpression()
 		if err != nil {
 			return nil, err
@@ -155,8 +148,25 @@ func (p *Parser) ParseColumns() ([]ast.Statement, error) {
 				return nil, p.Unexpected("column")
 			}
 		case p.Is(token.Keyword):
+		case p.Is(token.Comment):
 		default:
 			return nil, p.Unexpected("column")
+		}
+		return stmt, nil
+	}
+
+	var (
+		list   []ast.Statement
+		withAs = p.withAlias
+	)
+	defer func() {
+		p.withAlias = withAs
+	}()
+	for !p.Done() && !p.IsKeyword("FROM") {
+		p.withAlias = true
+		stmt, err := p.parseItem(get)
+		if err != nil {
+			return nil, err
 		}
 		list = append(list, stmt)
 	}
@@ -178,43 +188,68 @@ func (p *Parser) ParseFrom() ([]ast.Statement, error) {
 	var (
 		list []ast.Statement
 		err  error
+		get  ItemFunc
 	)
-	for !p.Done() && !p.QueryEnds() {
-		var stmt ast.Statement
-		stmt, err = p.StartExpression()
+
+	get = func() (ast.Statement, error) {
+		stmt, err := p.StartExpression()
 		if err != nil {
 			return nil, err
 		}
-		list = append(list, stmt)
 		if !p.Is(token.Comma) {
-			break
+			err = errDone
 		}
-		p.Next()
-		if p.QueryEnds() || p.Is(token.Keyword) {
+		switch {
+		case p.Is(token.Comma):
+			p.Next()
+			if p.QueryEnds() || p.Is(token.Keyword) {
+				return nil, p.Unexpected("from")
+			}
+		case p.Is(token.Comment):
+		case p.Is(token.Keyword):
+		default:
 			return nil, p.Unexpected("from")
 		}
+		return stmt, err
 	}
-	for !p.Done() && !p.QueryEnds() && p.Curr().IsJoin() {
-		j := ast.Join{
+
+	for !p.Done() && !p.QueryEnds() {
+		stmt, err := p.parseItem(get)
+		if err != nil && !errors.Is(err, errDone) {
+			return nil, err
+		}
+		list = append(list, stmt)
+		if errors.Is(err, errDone) {
+			break
+		}
+	}
+
+	get = func() (ast.Statement, error) {
+		stmt := ast.Join{
 			Type: p.GetCurrLiteral(),
 		}
 		p.Next()
-		j.Table, err = p.StartExpression()
+		stmt.Table, err = p.StartExpression()
 		if err != nil {
 			return nil, err
 		}
 		switch {
 		case p.IsKeyword("ON"):
-			j.Where, err = p.ParseJoinOn()
+			stmt.Where, err = p.ParseJoinOn()
 		case p.IsKeyword("USING"):
-			j.Where, err = p.ParseJoinUsing()
+			stmt.Where, err = p.ParseJoinUsing()
 		default:
 			return nil, p.Unexpected("join")
 		}
-		if err = wrapError("join", err); err != nil {
+		return stmt, nil
+	}
+
+	for !p.Done() && !p.QueryEnds() && p.Curr().IsJoin() {
+		stmt, err := p.parseItem(get)
+		if err != nil {
 			return nil, err
 		}
-		list = append(list, j)
+		list = append(list, stmt)
 	}
 	return list, nil
 }
@@ -270,9 +305,8 @@ func (p *Parser) ParseGroupBy() ([]ast.Statement, error) {
 	if !p.IsKeyword("GROUP BY") {
 		return nil, nil
 	}
-	p.Next()
-	var list []ast.Statement
-	for !p.Done() && !p.QueryEnds() && !p.Is(token.Keyword) {
+
+	get := func() (ast.Statement, error) {
 		stmt, err := p.ParseIdentifier()
 		if err != nil {
 			return nil, err
@@ -284,9 +318,27 @@ func (p *Parser) ParseGroupBy() ([]ast.Statement, error) {
 				return nil, p.Unexpected("group by")
 			}
 		case p.Is(token.Keyword):
+		case p.Is(token.Comment):
 		case p.Is(token.EOL):
 		default:
 			return nil, p.Unexpected("group by")
+		}
+		return stmt, err
+	}
+
+	p.Next()
+	var (
+		list   []ast.Statement
+		withAs = p.withAlias
+	)
+	defer func() {
+		p.withAlias = withAs
+	}()
+	for !p.Done() && !p.QueryEnds() && !p.Is(token.Keyword) {
+		p.withAlias = false
+		stmt, err := p.parseItem(get)
+		if err != nil {
+			return nil, err
 		}
 		list = append(list, stmt)
 	}
@@ -488,19 +540,6 @@ func (p *Parser) ParseOrderBy() ([]ast.Statement, error) {
 			order.Nulls = p.GetCurrLiteral()
 			p.Next()
 		}
-		return order, nil
-	}
-
-	p.Next()
-	var (
-		list []ast.Statement
-		err  error
-	)
-	for !p.Done() && !p.QueryEnds() && !p.Is(token.Keyword) && !p.Is(token.Rparen) {
-		stmt, err := get()
-		if err != nil {
-			return nil, err
-		}
 		switch {
 		case p.Is(token.Comma):
 			p.Next()
@@ -509,13 +548,30 @@ func (p *Parser) ParseOrderBy() ([]ast.Statement, error) {
 			}
 		case p.Is(token.Keyword):
 		case p.Is(token.EOL):
+		case p.Is(token.Comment):
 		case p.Is(token.Rparen):
 		default:
 			return nil, p.Unexpected("group by")
 		}
+		return order, nil
+	}
+
+	p.Next()
+	var (
+		list   []ast.Statement
+		withAs = p.withAlias
+	)
+	defer func() {
+		p.withAlias = withAs
+	}()
+	for !p.Done() && !p.QueryEnds() && !p.Is(token.Keyword) && !p.Is(token.Rparen) {
+		stmt, err := p.parseItem(get)
+		if err != nil {
+			return nil, err
+		}
 		list = append(list, stmt)
 	}
-	return list, err
+	return list, nil
 }
 
 func (p *Parser) ParseLimit() (ast.Statement, error) {

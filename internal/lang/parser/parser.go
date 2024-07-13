@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -14,6 +15,8 @@ import (
 	"github.com/midbel/sweet/internal/scanner"
 	"github.com/midbel/sweet/internal/token"
 )
+
+var errDone = errors.New("done")
 
 type ItemFunc func() (ast.Statement, error)
 
@@ -199,20 +202,23 @@ func (p *Parser) parse() (ast.Statement, error) {
 }
 
 func (p *Parser) parseItem(parse ItemFunc) (ast.Statement, error) {
+	var node ast.Node
 	for p.Is(token.Comment) {
+		node.Before = append(node.Before, p.GetCurrLiteral())
 		p.Next()
 	}
 	var (
-		pos       = p.curr.Position
-		stmt, err = parse()
+		pos = p.curr.Position
+		err error
 	)
-	if err != nil {
+	if node.Statement, err = parse(); err != nil && !errors.Is(err, errDone) {
 		return nil, err
 	}
 	if p.Is(token.Comment) && pos.Column < p.curr.Column {
+		node.After = p.GetCurrLiteral()
 		p.Next()
 	}
-	return stmt, nil
+	return node.Get(), err
 }
 
 func (p *Parser) RegisterParseFunc(kw string, fn func() (ast.Statement, error)) {

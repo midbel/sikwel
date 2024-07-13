@@ -151,14 +151,16 @@ func (w *Writer) FormatSelectColumns(columns []ast.Statement) error {
 	w.Enter()
 	defer w.Leave()
 	for i := range columns {
-		if i > 0 {
-			w.WriteString(",")
-			w.WriteNL()
-		}
+		w.writeCommentBefore(columns[i])
 		w.WritePrefix()
 		if err := w.FormatExpr(columns[i], false); err != nil {
 			return err
 		}
+		if i < len(columns)-1 {
+			w.WriteString(",")
+		}
+		w.writeCommentAfter(columns[i])
+		w.WriteNL()
 	}
 	return nil
 }
@@ -173,25 +175,12 @@ func (w *Writer) FormatWhere(stmt ast.Statement) error {
 	return w.FormatExpr(stmt, true)
 }
 
-func (w *Writer) formatFromJoin(join ast.Join) error {
-	w.WritePrefix()
+func (w *Writer) formatJoin(join ast.Join) error {
 	w.WriteKeyword(join.Type)
 	w.WriteBlank()
 
 	var err error
-	switch s := join.Table.(type) {
-	case ast.Name:
-		w.FormatName(s)
-	case ast.Alias:
-		err = w.FormatAlias(s)
-	case ast.SelectStatement:
-		w.WriteString("(")
-		err = w.FormatSelect(s)
-		w.WriteString(")")
-	default:
-		return w.CanNotUse("join", s)
-	}
-	if err != nil {
+	if err := w.FormatExpr(join.Table, false); err != nil {
 		return err
 	}
 	switch s := join.Where.(type) {
@@ -215,43 +204,26 @@ func (w *Writer) formatFromJoin(join ast.Join) error {
 
 func (w *Writer) FormatFrom(list []ast.Statement) error {
 	w.WriteKeyword("FROM")
-	w.WriteBlank()
 
 	withComma := func(stmt ast.Statement) bool {
 		_, ok := stmt.(ast.Join)
 		return !ok
 	}
 
-	var err error
-	for i, s := range list {
-		if withComma(s) && i > 0 {
-			w.WriteString(",")
-		}
-		if i > 0 {
-			w.WriteNL()
-		}
-		switch s := s.(type) {
-		case ast.Name:
-			w.FormatName(s)
-		case ast.Alias:
-			err = w.FormatAlias(s)
-		case ast.Join:
-			err = w.formatFromJoin(s)
-		case ast.Row:
-			err = w.FormatRow(s, true)
-		case ast.SelectStatement:
-			w.WriteString("(")
-			w.WriteNL()
-			err = w.FormatStatement(s)
-			if err == nil {
-				w.WriteString(")")
-			}
-		default:
-			err = w.CanNotUse("from", s)
-		}
-		if err != nil {
+	w.Enter()
+	defer w.Leave()
+
+	for i := range list {
+		w.WriteNL()
+		w.writeCommentBefore(list[i])
+		w.WritePrefix()
+		if err := w.FormatStatement(list[i]); err != nil {
 			return err
 		}
+		if i < len(list)-1 && withComma(list[i]) {
+			w.WriteString(",")
+		}
+		w.writeCommentAfter(list[i])
 	}
 	return nil
 }
@@ -260,20 +232,22 @@ func (w *Writer) FormatGroupBy(groups []ast.Statement) error {
 	if len(groups) == 0 {
 		return nil
 	}
+	w.WriteKeyword("GROUP BY")
+
 	w.Enter()
 	defer w.Leave()
 
-	w.WriteKeyword("GROUP BY")
-	w.WriteBlank()
 	for i := range groups {
-		if i > 0 {
-			w.WriteString(",")
-			w.WriteNL()
-		}
+		w.WriteNL()
+		w.writeCommentBefore(groups[i])
 		w.WritePrefix()
 		if err := w.FormatExpr(groups[i], false); err != nil {
 			return err
 		}
+		if i < len(groups)-1 {
+			w.WriteString(",")
+		}
+		w.writeCommentAfter(groups[i])
 	}
 	return nil
 }
@@ -361,19 +335,17 @@ func (w *Writer) FormatOrderBy(orders []ast.Statement) error {
 
 	w.WriteKeyword("ORDER BY")
 	for i := range orders {
-		if i > 0 {
-			w.WriteString(",")
-			w.WriteNL()
-		}
+		w.WriteNL()
+		w.writeCommentBefore(orders[i])
 
-		o, ok := orders[i].(ast.Order)
-		if !ok {
-			return w.CanNotUse("order by", orders[i])
-		}
 		w.WritePrefix()
-		if err := w.formatOrder(o); err != nil {
+		if err := w.FormatExpr(orders[i], false); err != nil {
 			return err
 		}
+		if i < len(orders)-1 {
+			w.WriteString(",")
+		}
+		w.writeCommentAfter(orders[i])
 	}
 	return nil
 }
