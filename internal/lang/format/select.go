@@ -179,7 +179,6 @@ func (w *Writer) formatJoin(join ast.Join) error {
 	w.WriteKeyword(join.Type)
 	w.WriteBlank()
 
-	var err error
 	if err := w.FormatExpr(join.Table, false); err != nil {
 		return err
 	}
@@ -188,18 +187,17 @@ func (w *Writer) formatJoin(join ast.Join) error {
 		w.WriteBlank()
 		w.WriteKeyword("ON")
 		w.WriteBlank()
-		err = w.compact(func() error {
+		return w.compact(func() error {
 			return w.formatBinary(s, false)
 		})
 	case ast.List:
 		w.WriteBlank()
 		w.WriteKeyword("USING")
 		w.WriteBlank()
-		err = w.formatList(s)
+		return w.formatList(s)
 	default:
 		return w.CanNotUse("from", s)
 	}
-	return err
 }
 
 func (w *Writer) FormatFrom(list []ast.Statement) error {
