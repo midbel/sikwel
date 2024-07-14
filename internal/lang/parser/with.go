@@ -31,9 +31,9 @@ func (p *Parser) parseWith() (ast.Statement, error) {
 		}
 		stmt.Queries = append(stmt.Queries, cte)
 	}
-	p.Leave()
+	p.reset()
 
-	stmt.Statement, err = p.ParseStatement()
+	stmt.Statement, err = p.parseItem(p.ParseStatement)
 	return stmt, wrapError("with", err)
 }
 

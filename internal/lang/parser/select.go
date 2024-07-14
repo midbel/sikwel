@@ -76,24 +76,31 @@ func (p *Parser) ParseSelect() (ast.Statement, error) {
 	if stmt.Columns, err = p.ParseColumns(); err != nil {
 		return nil, err
 	}
+	p.skipComments()
 	if stmt.Tables, err = p.ParseFrom(); err != nil {
 		return nil, err
 	}
+	p.skipComments()
 	if stmt.Where, err = p.ParseWhere(); err != nil {
 		return nil, err
 	}
+	p.skipComments()
 	if stmt.Groups, err = p.ParseGroupBy(); err != nil {
 		return nil, err
 	}
+	p.skipComments()
 	if stmt.Having, err = p.ParseHaving(); err != nil {
 		return nil, err
 	}
+	p.skipComments()
 	if stmt.Windows, err = p.ParseWindows(); err != nil {
 		return nil, err
 	}
+	p.skipComments()
 	if stmt.Orders, err = p.ParseOrderBy(); err != nil {
 		return nil, err
 	}
+	p.skipComments()
 	if stmt.Limit, err = p.ParseLimit(); err != nil {
 		return nil, err
 	}
@@ -178,7 +185,7 @@ func (p *Parser) ParseColumns() ([]ast.Statement, error) {
 
 func (p *Parser) ParseFrom() ([]ast.Statement, error) {
 	if !p.IsKeyword("FROM") {
-		return nil, p.Unexpected("from")
+		return nil, p.Unexpected("FROM")
 	}
 	p.Next()
 
@@ -203,12 +210,13 @@ func (p *Parser) ParseFrom() ([]ast.Statement, error) {
 		case p.Is(token.Comma):
 			p.Next()
 			if p.QueryEnds() || p.Is(token.Keyword) {
-				return nil, p.Unexpected("from")
+				return nil, p.Unexpected("FROM")
 			}
 		case p.Is(token.Comment):
 		case p.Is(token.Keyword):
+		case p.Is(token.EOL):
 		default:
-			return nil, p.Unexpected("from")
+			return nil, p.Unexpected("FROM")
 		}
 		return stmt, err
 	}
@@ -575,28 +583,38 @@ func (p *Parser) ParseOrderBy() ([]ast.Statement, error) {
 }
 
 func (p *Parser) ParseLimit() (ast.Statement, error) {
+	getLimit := func() (ast.Statement, error) {
+		var (
+			stmt ast.Limit
+			err  error
+		)
+		stmt.Count, err = strconv.Atoi(p.GetCurrLiteral())
+		if err != nil {
+			return nil, p.Unexpected("LIMIT")
+		}
+		p.Next()
+		if p.Is(token.Comma) || p.IsKeyword("OFFSET") {
+			p.Next()
+			stmt.Offset, err = strconv.Atoi(p.GetCurrLiteral())
+			if err != nil {
+				return nil, p.Unexpected("OFFSET")
+			}
+			p.Next()
+		}
+		switch {
+		case p.Is(token.Keyword):
+		case p.Is(token.Comment):
+		case p.Is(token.EOL):
+		default:
+			return nil, p.Unexpected("LIMIT")
+		}
+		return stmt, nil
+	}
+
 	switch {
 	case p.IsKeyword("LIMIT"):
-		var (
-			lim ast.Limit
-			err error
-		)
 		p.Next()
-		lim.Count, err = strconv.Atoi(p.GetCurrLiteral())
-		if err != nil {
-			return nil, p.Unexpected("limit")
-		}
-		p.Next()
-		if !p.Is(token.Comma) && !p.IsKeyword("OFFSET") {
-			return lim, nil
-		}
-		p.Next()
-		lim.Offset, err = strconv.Atoi(p.GetCurrLiteral())
-		if err != nil {
-			return nil, p.Unexpected("offset")
-		}
-		p.Next()
-		return lim, nil
+		return p.parseItem(getLimit)
 	case p.IsKeyword("OFFSET") || p.IsKeyword("FETCH"):
 		return p.ParseFetch()
 	default:
@@ -605,13 +623,36 @@ func (p *Parser) ParseLimit() (ast.Statement, error) {
 }
 
 func (p *Parser) ParseFetch() (ast.Statement, error) {
-	var (
-		stmt ast.Offset
-		err  error
-	)
-	if p.IsKeyword("OFFSET") {
+	return p.parseItem(func() (ast.Statement, error) {
+		var (
+			stmt ast.Offset
+			err  error
+		)
+		if p.IsKeyword("OFFSET") {
+			p.Next()
+			stmt.Offset, err = strconv.Atoi(p.GetCurrLiteral())
+			if err != nil {
+				return nil, p.Unexpected("fetch")
+			}
+			p.Next()
+			if !p.IsKeyword("ROW") && !p.IsKeyword("ROWS") {
+				return nil, p.Unexpected("fetch")
+			}
+			p.Next()
+		}
+		if !p.IsKeyword("FETCH") {
+			return nil, p.Unexpected("fetch")
+		}
 		p.Next()
-		stmt.Offset, err = strconv.Atoi(p.GetCurrLiteral())
+		if p.IsKeyword("NEXT") {
+			stmt.Next = true
+		} else if p.IsKeyword("FIRST") {
+			stmt.Next = false
+		} else {
+			return nil, p.Unexpected("fetch")
+		}
+		p.Next()
+		stmt.Count, err = strconv.Atoi(p.GetCurrLiteral())
 		if err != nil {
 			return nil, p.Unexpected("fetch")
 		}
@@ -620,31 +661,10 @@ func (p *Parser) ParseFetch() (ast.Statement, error) {
 			return nil, p.Unexpected("fetch")
 		}
 		p.Next()
-	}
-	if !p.IsKeyword("FETCH") {
-		return nil, p.Unexpected("fetch")
-	}
-	p.Next()
-	if p.IsKeyword("NEXT") {
-		stmt.Next = true
-	} else if p.IsKeyword("FIRST") {
-		stmt.Next = false
-	} else {
-		return nil, p.Unexpected("fetch")
-	}
-	p.Next()
-	stmt.Count, err = strconv.Atoi(p.GetCurrLiteral())
-	if err != nil {
-		return nil, p.Unexpected("fetch")
-	}
-	p.Next()
-	if !p.IsKeyword("ROW") && !p.IsKeyword("ROWS") {
-		return nil, p.Unexpected("fetch")
-	}
-	p.Next()
-	if !p.IsKeyword("ONLY") {
-		return nil, p.Unexpected("fetch")
-	}
-	p.Next()
-	return stmt, err
+		if !p.IsKeyword("ONLY") {
+			return nil, p.Unexpected("fetch")
+		}
+		p.Next()
+		return stmt, err
+	})
 }

@@ -221,6 +221,21 @@ func (p *Parser) parseItem(parse ItemFunc) (ast.Statement, error) {
 	return node.Get(), err
 }
 
+func (p *Parser) aggrComments() []string {
+	var comments []string
+	for p.Is(token.Comment) {
+		comments = append(comments, p.GetCurrLiteral())
+		p.Next()
+	}
+	return comments
+}
+
+func (p *Parser) skipComments() {
+	for p.Is(token.Comment) {
+		p.Next()
+	}
+}
+
 func (p *Parser) RegisterParseFunc(kw string, fn func() (ast.Statement, error)) {
 	kw = strings.ToUpper(kw)
 	p.keywords[kw] = fn
