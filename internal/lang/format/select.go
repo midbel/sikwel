@@ -376,14 +376,19 @@ func (w *Writer) formatOrder(order ast.Order) error {
 	return nil
 }
 
-func (w *Writer) FormatLimit(limit ast.Statement) error {
-	if limit == nil {
+func (w *Writer) FormatLimit(stmt ast.Statement) error {
+	if stmt == nil {
 		return nil
+	}
+	var limit ast.Statement
+	if n, ok := stmt.(ast.Node); ok {
+		limit = n.Statement
 	}
 	lim, ok := limit.(ast.Limit)
 	if !ok {
-		return w.FormatOffset(limit)
+		return w.FormatOffset(stmt)
 	}
+	w.writeCommentBefore(stmt)
 	w.WriteKeyword("LIMIT")
 	w.WriteBlank()
 	w.WriteString(strconv.Itoa(lim.Count))
@@ -393,6 +398,7 @@ func (w *Writer) FormatLimit(limit ast.Statement) error {
 		w.WriteBlank()
 		w.WriteString(strconv.Itoa(lim.Offset))
 	}
+	w.writeCommentAfter(stmt)
 	return nil
 }
 
@@ -477,10 +483,10 @@ func (w *Writer) FormatCte(stmt ast.CteStatement) error {
 	w.WriteNL()
 
 	w.Enter()
+	defer w.Leave()
 	if err := w.FormatStatement(stmt.Statement); err != nil {
 		return err
 	}
-	w.Leave()
 	w.WriteNL()
 	w.WriteString(")")
 	return nil

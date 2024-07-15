@@ -245,21 +245,22 @@ func (w *Writer) FormatStatement(stmt ast.Statement) error {
 	return err
 }
 
-func (w *Writer) writeCommentAfter(stmt ast.Statement) {
+func (w *Writer) writeCommentAfter(stmt ast.Statement) bool {
 	if !w.KeepComment {
-		return
+		return false
 	}
 	n, ok := stmt.(ast.Node)
 	if !ok {
-		return
+		return false
 	}
 	if n.After == "" {
-		return
+		return false
 	}
 	w.WriteBlank()
 	w.WriteString("--")
 	w.WriteBlank()
 	w.WriteString(n.After)
+	return true
 }
 
 func (w *Writer) writeCommentBefore(stmt ast.Statement) {

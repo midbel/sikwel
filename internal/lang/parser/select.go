@@ -63,6 +63,46 @@ func (p *Parser) ParseValues() (ast.Statement, error) {
 	return stmt, err
 }
 
+func (p *Parser) parseCompound(stmt ast.Statement) (ast.Statement, error) {
+	allDistinct := func() (bool, bool) {
+		p.Next()
+		var (
+			all      = p.IsKeyword("ALL")
+			distinct = p.IsKeyword("DISTINCT")
+		)
+		if all || distinct {
+			p.Next()
+		}
+		return all, distinct
+	}
+	var err error
+	switch {
+	case p.IsKeyword("UNION"):
+		u := ast.UnionStatement{
+			Left: stmt,
+		}
+		u.All, u.Distinct = allDistinct()
+		u.Right, err = p.ParseSelect()
+		return u, err
+	case p.IsKeyword("INTERSECT"):
+		i := ast.IntersectStatement{
+			Left: stmt,
+		}
+		i.All, i.Distinct = allDistinct()
+		i.Right, err = p.ParseSelect()
+		return i, err
+	case p.IsKeyword("EXCEPT"):
+		e := ast.ExceptStatement{
+			Left: stmt,
+		}
+		e.All, e.Distinct = allDistinct()
+		e.Right, err = p.ParseSelect()
+		return e, err
+	default:
+		return stmt, err
+	}
+}
+
 func (p *Parser) ParseSelect() (ast.Statement, error) {
 	p.Next()
 	var (
@@ -104,42 +144,7 @@ func (p *Parser) ParseSelect() (ast.Statement, error) {
 	if stmt.Limit, err = p.ParseLimit(); err != nil {
 		return nil, err
 	}
-	allDistinct := func() (bool, bool) {
-		p.Next()
-		var (
-			all      = p.IsKeyword("ALL")
-			distinct = p.IsKeyword("DISTINCT")
-		)
-		if all || distinct {
-			p.Next()
-		}
-		return all, distinct
-	}
-	switch {
-	case p.IsKeyword("UNION"):
-		u := ast.UnionStatement{
-			Left: stmt,
-		}
-		u.All, u.Distinct = allDistinct()
-		u.Right, err = p.ParseSelect()
-		return u, err
-	case p.IsKeyword("INTERSECT"):
-		i := ast.IntersectStatement{
-			Left: stmt,
-		}
-		i.All, i.Distinct = allDistinct()
-		i.Right, err = p.ParseSelect()
-		return i, err
-	case p.IsKeyword("EXCEPT"):
-		e := ast.ExceptStatement{
-			Left: stmt,
-		}
-		e.All, e.Distinct = allDistinct()
-		e.Right, err = p.ParseSelect()
-		return e, err
-	default:
-		return stmt, err
-	}
+	return p.parseCompound(stmt)
 }
 
 func (p *Parser) ParseColumns() ([]ast.Statement, error) {
