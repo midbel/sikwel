@@ -440,12 +440,16 @@ func (w *Writer) FormatWith(stmt ast.WithStatement) error {
 
 	for i, q := range stmt.Queries {
 		if i > 0 {
-			w.WriteString(",")
 			w.WriteNL()
 		}
+		w.writeCommentBefore(stmt.Queries[i])
 		if err := w.FormatStatement(q); err != nil {
 			return err
 		}
+		if i < len(stmt.Queries)-1 {
+			w.WriteString(",")
+		}
+		w.writeCommentAfter(stmt.Queries[i])
 	}
 	w.WriteNL()
 	return w.FormatStatement(stmt.Statement)
