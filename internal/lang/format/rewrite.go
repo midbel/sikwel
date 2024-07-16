@@ -12,6 +12,11 @@ func (w *Writer) Rewrite(stmt ast.Statement) (ast.Statement, error) {
 	if w.Rules.KeepAsIs() {
 		return stmt, nil
 	}
+	node, ok := stmt.(ast.Node)
+	if ok {
+		stmt = node.Statement
+	}
+
 	var err error
 	if w.Rules.ReplaceSubqueryWithCte() || w.Rules.All() {
 		stmt, err = w.replaceSubqueryWithCte(stmt)
@@ -21,7 +26,11 @@ func (w *Writer) Rewrite(stmt ast.Statement) (ast.Statement, error) {
 	if err != nil {
 		return nil, err
 	}
-	return w.rewrite(stmt)
+	node.Statement, err = w.rewrite(stmt)
+	if err != nil {
+		return nil, err
+	}
+	return node.Get(), nil
 }
 
 func (w *Writer) rewrite(stmt ast.Statement) (ast.Statement, error) {
