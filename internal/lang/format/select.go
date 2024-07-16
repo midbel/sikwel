@@ -206,6 +206,9 @@ func (w *Writer) FormatFrom(list []ast.Statement) error {
 	w.WriteKeyword("FROM")
 
 	withComma := func(stmt ast.Statement) bool {
+		if n, ok := stmt.(ast.Node); ok {
+			stmt = n.Statement
+		}
 		_, ok := stmt.(ast.Join)
 		return !ok
 	}
@@ -220,7 +223,7 @@ func (w *Writer) FormatFrom(list []ast.Statement) error {
 		if err := w.FormatStatement(list[i]); err != nil {
 			return err
 		}
-		if i < len(list)-1 && withComma(list[i]) {
+		if i < len(list)-1 && withComma(list[i+1]) {
 			w.WriteString(",")
 		}
 		w.writeCommentAfter(list[i])

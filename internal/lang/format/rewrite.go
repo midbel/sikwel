@@ -88,18 +88,23 @@ func (w *Writer) replaceSubqueryWithCte(stmt ast.Statement) (ast.Statement, erro
 
 	}
 
-	if q, ok := with.Statement.(ast.SelectStatement); ok {
+	stmt = with.Statement
+	node, ok := stmt.(ast.Node)
+	if ok {
+		stmt = node.Statement
+	}
+
+	if q, ok := stmt.(ast.SelectStatement); ok {
 		q, qs, err := w.replaceSubqueries(q)
 		if err != nil {
 			return nil, err
 		}
-		with.Statement = q
+		node.Statement = q
+
+		with.Statement = node
 		with.Queries = append(with.Queries, qs...)
 	}
-	if len(with.Queries) == 0 {
-		return with.Statement, nil
-	}
-	return with, nil
+	return with.Get(), nil
 }
 
 func (w *Writer) replaceSubqueries(stmt ast.SelectStatement) (ast.Statement, []ast.Statement, error) {

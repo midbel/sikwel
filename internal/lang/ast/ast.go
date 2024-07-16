@@ -121,6 +121,13 @@ func (s WithStatement) Keyword() (string, error) {
 	return "WITH", nil
 }
 
+func (s WithStatement) Get() Statement {
+	if len(s.Queries) == 0 {
+		return s.Statement
+	}
+	return s
+}
+
 type ValuesStatement struct {
 	List   []Statement
 	Orders []Statement
