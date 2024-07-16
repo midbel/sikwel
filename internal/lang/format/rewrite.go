@@ -129,7 +129,6 @@ func (w *Writer) replaceSubqueries(stmt ast.SelectStatement) (ast.Statement, []a
 			q = a.Statement
 		} else {
 			q = j.Table
-
 		}
 		if g, ok := q.(ast.Group); ok {
 			q = g.Statement
@@ -214,6 +213,9 @@ func (w *Writer) replaceCte(stmt ast.SelectStatement, qs []ast.CteStatement) (as
 
 	replace = func(stmt ast.Statement) ast.Statement {
 		switch st := stmt.(type) {
+		case ast.Node:
+			st.Statement = replace(st.Statement)
+			stmt = st
 		case ast.Alias:
 			st.Statement = replace(st.Statement)
 			stmt = st
@@ -228,6 +230,11 @@ func (w *Writer) replaceCte(stmt ast.SelectStatement, qs []ast.CteStatement) (as
 				stmt = qs[ix].Statement
 			}
 		default:
+		}
+		if _, ok := stmt.(ast.SelectStatement); ok {
+			stmt = ast.Group{
+				Statement: stmt,
+			}
 		}
 		return stmt
 	}
