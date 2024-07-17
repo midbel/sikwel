@@ -347,14 +347,18 @@ func (w *Writer) rewriteGroupBy(stmt ast.SelectStatement) (ast.SelectStatement, 
 		if a, ok := c.(ast.Alias); ok {
 			c = a.Statement
 		}
-		switch c := c.(type) {
+		switch v := c.(type) {
 		case ast.Name:
-			ok := slices.Contains(groups, c.Name())
+			ok := slices.Contains(groups, v.Name())
 			if ok {
 				continue
 			}
 			if w.Rules.SetRewriteGroupByGroup() {
-				stmt.Groups = append(stmt.Groups, c)
+				if i >= len(groups) {
+					stmt.Groups = append(stmt.Groups, c)
+				} else {
+					stmt.Groups = slices.Replace(stmt.Groups, i, i, c)
+				}
 			} else if w.Rules.SetRewriteGroupByAggr() {
 				stmt.Columns[i] = ast.Call{
 					Ident: ast.Name{
@@ -364,7 +368,7 @@ func (w *Writer) rewriteGroupBy(stmt ast.SelectStatement) (ast.SelectStatement, 
 				}
 			}
 		case ast.Call:
-			if c.IsAggregate() {
+			if v.IsAggregate() {
 				continue
 			}
 		default:
