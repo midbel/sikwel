@@ -17,6 +17,14 @@ func (n Node) Get() Statement {
 	return n
 }
 
+func (n Node) GetNames() []string {
+	q, ok := n.Statement.(interface{ GetNames() []string })
+	if !ok {
+		return nil
+	}
+	return q.GetNames()
+}
+
 type Statement interface{}
 
 type Limit struct {

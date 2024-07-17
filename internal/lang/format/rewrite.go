@@ -57,6 +57,9 @@ func (w *Writer) rewrite(stmt ast.Statement) (ast.Statement, error) {
 		stmt, _ = w.rewriteIn(st, false)
 	case ast.Not:
 		stmt, _ = w.rewriteNot(st)
+	case ast.Node:
+		st.Statement, _ = w.rewrite(st.Statement)
+		stmt = st
 	default:
 	}
 	return stmt, nil
@@ -331,10 +334,46 @@ func (w *Writer) rewriteIntersect(stmt ast.IntersectStatement) (ast.Statement, e
 
 func (w *Writer) rewriteSelect(stmt ast.SelectStatement) (ast.Statement, error) {
 	stmt.Where, _ = w.rewrite(stmt.Where)
+	stmt, _ = w.rewriteGroupBy(stmt)
 	return w.rewriteJoins(stmt), nil
 }
 
-func (w *Writer) rewriteJoins(stmt ast.SelectStatement) ast.Statement {
+func (w *Writer) rewriteGroupBy(stmt ast.SelectStatement) (ast.SelectStatement, error) {
+	if len(stmt.Groups) == 0 || !w.Rules.SetRewriteGroupBy() {
+		return stmt, nil
+	}
+	groups := ast.GetNamesFromStmt(stmt.Groups)
+	for i, c := range stmt.Columns {
+		if a, ok := c.(ast.Alias); ok {
+			c = a.Statement
+		}
+		switch c := c.(type) {
+		case ast.Name:
+			ok := slices.Contains(groups, c.Name())
+			if ok {
+				continue
+			}
+			if w.Rules.SetRewriteGroupByGroup() {
+				stmt.Groups = append(stmt.Groups, c)
+			} else if w.Rules.SetRewriteGroupByAggr() {
+				stmt.Columns[i] = ast.Call{
+					Ident: ast.Name{
+						Parts: []string{"max"},
+					},
+					Args: []ast.Statement{c},
+				}
+			}
+		case ast.Call:
+			if c.IsAggregate() {
+				continue
+			}
+		default:
+		}
+	}
+	return stmt, nil
+}
+
+func (w *Writer) rewriteJoins(stmt ast.SelectStatement) ast.SelectStatement {
 	for i := range stmt.Tables {
 		j, ok := stmt.Tables[i].(ast.Join)
 		if !ok && !joinNeedRewrite(j) {

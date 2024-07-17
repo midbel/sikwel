@@ -169,6 +169,10 @@ func rewriteRules(writer *format.Writer) func(string) error {
 			writer.Rules |= format.RewriteJoinSubquery
 		case "join-without-literal":
 			writer.Rules |= format.RewriteJoinPredicate
+		case "groupby-group":
+			writer.Rules |= format.RewriteGroupByGroup
+		case "groupby-aggr":
+			writer.Rules |= format.RewriteGroupByAggr
 		default:
 		}
 		return nil

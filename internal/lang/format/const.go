@@ -1,6 +1,6 @@
 package format
 
-type RewriteRule uint8
+type RewriteRule uint16
 
 const (
 	RewriteStdExpr = 1 << iota
@@ -11,6 +11,8 @@ const (
 	RewriteWithSubqueries
 	RewriteJoinSubquery
 	RewriteJoinPredicate
+	RewriteGroupByGroup
+	RewriteGroupByAggr
 
 	RewriteAll = RewriteStdExpr |
 		RewriteStdOp |
@@ -19,7 +21,9 @@ const (
 		RewriteWithCte |
 		RewriteWithSubqueries |
 		RewriteJoinSubquery |
-		RewriteJoinPredicate
+		RewriteJoinPredicate |
+		RewriteGroupByGroup |
+		RewriteGroupByAggr
 )
 
 func (r RewriteRule) All() bool {
@@ -56,6 +60,18 @@ func (r RewriteRule) JoinAsSubquery() bool {
 
 func (r RewriteRule) JoinPredicate() bool {
 	return r&RewriteJoinPredicate != 0
+}
+
+func (r RewriteRule) SetRewriteGroupBy() bool {
+	return r.SetRewriteGroupByGroup() || r.SetRewriteGroupByAggr()
+}
+
+func (r RewriteRule) SetRewriteGroupByGroup() bool {
+	return r&RewriteGroupByGroup != 0
+}
+
+func (r RewriteRule) SetRewriteGroupByAggr() bool {
+	return r&RewriteGroupByAggr != 0
 }
 
 func (r RewriteRule) KeepAsIs() bool {
