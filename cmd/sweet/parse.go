@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/midbel/sweet/internal/lang"
 	"github.com/midbel/sweet/internal/lang/parser"
@@ -40,14 +41,50 @@ func runParse(args []string) error {
 		if errors.Is(err, io.EOF) {
 			break
 		}
-		// var pserr parser.ParseError
-		// if errors.As(err, &pserr) {
-		// 	fmt.Println(pserr.Query)
-		// 	fmt.Printf(">> %+v\n", pserr)
-		// }
+		if err != nil {
+			reportError(err)
+			continue
+		}
 		fmt.Printf("%+v\n", stmt)
 	}
 	return nil
+}
+
+func reportError(err error) {
+	var pserr parser.ParseError
+	if !errors.As(err, &pserr) {
+		fmt.Println(err)
+		return
+	}
+	var (
+		parts = strings.Split(pserr.Query, "\n")
+		pos   = pserr.Position()
+		chars int
+	)
+	if pos.Line == len(parts) {
+		parts = parts[len(parts)-1:]
+		pos.Line = 1
+	} else {
+		parts = parts[:pos.Line]
+	}
+	for i := range parts {
+		parts[i] = strings.TrimSpace(parts[i])
+	}
+	for i := range parts[:pos.Line-1] {
+		chars += len(parts[i]) + 1
+	}
+	chars += pos.Column - 1
+
+	query := strings.Join(parts, " ")
+	fmt.Println(query)
+
+	fmt.Print(strings.Repeat(" ", chars))
+	if str := pserr.Literal(); len(str) > 0 {
+		fmt.Println(strings.Repeat("^", len(str)))
+	} else {
+		fmt.Println("^")
+	}
+	fmt.Println(pserr)
 }
 
 func runScan(args []string) error {
@@ -74,13 +111,12 @@ func runScan(args []string) error {
 	}
 	for !scan.Done() {
 		tok := scan.Scan()
-		if tok.Type == token.EOL || tok.Type == token.EOF {
-			fmt.Println(">>", scan.Query())
-		}
 		if tok.Type == token.EOF {
 			break
 		}
-		fmt.Println(tok)
+		pos := tok.Position
+		fmt.Printf("%d:%d, %s", pos.Line, pos.Column, tok)
+		fmt.Println()
 	}
 	return nil
 }

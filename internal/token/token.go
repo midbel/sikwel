@@ -16,8 +16,6 @@ func (p Position) String() string {
 
 type Token struct {
 	Symbol
-
-	Offset int
 	Position
 }
 

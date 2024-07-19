@@ -66,12 +66,15 @@ func (s *Scanner) Query() string {
 	return s.query.String()
 }
 
+func (s *Scanner) Clear() {
+	s.query.Reset()
+}
+
 func (s *Scanner) Scan() token.Token {
 	defer s.Reset()
 	s.Skip(IsBlank)
 
 	var tok token.Token
-	tok.Offset = s.curr
 	tok.Position = s.cursor.Position
 	if s.Done() {
 		tok.Type = token.EOF
@@ -378,21 +381,16 @@ func (s *Scanner) Read() {
 		return
 	}
 
-	k := r
-	if k == nl {
-		k = space
-	}
-	if k != space || s.char != k {
-		s.query.WriteRune(k)
+	if r != space || s.char != r {
+		s.query.WriteRune(r)
 	}
 
 	s.char, s.curr, s.next = r, s.next, s.next+n
-	s.offset++
 	if s.char == nl {
-		s.cursor.Position.Line++
-		s.cursor.Position.Column = 0
+		s.Position.Line++
+		s.Position.Column = -1
 	}
-	s.cursor.Position.Column++
+	s.Position.Column++
 }
 
 func (s *Scanner) Curr() rune {
@@ -426,9 +424,8 @@ func (s *Scanner) Skip(accept func(rune) bool) {
 }
 
 type cursor struct {
-	char   rune
-	curr   int
-	next   int
-	offset int
+	char rune
+	curr int
+	next int
 	token.Position
 }

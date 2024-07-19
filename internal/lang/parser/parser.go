@@ -102,6 +102,11 @@ func (p *Parser) Parse() (ast.Statement, error) {
 	stmt, err := p.parse()
 	if err != nil {
 		p.restore()
+		err = ParseError{
+			Err:     err,
+			Dialect: "lang",
+			Query:   p.scan.Query(),
+		}
 	}
 	return stmt, err
 }
@@ -305,7 +310,10 @@ func (p *Parser) wantError(ctx, str string) error {
 }
 
 func (p *Parser) Unexpected(ctx string) error {
-	return p.UnexpectedDialect(ctx, "lang")
+	return TokenError{
+		Token: p.Curr(),
+		Type:  "unexpected",
+	}
 }
 
 func (p *Parser) UnexpectedDialect(ctx, dialect string) error {
