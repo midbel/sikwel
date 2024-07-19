@@ -1,9 +1,13 @@
 package keywords
 
 import (
+	"errors"
+	"slices"
 	"sort"
 	"strings"
 )
+
+var ErrFound = errors.New("keyword found")
 
 type Set [][]string
 
@@ -50,7 +54,11 @@ func (ks Set) Is(str []string) (string, bool, bool) {
 		want = strings.Join(kw, " ")
 		switch {
 		case want == got:
-			return got, false, true
+			var final bool
+			if i+1 == n || !slices.Equal(str, ks[i+1]) {
+				final = true
+			}
+			return got, final, true
 		case strings.HasPrefix(want, got):
 			return got, false, false
 		default:

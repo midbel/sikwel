@@ -187,25 +187,27 @@ func (s *Scanner) scanKeyword(tok *token.Token) {
 		return
 	}
 
-	defer s.Restore()
 	for !s.Done() && !(IsPunct(s.char) || IsOperator(s.char)) {
 		s.Save()
 
 		s.Skip(IsBlank)
 		s.scanUntil(IsDelim)
 		if len(s.Literal()) == 0 {
-			// s.Restore()
+			s.Restore()
 			break
 		}
 		list = append(list, strings.ToLower(s.Literal()))
 
-		res, _, _ := s.keywords.Is(list)
+		res, final, _ := s.keywords.Is(list)
 		if res == "" {
-			// s.Restore()
+			s.Restore()
 			return
 		}
 		tok.Literal = strings.ToUpper(res)
 		tok.Type = token.Keyword
+		if final {
+			break
+		}
 	}
 }
 
