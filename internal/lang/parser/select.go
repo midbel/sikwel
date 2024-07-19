@@ -185,6 +185,9 @@ func (p *Parser) ParseColumns() ([]ast.Statement, error) {
 	if !p.IsKeyword("FROM") {
 		return nil, p.Unexpected("fields")
 	}
+	if len(list) == 0 {
+		return nil, p.Unexpected("column")
+	}
 	return list, nil
 }
 
@@ -200,7 +203,7 @@ func (p *Parser) ParseFrom() ([]ast.Statement, error) {
 	var (
 		list []ast.Statement
 		err  error
-		get  ItemFunc
+		get  ParseFunc
 	)
 
 	get = func() (ast.Statement, error) {

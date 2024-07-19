@@ -21,17 +21,23 @@ func (ks Set) Find(str string) int {
 	})
 }
 
-func (ks Set) Is(str []string) (string, bool) {
+// Is check if the given str is a keyword. A keyword can be a standalone keyword
+// or a compound keyword
+// Is returns a string with the full SQL keyword, a first boolean as flag to indicate
+// it the keyword is a standalone keyword and a final bool to indicate if the given str
+// is a SQL keyword
+func (ks Set) Is(str []string) (string, bool, bool) {
 	var (
 		n = ks.Len()
 		s = strings.ToLower(str[0])
 		i = ks.Find(s)
 	)
 	if i >= n || ks[i][0] != s {
-		return "", false
+		return "", false, false
 	}
-	if len(ks[i]) == 1 && len(str) == 1 && i+1 < n && ks[i+1][0] != s {
-		return s, true
+
+	if len(ks[i]) == 1 && len(str) == 1 && ((i+1 < n && ks[i+1][0] != s) || i+1 == n) {
+		return s, true, true
 	}
 	var (
 		got  = strings.ToLower(strings.Join(str, " "))
@@ -44,13 +50,13 @@ func (ks Set) Is(str []string) (string, bool) {
 		want = strings.Join(kw, " ")
 		switch {
 		case want == got:
-			return got, true
+			return got, false, true
 		case strings.HasPrefix(want, got):
-			return got, false
+			return got, false, false
 		default:
 		}
 	}
-	return "", false
+	return "", false, false
 }
 
 func (ks Set) Prepare() {

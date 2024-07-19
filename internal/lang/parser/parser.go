@@ -18,7 +18,7 @@ import (
 
 var errDone = errors.New("done")
 
-type ItemFunc func() (ast.Statement, error)
+type ParseFunc func() (ast.Statement, error)
 
 type Parser struct {
 	*frame
@@ -27,7 +27,7 @@ type Parser struct {
 
 	level int
 
-	keywords map[string]func() (ast.Statement, error)
+	keywords map[string]ParseFunc
 	infix    *stack[infixFunc]
 	prefix   *stack[prefixFunc]
 
@@ -201,7 +201,7 @@ func (p *Parser) parse() (ast.Statement, error) {
 	})
 }
 
-func (p *Parser) parseItem(parse ItemFunc) (ast.Statement, error) {
+func (p *Parser) parseItem(parse ParseFunc) (ast.Statement, error) {
 	var node ast.Node
 	for p.Is(token.Comment) {
 		node.Before = append(node.Before, p.GetCurrLiteral())
@@ -247,7 +247,7 @@ func (p *Parser) UnregisterParseFunc(kw string) {
 }
 
 func (p *Parser) UnregisterAllParseFunc() {
-	p.keywords = make(map[string]func() (ast.Statement, error))
+	p.keywords = make(map[string]ParseFunc)
 }
 
 func (p *Parser) RegisterPrefix(literal string, kind rune, fn prefixFunc) {
@@ -353,7 +353,7 @@ func (p *Parser) KwCheck(str ...string) func() bool {
 }
 
 func (p *Parser) setParseFunc() {
-	p.keywords = make(map[string]func() (ast.Statement, error))
+	p.keywords = make(map[string]ParseFunc)
 	p.RegisterParseFunc("SELECT", p.ParseSelect)
 	p.RegisterParseFunc("VALUES", p.ParseValues)
 	p.RegisterParseFunc("DELETE FROM", p.ParseDelete)

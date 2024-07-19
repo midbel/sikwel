@@ -23,6 +23,7 @@ type Scanner struct {
 
 	keywords keywords.Set
 	str      bytes.Buffer
+	query    bytes.Buffer
 }
 
 func Scan(r io.Reader, keywords keywords.Set) (*Scanner, error) {
@@ -59,6 +60,10 @@ func (s *Scanner) Keywords() keywords.Set {
 
 func (s *Scanner) Register(fn Tokenizer) {
 	s.tokens = append(s.tokens, fn)
+}
+
+func (s *Scanner) Query() string {
+	return s.query.String()
 }
 
 func (s *Scanner) Scan() token.Token {
@@ -171,25 +176,32 @@ func (s *Scanner) scanQuotedIdent(tok *token.Token) {
 
 func (s *Scanner) scanKeyword(tok *token.Token) {
 	list := []string{tok.Literal}
-	if kw, ok := s.keywords.Is(list); !ok && kw == "" {
+	kw, standalone, found := s.keywords.Is(list)
+	if !found && kw == "" {
 		return
 	}
 	tok.Type = token.Keyword
 	tok.Literal = strings.ToUpper(tok.Literal)
+
+	if standalone {
+		return
+	}
+
+	defer s.Restore()
 	for !s.Done() && !(IsPunct(s.char) || IsOperator(s.char)) {
 		s.Save()
 
 		s.Skip(IsBlank)
 		s.scanUntil(IsDelim)
 		if len(s.Literal()) == 0 {
-			s.Restore()
+			// s.Restore()
 			break
 		}
 		list = append(list, strings.ToLower(s.Literal()))
 
-		res, _ := s.keywords.Is(list)
+		res, _, _ := s.keywords.Is(list)
 		if res == "" {
-			s.Restore()
+			// s.Restore()
 			return
 		}
 		tok.Literal = strings.ToUpper(res)
@@ -354,18 +366,31 @@ func (s *Scanner) Read() {
 		s.char = utf8.RuneError
 		return
 	}
+	if s.old.char == semicolon {
+		s.query.Reset()
+	}
 	r, n := utf8.DecodeRune(s.input[s.next:])
 	if r == utf8.RuneError {
 		s.char = r
 		s.next = len(s.input)
 		return
 	}
+
+	k := r
+	if k == nl {
+		k = space
+	}
+	if k != space || s.char != k {
+		s.query.WriteRune(k)
+	}
+
+	s.char, s.curr, s.next = r, s.next, s.next+n
+	s.offset++
 	if s.char == nl {
 		s.cursor.Position.Line++
 		s.cursor.Position.Column = 0
 	}
 	s.cursor.Position.Column++
-	s.char, s.curr, s.next = r, s.next, s.next+n
 }
 
 func (s *Scanner) Curr() rune {
@@ -399,8 +424,9 @@ func (s *Scanner) Skip(accept func(rune) bool) {
 }
 
 type cursor struct {
-	char rune
-	curr int
-	next int
+	char   rune
+	curr   int
+	next   int
+	offset int
 	token.Position
 }
