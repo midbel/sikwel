@@ -103,7 +103,7 @@ func (p *Parser) parseIs(ident ast.Statement) (ast.Statement, error) {
 func (p *Parser) parseIsNull(ident ast.Statement) (ast.Statement, error) {
 	p.Next()
 	val := ast.Value{
-		Literal: "NULL",
+		Literal: token.Null,
 	}
 	stmt := ast.Is{
 		Ident: ident,
@@ -115,7 +115,7 @@ func (p *Parser) parseIsNull(ident ast.Statement) (ast.Statement, error) {
 func (p *Parser) parseNotNull(ident ast.Statement) (ast.Statement, error) {
 	p.Next()
 	val := ast.Value{
-		Literal: "NULL",
+		Literal: token.Null,
 	}
 	stmt := ast.Is{
 		Ident: ident,
@@ -130,7 +130,7 @@ func (p *Parser) parseNotNull(ident ast.Statement) (ast.Statement, error) {
 func (p *Parser) parseExists() (ast.Statement, error) {
 	p.Next()
 	if !p.Is(token.Lparen) {
-		return nil, p.Unexpected("expression")
+		return nil, p.Unexpected("exists", missingOpenParen)
 	}
 	p.Next()
 	var (
@@ -142,7 +142,7 @@ func (p *Parser) parseExists() (ast.Statement, error) {
 		return nil, err
 	}
 	if !p.Is(token.Rparen) {
-		return nil, p.Unexpected("expression")
+		return nil, p.Unexpected("exists", missingCloseParen)
 	}
 	p.Next()
 	return stmt, nil
@@ -158,7 +158,7 @@ func (p *Parser) parseBetween(ident ast.Statement) (ast.Statement, error) {
 		return nil, err
 	}
 	if !p.IsKeyword("AND") {
-		return nil, p.Unexpected("expression")
+		return nil, p.Unexpected("between", "expected AND keyword between values of operator")
 	}
 	p.Next()
 	right, err := p.parseExpression(powRel)
@@ -193,16 +193,16 @@ func (p *Parser) parseIn(ident ast.Statement) (ast.Statement, error) {
 			case p.Is(token.Comma):
 				p.Next()
 				if p.Is(token.Rparen) {
-					return nil, p.Unexpected("in")
+					return nil, p.Unexpected("in", missingCloseParen)
 				}
 			case p.Is(token.Rparen):
 			default:
-				return nil, p.Unexpected("in")
+				return nil, p.Unexpected("in", defaultReason)
 			}
 			list.Values = append(list.Values, val)
 		}
 		if !p.Is(token.Rparen) {
-			return nil, p.Unexpected("in")
+			return nil, p.Unexpected("in", missingCloseParen)
 		}
 		in.Value = list
 		p.Next()
@@ -230,7 +230,7 @@ func (p *Parser) parseInfixExpr(left ast.Statement) (ast.Statement, error) {
 	)
 	stmt.Op = operandMapping.Get(p.Curr().Type)
 	if stmt.Op == "" {
-		return nil, p.Unexpected("operand")
+		return nil, p.Unexpected("infix", unknownOperator)
 	}
 	p.Next()
 	if !p.IsKeyword("ALL") && !p.IsKeyword("ANY") && !p.IsKeyword("SOME") {
@@ -249,14 +249,14 @@ func (p *Parser) parseAllOrAny() (ast.Statement, error) {
 	)
 	p.Next()
 	if !p.Is(token.Lparen) {
-		return nil, p.Unexpected("all/any")
+		return nil, p.Unexpected("all/any", missingOpenParen)
 	}
 	p.Next()
 	if expr, err = p.ParseStatement(); err != nil {
 		return nil, err
 	}
 	if !p.Is(token.Rparen) {
-		return nil, p.Unexpected("all/any")
+		return nil, p.Unexpected("all/any", missingCloseParen)
 	}
 	p.Next()
 	if all {
@@ -277,7 +277,7 @@ func (p *Parser) parseCollateExpr(left ast.Statement) (ast.Statement, error) {
 	}
 	p.Next()
 	if !p.Is(token.Ident) {
-		return nil, p.Unexpected("collate")
+		return nil, p.Unexpected("collate", identExpected)
 	}
 	stmt.Collation = p.GetCurrLiteral()
 	p.Next()
@@ -318,14 +318,14 @@ func (p *Parser) parseKeywordExpr(left ast.Statement) (ast.Statement, error) {
 	case "NOTNULL":
 		stmt, err = p.parseNotNull(left)
 	default:
-		err = p.Unexpected("expression")
+		err = p.Unexpected("expression", unknownOperator)
 	}
 	return reverse(stmt), err
 }
 
 func (p *Parser) parseCallExpr(left ast.Statement) (ast.Statement, error) {
 	if _, ok := left.(ast.Name); !ok {
-		return nil, p.Unexpected("call")
+		return nil, p.Unexpected("call", identExpected)
 	}
 	p.Next()
 	stmt := ast.Call{
@@ -346,17 +346,17 @@ func (p *Parser) parseCallExpr(left ast.Statement) (ast.Statement, error) {
 		stmt.Args = append(stmt.Args, arg)
 	}
 	if !p.Is(token.Rparen) {
-		return nil, p.Unexpected("call")
+		return nil, p.Unexpected("call", missingCloseParen)
 	}
 	p.Next()
 	if p.IsKeyword("FILTER") {
 		p.Next()
 		if !p.Is(token.Lparen) {
-			return nil, p.Unexpected("call/filter")
+			return nil, p.Unexpected("call", missingOpenParen)
 		}
 		p.Next()
 		if !p.IsKeyword("WHERE") {
-			return nil, p.Unexpected("call/filter")
+			return nil, p.Unexpected("call", "WHERE keyword expected in FILTER")
 		}
 		p.Next()
 		filter, err := p.StartExpression()
@@ -365,7 +365,7 @@ func (p *Parser) parseCallExpr(left ast.Statement) (ast.Statement, error) {
 		}
 		stmt.Filter = filter
 		if !p.Is(token.Rparen) {
-			return nil, p.Unexpected("call/filter")
+			return nil, p.Unexpected("call", missingCloseParen)
 		}
 		p.Next()
 	}
@@ -414,7 +414,7 @@ func (p *Parser) parseUnary() (ast.Statement, error) {
 			Statement: stmt,
 		}
 	default:
-		err = p.Unexpected("unary")
+		err = p.Unexpected("unary", unknownOperator)
 	}
 	return stmt, nil
 }
@@ -427,7 +427,7 @@ func (p *Parser) parseGroupExpr() (ast.Statement, error) {
 			return nil, err
 		}
 		if !p.Is(token.Rparen) {
-			return nil, p.Unexpected("group(select)")
+			return nil, p.Unexpected("group", missingCloseParen)
 		}
 		p.Next()
 		g := ast.Group{
@@ -440,7 +440,7 @@ func (p *Parser) parseGroupExpr() (ast.Statement, error) {
 		return nil, err
 	}
 	if !p.Is(token.Rparen) {
-		return nil, p.Unexpected("group")
+		return nil, p.Unexpected("group", missingCloseParen)
 	}
 	p.Next()
 	g := ast.Group{

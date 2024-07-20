@@ -116,11 +116,11 @@ func (p *Parser) ParseStatement() (ast.Statement, error) {
 		return nil, io.EOF
 	}
 	if !p.Is(token.Keyword) {
-		return nil, p.Unexpected("statement")
+		return nil, p.Unexpected("statement", "keyword expected to start statement")
 	}
 	fn, ok := p.keywords[p.GetCurrLiteral()]
 	if !ok {
-		return nil, p.Unexpected("statement")
+		return nil, p.Unexpected("statement", "unsupported keyword given")
 	}
 	return fn()
 }
@@ -164,7 +164,7 @@ func (p *Parser) Done() bool {
 
 func (p *Parser) Expect(ctx string, r rune) error {
 	if !p.Is(r) {
-		return p.Unexpected(ctx)
+		return p.Unexpected(ctx, syntaxError)
 	}
 	p.Next()
 	return nil
@@ -190,7 +190,7 @@ func (p *Parser) parse() (ast.Statement, error) {
 			return nil, err
 		}
 		if !p.Is(token.EOL) {
-			return nil, p.Unexpected("statement")
+			return nil, p.Unexpected("statement", missingEol)
 		}
 		p.Next()
 		return stmt, nil
@@ -275,7 +275,7 @@ func (p *Parser) parseColumnsList() ([]string, error) {
 
 	for !p.Done() && !p.Is(token.Rparen) {
 		if !p.Curr().IsValue() {
-			return nil, p.Unexpected("columns")
+			return nil, p.Unexpected("columns", valueExpected)
 		}
 		list = append(list, p.GetCurrLiteral())
 		p.Next()
@@ -284,7 +284,7 @@ func (p *Parser) parseColumnsList() ([]string, error) {
 		}
 	}
 	if !p.Is(token.Rparen) {
-		return nil, p.Unexpected("columns")
+		return nil, p.Unexpected("columns", missingCloseParen)
 	}
 	p.Next()
 
@@ -314,11 +314,11 @@ func (p *Parser) EnsureEnd(ctx string, sep, end rune) error {
 	case p.Is(sep):
 		p.Next()
 		if p.Is(end) {
-			return p.Unexpected(ctx)
+			return p.Unexpected(ctx, syntaxError)
 		}
 	case p.Is(end):
 	default:
-		return p.Unexpected(ctx)
+		return p.Unexpected(ctx, defaultReason)
 	}
 	return nil
 }

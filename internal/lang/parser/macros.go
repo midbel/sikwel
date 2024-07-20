@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -25,7 +24,7 @@ func (p *Parser) ParseMacro() error {
 	case "VAR":
 		err = p.ParseVarMacro()
 	default:
-		err = p.Unexpected("macro")
+		err = p.Unexpected("macro", "unknown macro given")
 	}
 	if err != nil {
 		return err
@@ -36,12 +35,12 @@ func (p *Parser) ParseMacro() error {
 func (p *Parser) ParseFormatMacro() error {
 	p.Next()
 	if !p.Is(token.Ident) && !p.Is(token.Literal) && !p.Is(token.Keyword) {
-		return p.Unexpected("format(key)")
+		return p.Unexpected("format", identExpected)
 	}
 	key := strings.ToLower(p.GetCurrLiteral())
 	p.Next()
 	if !p.Is(token.Ident) && !p.Is(token.Number) && !p.Is(token.Literal) && !p.Is(token.Keyword) {
-		return p.Unexpected("format(value)")
+		return p.Unexpected("format", valueExpected)
 	}
 	value := strings.ToLower(p.GetCurrLiteral())
 	switch key {
@@ -66,11 +65,11 @@ func (p *Parser) ParseFormatMacro() error {
 		}
 		p.Config.Set(key, v)
 	default:
-		return p.Unexpected(fmt.Sprintf("format(%s)", key))
+		return p.Unexpected("format", macroOptionUnknown)
 	}
 	p.Next()
 	if !p.Is(token.EOL) {
-		return p.Unexpected("macro")
+		return p.Unexpected("macro", missingEol)
 	}
 	p.Next()
 	return nil
@@ -79,20 +78,20 @@ func (p *Parser) ParseFormatMacro() error {
 func (p *Parser) ParseLintMacro() error {
 	p.Next()
 	if !p.Is(token.Ident) && !p.Is(token.Literal) && !p.Is(token.Keyword) {
-		return p.Unexpected("lint(key)")
+		return p.Unexpected("lint", identExpected)
 	}
 	rule := strings.ToLower(p.GetCurrLiteral())
 	p.Next()
 
 	if !p.Is(token.Ident) && !p.Is(token.Keyword) && !p.Is(token.Number) {
-		return p.Unexpected("lint(level/enabled)")
+		return p.Unexpected("lint", identExpected)
 	}
 	val := p.GetCurrLiteral()
 	if val = strings.ToLower(val); val == "on" || val == "off" {
 		p.Config.Set(rule, val == "on")
 		p.Next()
 		if !p.Is(token.EOL) {
-			return p.Unexpected("lint(eol)")
+			return p.Unexpected("lint", missingEol)
 		}
 		p.Next()
 		return nil
@@ -109,7 +108,7 @@ func (p *Parser) ParseLintMacro() error {
 	}
 	p.Config.Set(rule, sub)
 	if !p.Is(token.EOL) {
-		return p.Unexpected("macro")
+		return p.Unexpected("macro", missingEol)
 	}
 	p.Next()
 	return nil
@@ -122,7 +121,7 @@ func (p *Parser) ParseIncludeMacro() error {
 	p.Next()
 
 	if !p.Is(token.EOL) {
-		return p.Unexpected("macro")
+		return p.Unexpected("macro", missingEol)
 	}
 	p.Next()
 
