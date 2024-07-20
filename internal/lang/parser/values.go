@@ -26,7 +26,7 @@ func (p *Parser) ParsePlaceholder() (ast.Statement, error) {
 		}
 		p.Next()
 	default:
-		return nil, p.Unexpected("placeholder")
+		return nil, p.Unexpected("placeholder", defaultReason)
 	}
 	return stmt, nil
 }
@@ -41,12 +41,12 @@ func (p *Parser) ParseLiteral() (ast.Statement, error) {
 
 func (p *Parser) ParseConstant() (ast.Statement, error) {
 	if !p.Is(token.Keyword) {
-		return nil, p.Unexpected("constant")
+		return nil, p.Unexpected("constant", "expected predefined SQL constant")
 	}
 	switch p.GetCurrLiteral() {
-	case "TRUE", "FALSE", "UNKNOWN", "NULL", "DEFAULT":
+	case token.True, token.False, token.Unknown, token.Null, token.Default:
 	default:
-		return nil, p.Unexpected("constant")
+		return nil, p.Unexpected("constant", "unknown value")
 	}
 	return p.ParseLiteral()
 }
@@ -59,7 +59,7 @@ func (p *Parser) ParseIdentifier() (ast.Statement, error) {
 		p.Next()
 	}
 	if !p.Is(token.Ident) && !p.Is(token.Star) {
-		return nil, p.Unexpected("identifier")
+		return nil, p.Unexpected("identifier", identExpected)
 	}
 	name.Parts = append(name.Parts, p.GetCurrLiteral())
 	p.Next()
@@ -89,7 +89,7 @@ func (p *Parser) ParseAlias(stmt ast.Statement) (ast.Statement, error) {
 		p.Next()
 	default:
 		if mandatory {
-			return nil, p.Unexpected("alias")
+			return nil, p.Unexpected("alias", identExpected)
 		}
 	}
 	return stmt, nil
@@ -115,7 +115,7 @@ func (p *Parser) ParseCase() (ast.Statement, error) {
 			return nil, err
 		}
 		if !p.IsKeyword("THEN") {
-			return nil, p.Unexpected("case/then")
+			return nil, p.Unexpected("case", "keyword THEN expected after condition")
 		}
 		p.Next()
 		if p.Is(token.Keyword) {
@@ -140,7 +140,7 @@ func (p *Parser) ParseCase() (ast.Statement, error) {
 		}
 	}
 	if !p.IsKeyword("END") {
-		return nil, p.Unexpected("case")
+		return nil, p.Unexpected("case", "keyword END expected at end of CASE")
 	}
 	p.Next()
 	return p.ParseAlias(stmt)
@@ -149,7 +149,7 @@ func (p *Parser) ParseCase() (ast.Statement, error) {
 func (p *Parser) ParseCast() (ast.Statement, error) {
 	p.Next()
 	if !p.Is(token.Lparen) {
-		return nil, p.Unexpected("cast")
+		return nil, p.Unexpected("cast", missingOpenParen)
 	}
 	p.Next()
 	var (
@@ -161,14 +161,14 @@ func (p *Parser) ParseCast() (ast.Statement, error) {
 		return nil, err
 	}
 	if !p.IsKeyword("AS") {
-		return nil, p.Unexpected("cast")
+		return nil, p.Unexpected("cast", "keyword AS expected between identifier and type")
 	}
 	p.Next()
 	if cast.Type, err = p.ParseType(); err != nil {
 		return nil, err
 	}
 	if !p.Is(token.Rparen) {
-		return nil, p.Unexpected("cast")
+		return nil, p.Unexpected("cast", missingCloseParen)
 	}
 	p.Next()
 	return cast, nil
@@ -177,7 +177,7 @@ func (p *Parser) ParseCast() (ast.Statement, error) {
 func (p *Parser) ParseType() (ast.Type, error) {
 	var t ast.Type
 	if !p.Is(token.Ident) {
-		return t, p.Unexpected("type")
+		return t, p.Unexpected("type", identExpected)
 	}
 	t.Name = p.GetCurrLiteral()
 	p.Next()
@@ -199,7 +199,7 @@ func (p *Parser) ParseType() (ast.Type, error) {
 			p.Next()
 		}
 		if !p.Is(token.Rparen) {
-			return t, p.Unexpected("type")
+			return t, p.Unexpected("type", missingCloseParen)
 		}
 		p.Next()
 	}
@@ -209,7 +209,7 @@ func (p *Parser) ParseType() (ast.Type, error) {
 func (p *Parser) ParseRow() (ast.Statement, error) {
 	p.Next()
 	if !p.Is(token.Lparen) {
-		return nil, p.Unexpected("row")
+		return nil, p.Unexpected("row", missingOpenParen)
 	}
 	p.Next()
 
@@ -228,7 +228,7 @@ func (p *Parser) ParseRow() (ast.Statement, error) {
 		}
 	}
 	if !p.Is(token.Rparen) {
-		return nil, p.Unexpected("row")
+		return nil, p.Unexpected("row", missingCloseParen)
 	}
 	p.Next()
 	return row, nil

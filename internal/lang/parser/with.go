@@ -28,13 +28,13 @@ func (p *Parser) parseWith() (ast.Statement, error) {
 		case p.Is(token.Comma):
 			p.Next()
 			if p.Is(token.Keyword) {
-				return nil, p.Unexpected("cte")
+				return nil, p.Unexpected("cte", keywordAfterComma)
 			}
 			err = nil
 		case p.Is(token.Keyword):
 		case p.Is(token.Comment):
 		default:
-			return nil, p.Unexpected("cte")
+			return nil, p.Unexpected("cte", defaultReason)
 		}
 		return cte, errDone
 	}
@@ -61,7 +61,7 @@ func (p *Parser) parseSubquery() (ast.Statement, error) {
 		err error
 	)
 	if !p.Is(token.Ident) {
-		return nil, p.Unexpected("subquery")
+		return nil, p.Unexpected("subquery", identExpected)
 	}
 	cte.Ident = p.GetCurrLiteral()
 	p.Next()
@@ -71,7 +71,7 @@ func (p *Parser) parseSubquery() (ast.Statement, error) {
 		return nil, err
 	}
 	if !p.IsKeyword("AS") {
-		return nil, p.Unexpected("subquery")
+		return nil, p.Unexpected("subquery", "keyword AS expected")
 	}
 	p.Next()
 	if p.IsKeyword("MATERIALIZED") {
@@ -80,13 +80,13 @@ func (p *Parser) parseSubquery() (ast.Statement, error) {
 	} else if p.IsKeyword("NOT") {
 		p.Next()
 		if !p.IsKeyword("MATERIALIZED") {
-			return nil, p.Unexpected("subquery")
+			return nil, p.Unexpected("subquery", defaultReason)
 		}
 		p.Next()
 		cte.Materialized = ast.NotMaterializedCte
 	}
 	if !p.Is(token.Lparen) {
-		return nil, p.Unexpected("subquery")
+		return nil, p.Unexpected("subquery", missingOpenParen)
 	}
 	p.Next()
 
@@ -95,7 +95,7 @@ func (p *Parser) parseSubquery() (ast.Statement, error) {
 		return nil, err
 	}
 	if !p.Is(token.Rparen) {
-		return nil, p.Unexpected("subquery")
+		return nil, p.Unexpected("subquery", missingCloseParen)
 	}
 	p.Next()
 	return cte, nil
