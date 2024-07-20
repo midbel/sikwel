@@ -16,7 +16,7 @@ func (p *Parser) ParseCall() (ast.Statement, error) {
 		return nil, err
 	}
 	if !p.Is(token.Lparen) {
-		return nil, p.Unexpected("call")
+		return nil, p.Unexpected("call", missingOpenParen)
 	}
 	p.Next()
 	for !p.Done() && !p.Is(token.Rparen) {
@@ -35,7 +35,7 @@ func (p *Parser) ParseCall() (ast.Statement, error) {
 		stmt.Args = append(stmt.Args, arg)
 	}
 	if !p.Is(token.Rparen) {
-		return nil, p.Unexpected("call")
+		return nil, p.Unexpected("call", missingCloseParen)
 	}
 	p.Next()
 	return stmt, err

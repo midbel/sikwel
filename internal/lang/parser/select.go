@@ -157,12 +157,12 @@ func (p *Parser) ParseColumns() ([]ast.Statement, error) {
 		case p.Is(token.Comma):
 			p.Next()
 			if p.IsKeyword("FROM") {
-				return nil, p.Unexpected("column")
+				return nil, p.Unexpected("select", keywordAfterComma)
 			}
 		case p.Is(token.Keyword):
 		case p.Is(token.Comment):
 		default:
-			return nil, p.Unexpected("column")
+			return nil, p.Unexpected("select", defaultReason)
 		}
 		return stmt, nil
 	}
@@ -183,10 +183,10 @@ func (p *Parser) ParseColumns() ([]ast.Statement, error) {
 		list = append(list, stmt)
 	}
 	if !p.IsKeyword("FROM") {
-		return nil, p.Unexpected("fields")
+		return nil, p.Unexpected("select", "FROM keyword expected after select clause")
 	}
 	if len(list) == 0 {
-		return nil, p.Unexpected("column")
+		return nil, p.Unexpected("select", "empty select clause")
 	}
 	return list, nil
 }

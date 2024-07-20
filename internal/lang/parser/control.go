@@ -14,7 +14,7 @@ func (p *Parser) parseSet() (ast.Statement, error) {
 	stmt.Ident = p.GetCurrLiteral()
 	p.Next()
 	if !p.Is(token.Eq) {
-		return nil, p.Unexpected("set")
+		return nil, p.Unexpected("set", missingOperator)
 	}
 	p.Next()
 
@@ -30,7 +30,7 @@ func (p *Parser) ParseDeclare() (ast.Statement, error) {
 		err  error
 	)
 	if !p.Is(token.Ident) {
-		return nil, p.Unexpected("declare")
+		return nil, p.Unexpected("declare", identExpected)
 	}
 	stmt.Ident = p.GetCurrLiteral()
 	p.Next()
@@ -61,7 +61,7 @@ func (p *Parser) parseIf() (ast.Statement, error) {
 		return nil, err
 	}
 	if !p.IsKeyword("THEN") {
-		return nil, p.Unexpected("if")
+		return nil, p.Unexpected("if", "THEN keyword expected after IF condition")
 	}
 	p.Next()
 	stmt.Csq, err = p.ParseBody(p.KwCheck("ELSE", "ELSIF", "END IF"))
@@ -77,13 +77,13 @@ func (p *Parser) parseIf() (ast.Statement, error) {
 		return stmt, err
 	case p.IsKeyword("END IF"):
 	default:
-		return nil, p.Unexpected("if")
+		return nil, p.Unexpected("if", defaultReason)
 	}
 	if err != nil {
 		return nil, err
 	}
 	if !p.IsKeyword("END IF") {
-		return nil, p.Unexpected("if")
+		return nil, p.Unexpected("if", "END IF expected at end of IF statement")
 	}
 	p.Next()
 	return stmt, nil
@@ -101,7 +101,7 @@ func (p *Parser) parseWhile() (ast.Statement, error) {
 		return nil, err
 	}
 	if !p.IsKeyword("DO") {
-		return nil, p.Unexpected("while")
+		return nil, p.Unexpected("while", "DO keyword expected after WHILE condition")
 	}
 	p.Next()
 	stmt.Body, err = p.ParseBody(p.KwCheck("END WHILE"))
@@ -109,7 +109,7 @@ func (p *Parser) parseWhile() (ast.Statement, error) {
 		return nil, err
 	}
 	if !p.IsKeyword("END WHILE") {
-		return nil, p.Unexpected("while")
+		return nil, p.Unexpected("while", "END WHILE expected at end of WHILE statement")
 	}
 	p.Next()
 	return stmt, nil
@@ -123,13 +123,13 @@ func (p *Parser) ParseBody(done func() bool) (ast.Statement, error) {
 			return nil, err
 		}
 		if !p.Is(token.EOL) {
-			return nil, p.Unexpected("body")
+			return nil, p.Unexpected("body", missingEol)
 		}
 		p.Next()
 		list.Values = append(list.Values, stmt)
 	}
 	if !done() {
-		return nil, p.Unexpected("body")
+		return nil, p.Unexpected("body", defaultReason)
 	}
 	return list, nil
 }

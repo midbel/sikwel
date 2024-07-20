@@ -78,6 +78,9 @@ func reportError(err error) {
 	} else {
 		fmt.Println("^")
 	}
+	if pserr.Reason != "" {
+		fmt.Println(pserr.Reason)
+	}
 	fmt.Println(pserr)
 	fmt.Println()
 }

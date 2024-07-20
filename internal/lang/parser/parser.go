@@ -2,7 +2,6 @@ package parser
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -117,7 +116,7 @@ func (p *Parser) ParseStatement() (ast.Statement, error) {
 		return nil, io.EOF
 	}
 	if !p.Is(token.Keyword) {
-		return nil, p.wantError("statement", "keyword")
+		return nil, p.Unexpected("statement")
 	}
 	fn, ok := p.keywords[p.GetCurrLiteral()]
 	if !ok {
@@ -296,16 +295,13 @@ func (p *Parser) IsKeyword(kw string) bool {
 	return p.Curr().Type == token.Keyword && p.GetCurrLiteral() == kw
 }
 
-func (p *Parser) wantError(ctx, str string) error {
-	curr := p.Curr()
-	return fmt.Errorf("%s: expected %q at %d:%d! got %s", ctx, str, curr.Line, curr.Column, curr.Literal)
-}
-
-func (p *Parser) Unexpected(ctx string) error {
+func (p *Parser) Unexpected(ctx, reason string) error {
+	if reason == "" {
+		reason = defaultReason
+	}
 	err := ParseError{
+		Reason:  reason,
 		Token:   p.Curr(),
-		Dialect: "lang",
-		Type:    "unexpected",
 		Context: ctx,
 	}
 	p.restore()

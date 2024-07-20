@@ -70,7 +70,7 @@ func (p *Parser) ParseFormatMacro() error {
 	}
 	p.Next()
 	if !p.Is(token.EOL) {
-		return p.wantError("format", ";")
+		return p.Unexpected("macro")
 	}
 	p.Next()
 	return nil
@@ -109,7 +109,7 @@ func (p *Parser) ParseLintMacro() error {
 	}
 	p.Config.Set(rule, sub)
 	if !p.Is(token.EOL) {
-		return p.wantError("lint", ";")
+		return p.Unexpected("macro")
 	}
 	p.Next()
 	return nil
@@ -122,7 +122,7 @@ func (p *Parser) ParseIncludeMacro() error {
 	p.Next()
 
 	if !p.Is(token.EOL) {
-		return p.wantError("include", ";")
+		return p.Unexpected("macro")
 	}
 	p.Next()
 

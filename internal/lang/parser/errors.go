@@ -6,11 +6,20 @@ import (
 	"github.com/midbel/sweet/internal/token"
 )
 
+const (
+	defaultReason     = "one or more errors have been detected in your query"
+	missingOpenParen  = "missing ( before parameters"
+	missingCloseParen = "missing ) after paramters"
+	keywordAfterComma = "unexpected keyword after comma"
+	missingOperator   = "missing operator after identifier"
+	identExpected     = "identifier expected"
+	missingEol        = "missing semicolon at end of statement"
+)
+
 type ParseError struct {
 	token.Token
-	Type    string
+	Reason  string
 	Context string
-	Dialect string
 	Query   string
 }
 
@@ -24,5 +33,5 @@ func (e ParseError) Position() token.Position {
 
 func (e ParseError) Error() string {
 	pos := e.Token.Position
-	return fmt.Sprintf("at %d:%d, %s %s", pos.Line, pos.Column, e.Type, e.Token)
+	return fmt.Sprintf("at %d:%d, unexpected token %s", pos.Line, pos.Column, e.Token)
 }
