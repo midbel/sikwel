@@ -59,32 +59,27 @@ func reportError(err error) {
 	var (
 		parts = strings.Split(pserr.Query, "\n")
 		pos   = pserr.Position()
-		chars int
 	)
-	if pos.Line == len(parts) {
-		parts = parts[len(parts)-1:]
-		pos.Line = 1
-	} else {
+	if pos.Line < len(parts) {
 		parts = parts[:pos.Line]
 	}
+
 	for i := range parts {
-		parts[i] = strings.TrimSpace(parts[i])
+		var (
+			lino = pos.Line - len(parts) + i + 1
+			line = strings.TrimSpace(parts[i])
+		)
+		fmt.Printf("%03d | %s", lino, line)
+		fmt.Println()
 	}
-	for i := range parts[:pos.Line-1] {
-		chars += len(parts[i]) + 1
-	}
-	chars += pos.Column - 1
-
-	query := strings.Join(parts, " ")
-	fmt.Println(query)
-
-	fmt.Print(strings.Repeat(" ", chars))
+	fmt.Print(strings.Repeat(" ", 6+pos.Column-1))
 	if str := pserr.Literal(); len(str) > 0 {
 		fmt.Println(strings.Repeat("^", len(str)))
 	} else {
 		fmt.Println("^")
 	}
 	fmt.Println(pserr)
+	fmt.Println()
 }
 
 func runScan(args []string) error {
