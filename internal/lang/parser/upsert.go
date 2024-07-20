@@ -147,10 +147,10 @@ func (p *Parser) ParseDelete() (ast.Statement, error) {
 	p.Next()
 
 	if stmt.Where, err = p.ParseWhere(); err != nil {
-		return nil, wrapError("delete", err)
+		return nil, err
 	}
 	if stmt.Return, err = p.ParseReturning(); err != nil {
-		return nil, wrapError("delete", err)
+		return nil, err
 	}
 	return stmt, nil
 }
@@ -252,7 +252,7 @@ func (p *Parser) ParseUpdate() (ast.Statement, error) {
 		return nil, err
 	}
 	stmt.Return, err = p.ParseReturning()
-	return stmt, wrapError("update", err)
+	return nil, err
 }
 
 func (p *Parser) ParseUpdateList() ([]ast.Statement, error) {
@@ -347,7 +347,7 @@ func (p *Parser) ParseInsert() (ast.Statement, error) {
 	}
 
 	stmt.Columns, err = p.parseColumnsList()
-	if err = wrapError("insert", err); err != nil {
+	if err != nil {
 		return nil, err
 	}
 
@@ -359,14 +359,14 @@ func (p *Parser) ParseInsert() (ast.Statement, error) {
 	default:
 		return nil, p.Unexpected("insert")
 	}
-	if err = wrapError("insert", err); err != nil {
+	if err != nil {
 		return nil, err
 	}
 	if stmt.Upsert, err = p.ParseUpsert(); err != nil {
 		return nil, err
 	}
 	stmt.Return, err = p.ParseReturning()
-	return stmt, wrapError("insert", err)
+	return stmt, err
 }
 
 func (p *Parser) ParseUpsert() (ast.Statement, error) {
@@ -406,7 +406,7 @@ func (p *Parser) ParseUpsert() (ast.Statement, error) {
 		return nil, err
 	}
 	stmt.Where, err = p.ParseWhere()
-	return stmt, wrapError("upsert", err)
+	return stmt, err
 }
 
 func (p *Parser) ParseUpsertList() ([]ast.Statement, error) {

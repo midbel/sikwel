@@ -103,7 +103,7 @@ func (p *Parser) ParseCase() (ast.Statement, error) {
 	)
 	if !p.IsKeyword("WHEN") {
 		stmt.Cdt, err = p.StartExpression()
-		if err = wrapError("case", err); err != nil {
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -111,7 +111,7 @@ func (p *Parser) ParseCase() (ast.Statement, error) {
 		var when ast.When
 		p.Next()
 		when.Cdt, err = p.StartExpression()
-		if err = wrapError("case/when", err); err != nil {
+		if err != nil {
 			return nil, err
 		}
 		if !p.IsKeyword("THEN") {
@@ -123,7 +123,7 @@ func (p *Parser) ParseCase() (ast.Statement, error) {
 		} else {
 			when.Body, err = p.StartExpression()
 		}
-		if err = wrapError("case/then", err); err != nil {
+		if err != nil {
 			return nil, err
 		}
 		stmt.Body = append(stmt.Body, when)
@@ -135,7 +135,7 @@ func (p *Parser) ParseCase() (ast.Statement, error) {
 		} else {
 			stmt.Else, err = p.StartExpression()
 		}
-		if err = wrapError("case/else", err); err != nil {
+		if err != nil {
 			return nil, err
 		}
 	}

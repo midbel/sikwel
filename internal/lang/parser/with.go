@@ -52,7 +52,7 @@ func (p *Parser) parseWith() (ast.Statement, error) {
 	p.reset()
 
 	stmt.Statement, err = p.parseItem(p.ParseStatement)
-	return stmt, wrapError("with", err)
+	return stmt, err
 }
 
 func (p *Parser) parseSubquery() (ast.Statement, error) {
@@ -91,7 +91,7 @@ func (p *Parser) parseSubquery() (ast.Statement, error) {
 	p.Next()
 
 	cte.Statement, err = p.ParseStatement()
-	if err = wrapError("subquery", err); err != nil {
+	if err != nil {
 		return nil, err
 	}
 	if !p.Is(token.Rparen) {

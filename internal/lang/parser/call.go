@@ -26,7 +26,7 @@ func (p *Parser) ParseCall() (ast.Statement, error) {
 			p.Next()
 		}
 		arg, err := p.StartExpression()
-		if err = wrapError("call", err); err != nil {
+		if err != nil {
 			return nil, err
 		}
 		if err := p.EnsureEnd("call", token.Comma, token.Rparen); err != nil {

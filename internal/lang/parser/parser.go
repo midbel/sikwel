@@ -100,14 +100,6 @@ func (p *Parser) Parse() (ast.Statement, error) {
 	}
 	p.reset()
 	stmt, err := p.parse()
-	if err != nil {
-		p.restore()
-		err = ParseError{
-			Err:     err,
-			Dialect: "lang",
-			Query:   p.scan.Query(),
-		}
-	}
 	return stmt, err
 }
 
@@ -310,14 +302,15 @@ func (p *Parser) wantError(ctx, str string) error {
 }
 
 func (p *Parser) Unexpected(ctx string) error {
-	return TokenError{
-		Token: p.Curr(),
-		Type:  "unexpected",
+	err := ParseError{
+		Token:   p.Curr(),
+		Dialect: "lang",
+		Type:    "unexpected",
+		Context: ctx,
 	}
-}
-
-func (p *Parser) UnexpectedDialect(ctx, dialect string) error {
-	return wrapErrorWithDialect(dialect, ctx, unexpected(p.Curr()))
+	p.restore()
+	err.Query = p.scan.Query()
+	return err
 }
 
 func (p *Parser) EnsureEnd(ctx string, sep, end rune) error {

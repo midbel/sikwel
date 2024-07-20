@@ -238,7 +238,7 @@ func (p *Parser) parseInfixExpr(left ast.Statement) (ast.Statement, error) {
 	} else {
 		stmt.Right, err = p.parseAllOrAny()
 	}
-	return stmt, wrapError("infix", err)
+	return stmt, err
 }
 
 func (p *Parser) parseAllOrAny() (ast.Statement, error) {
@@ -320,7 +320,7 @@ func (p *Parser) parseKeywordExpr(left ast.Statement) (ast.Statement, error) {
 	default:
 		err = p.Unexpected("expression")
 	}
-	return reverse(stmt), wrapError("keyword", err)
+	return reverse(stmt), err
 }
 
 func (p *Parser) parseCallExpr(left ast.Statement) (ast.Statement, error) {
@@ -337,7 +337,7 @@ func (p *Parser) parseCallExpr(left ast.Statement) (ast.Statement, error) {
 	}
 	for !p.Done() && !p.Is(token.Rparen) {
 		arg, err := p.StartExpression()
-		if err = wrapError("call", err); err != nil {
+		if err != nil {
 			return nil, err
 		}
 		if err := p.EnsureEnd("call", token.Comma, token.Rparen); err != nil {
@@ -397,7 +397,7 @@ func (p *Parser) parseUnary() (ast.Statement, error) {
 	case p.Is(token.Minus):
 		p.Next()
 		stmt, err = p.StartExpression()
-		if err = wrapError("reverse", err); err != nil {
+		if err != nil {
 			return nil, err
 		}
 		stmt = ast.Unary{
@@ -407,7 +407,7 @@ func (p *Parser) parseUnary() (ast.Statement, error) {
 	case p.IsKeyword("NOT"):
 		p.Next()
 		stmt, err = p.StartExpression()
-		if err = wrapError("not", err); err != nil {
+		if err != nil {
 			return nil, err
 		}
 		stmt = ast.Not{
@@ -436,7 +436,7 @@ func (p *Parser) parseGroupExpr() (ast.Statement, error) {
 		return p.ParseAlias(g)
 	}
 	stmt, err := p.StartExpression()
-	if err = wrapError("group", err); err != nil {
+	if err != nil {
 		return nil, err
 	}
 	if !p.Is(token.Rparen) {

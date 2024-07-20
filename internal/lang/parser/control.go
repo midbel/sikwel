@@ -97,7 +97,7 @@ func (p *Parser) parseWhile() (ast.Statement, error) {
 	p.Next()
 
 	stmt.Cdt, err = p.StartExpression()
-	if err = wrapError("while", err); err != nil {
+	if err != nil {
 		return nil, err
 	}
 	if !p.IsKeyword("DO") {

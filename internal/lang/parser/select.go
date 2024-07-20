@@ -288,7 +288,7 @@ func (p *Parser) ParseJoinUsing() (ast.Statement, error) {
 	var list ast.List
 	for !p.Done() && !p.Is(token.Rparen) {
 		stmt, err := p.ParseIdentifier()
-		if err = wrapError("using", err); err != nil {
+		if err != nil {
 			return nil, err
 		}
 		list.Values = append(list.Values, stmt)
