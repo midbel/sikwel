@@ -42,5 +42,5 @@ func (e ParseError) Position() token.Position {
 
 func (e ParseError) Error() string {
 	pos := e.Token.Position
-	return fmt.Sprintf("at %d:%d, unexpected token %s", pos.Line, pos.Column, e.Token)
+	return fmt.Sprintf("[%s] at %d:%d, %s", e.Context, pos.Line, pos.Column, e.Reason)
 }

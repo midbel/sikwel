@@ -255,7 +255,7 @@ func (p *Parser) ParseFrom() ([]ast.Statement, error) {
 		case p.IsKeyword("USING"):
 			stmt.Where, err = p.ParseJoinUsing()
 		default:
-			return nil, p.Unexpected("join", defaultReason)
+			return nil, p.Unexpected("join", keywordExpected("ON", "USING"))
 		}
 		return stmt, nil
 	}
