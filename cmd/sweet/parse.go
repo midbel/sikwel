@@ -59,6 +59,7 @@ func reportError(err error) {
 	var (
 		parts = strings.Split(pserr.Query, "\n")
 		pos   = pserr.Position()
+		first = pos.Line - 3
 	)
 	if pos.Line < len(parts) {
 		parts = parts[:pos.Line]
@@ -69,6 +70,9 @@ func reportError(err error) {
 			lino = pos.Line - len(parts) + i + 1
 			line = strings.TrimSpace(parts[i])
 		)
+		if lino < first {
+			continue
+		}
 		fmt.Printf("%03d | %s", lino, line)
 		fmt.Println()
 	}
