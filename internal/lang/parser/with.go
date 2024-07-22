@@ -71,7 +71,7 @@ func (p *Parser) parseSubquery() (ast.Statement, error) {
 		return nil, err
 	}
 	if !p.IsKeyword("AS") {
-		return nil, p.Unexpected("subquery", "keyword AS expected")
+		return nil, p.Unexpected("subquery", keywordExpected("AS"))
 	}
 	p.Next()
 	if p.IsKeyword("MATERIALIZED") {

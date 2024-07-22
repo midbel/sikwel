@@ -45,7 +45,7 @@ func (p *Parser) ParseProcedureLanguage() (string, error) {
 
 func (p *Parser) ParseProcedureBody() (ast.Statement, error) {
 	if !p.IsKeyword("BEGIN") {
-		return nil, p.Unexpected("procedure")
+		return nil, p.Unexpected("procedure", keywordExpected("BEGIN"))
 	}
 	p.Next()
 
@@ -94,7 +94,7 @@ func (p *Parser) ParseProcedureParameter() (ast.Statement, error) {
 		p.Next()
 	}
 	if !p.Is(token.Ident) {
-		return nil, p.Unexpected("procedure")
+		return nil, p.Unexpected("procedure", identExpected)
 	}
 	param.Name = p.GetCurrLiteral()
 	p.Next()

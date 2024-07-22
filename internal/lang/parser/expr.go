@@ -158,7 +158,7 @@ func (p *Parser) parseBetween(ident ast.Statement) (ast.Statement, error) {
 		return nil, err
 	}
 	if !p.IsKeyword("AND") {
-		return nil, p.Unexpected("between", "expected AND keyword between values of operator")
+		return nil, p.Unexpected("between", keywordExpected("AND"))
 	}
 	p.Next()
 	right, err := p.parseExpression(powRel)
@@ -356,7 +356,7 @@ func (p *Parser) parseCallExpr(left ast.Statement) (ast.Statement, error) {
 		}
 		p.Next()
 		if !p.IsKeyword("WHERE") {
-			return nil, p.Unexpected("call", "WHERE keyword expected in FILTER")
+			return nil, p.Unexpected("call", keywordExpected("WHERE"))
 		}
 		p.Next()
 		filter, err := p.StartExpression()

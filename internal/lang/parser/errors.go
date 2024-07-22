@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/midbel/sweet/internal/token"
 )
@@ -19,6 +20,10 @@ const (
 	macroOptionUnknown = "macro option unknown"
 	syntaxError        = "syntax error"
 )
+
+func keywordExpected(kw ...string) string {
+	return fmt.Sprintf("expected %s keyword(s)", strings.Join(kw, "|"))
+}
 
 type ParseError struct {
 	token.Token

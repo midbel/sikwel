@@ -15,16 +15,16 @@ func (p *Parser) ParseGrant() (ast.Statement, error) {
 		return nil, err
 	}
 	if !p.IsKeyword("ON") {
-		return nil, p.Unexpected("grant")
+		return nil, p.Unexpected("grant", keywordExpected("ON"))
 	}
 	p.Next()
 	if !p.Is(token.Ident) {
-		return nil, p.Unexpected("grant")
+		return nil, p.Unexpected("grant", identExpected)
 	}
 	stmt.Object = p.GetCurrLiteral()
 	p.Next()
 	if !p.IsKeyword("TO") {
-		return nil, p.Unexpected("grant")
+		return nil, p.Unexpected("grant", keywordExpected("TO"))
 	}
 	p.Next()
 	if stmt.Users, err = p.parseGranted(); err != nil {
@@ -43,16 +43,16 @@ func (p *Parser) ParseRevoke() (ast.Statement, error) {
 		return nil, err
 	}
 	if !p.IsKeyword("ON") {
-		return nil, p.Unexpected("revoke")
+		return nil, p.Unexpected("revoke", keywordExpected("ON"))
 	}
 	p.Next()
 	if !p.Is(token.Ident) {
-		return nil, p.Unexpected("revoke")
+		return nil, p.Unexpected("revoke", identExpected)
 	}
 	stmt.Object = p.GetCurrLiteral()
 	p.Next()
 	if !p.IsKeyword("FROM") {
-		return nil, p.Unexpected("revoke")
+		return nil, p.Unexpected("revoke", keywordExpected("FROM"))
 	}
 	p.Next()
 	if stmt.Users, err = p.parseGranted(); err != nil {
@@ -65,7 +65,7 @@ func (p *Parser) parseGranted() ([]string, error) {
 	var list []string
 	for !p.QueryEnds() && !p.Done() {
 		if !p.Is(token.Ident) {
-			return nil, p.Unexpected("role")
+			return nil, p.Unexpected("role", identExpected)
 		}
 		list = append(list, p.GetCurrLiteral())
 		p.Next()
@@ -73,11 +73,11 @@ func (p *Parser) parseGranted() ([]string, error) {
 		case p.Is(token.Comma):
 			p.Next()
 			if p.QueryEnds() {
-				return nil, p.Unexpected("role")
+				return nil, p.Unexpected("role", "unexpected comma before end of statement")
 			}
 		case p.QueryEnds():
 		default:
-			return nil, p.Unexpected("role")
+			return nil, p.Unexpected("role", defaultReason)
 		}
 	}
 	return list, nil
@@ -91,7 +91,7 @@ func (p *Parser) parsePrivileges() ([]string, error) {
 	var list []string
 	for !p.QueryEnds() && !p.Done() && !p.IsKeyword("ON") {
 		if !p.Is(token.Keyword) {
-			return nil, p.Unexpected("privileges")
+			return nil, p.Unexpected("privileges", "keyword expected")
 		}
 		list = append(list, p.GetCurrLiteral())
 		p.Next()
@@ -99,11 +99,11 @@ func (p *Parser) parsePrivileges() ([]string, error) {
 		case p.Is(token.Comma):
 			p.Next()
 			if p.IsKeyword("ON") {
-				return nil, p.Unexpected("privileges")
+				return nil, p.Unexpected("privileges", keywordExpected("ON"))
 			}
 		case p.IsKeyword("ON"):
 		default:
-			return nil, p.Unexpected("privileges")
+			return nil, p.Unexpected("privileges", defaultReason)
 		}
 	}
 	return list, nil

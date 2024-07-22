@@ -97,7 +97,7 @@ func (p *Parser) ParseAlterTable() (ast.Statement, error) {
 		src := p.GetCurrLiteral()
 		p.Next()
 		if !p.IsKeyword("TO") {
-			return nil, p.Unexpected("alter table")
+			return nil, p.Unexpected("alter table", keywordExpected("TO"))
 		}
 		p.Next()
 		dst := p.GetCurrLiteral()
@@ -111,7 +111,7 @@ func (p *Parser) ParseAlterTable() (ast.Statement, error) {
 		src := p.GetCurrLiteral()
 		p.Next()
 		if !p.IsKeyword("TO") {
-			return nil, p.Unexpected("alter table")
+			return nil, p.Unexpected("alter table", keywordExpected("TO"))
 		}
 		p.Next()
 		dst := p.GetCurrLiteral()
@@ -191,7 +191,7 @@ func (p *Parser) ParseAlterTable() (ast.Statement, error) {
 		}
 		stmt.Action = action
 	default:
-		return nil, p.Unexpected("alter table")
+		return nil, p.Unexpected("alter table", defaultReason)
 	}
 	return stmt, nil
 }
@@ -259,7 +259,7 @@ func (p *Parser) ParseCreateView() (ast.Statement, error) {
 		}
 	}
 	if !p.IsKeyword("AS") {
-		return nil, p.Unexpected("create view")
+		return nil, p.Unexpected("create view", keywordExpected("AS"))
 	}
 	p.Next()
 
@@ -308,7 +308,7 @@ func (p *Parser) parseConstraintWithKeyword(keyword string, required, column boo
 		cst.Name = p.GetCurrLiteral()
 		p.Next()
 	} else if required && !p.IsKeyword(keyword) {
-		return nil, p.Unexpected("constraint")
+		return nil, p.Unexpected("constraint", defaultReason)
 	}
 	switch {
 	case p.IsKeyword("PRIMARY KEY"):
@@ -319,20 +319,20 @@ func (p *Parser) parseConstraintWithKeyword(keyword string, required, column boo
 		cst.Statement, err = p.ParseUniqueConstraint(column)
 	case p.IsKeyword("NOT"):
 		if !column {
-			return nil, p.Unexpected("constraint")
+			return nil, p.Unexpected("constraint", defaultReason)
 		}
 		cst.Statement, err = p.ParseNotNullConstraint()
 	case p.IsKeyword("CHECK"):
 		cst.Statement, err = p.ParseCheckConstraint()
 	case p.IsKeyword("DEFAULT"):
 		if !column {
-			return nil, p.Unexpected("constraint")
+			return nil, p.Unexpected("constraint", defaultReason)
 		}
 		cst.Statement, err = p.ParseDefaultConstraint()
 	case p.IsKeyword("GENERATED ALWAYS") || p.IsKeyword("AS"):
 		cst.Statement, err = p.ParseGeneratedAlwaysConstraint()
 	default:
-		return nil, p.Unexpected("constraint")
+		return nil, p.Unexpected("constraint", defaultReason)
 	}
 	return cst, err
 }
@@ -348,7 +348,7 @@ func (p *Parser) ParsePrimaryKeyConstraint(short bool) (ast.Statement, error) {
 	}
 	for !p.Done() && !p.Is(token.Rparen) {
 		if !p.Is(token.Ident) {
-			return nil, p.Unexpected("primary key")
+			return nil, p.Unexpected("primary key", identExpected)
 		}
 		cst.Columns = append(cst.Columns, p.GetCurrLiteral())
 		p.Next()
@@ -368,7 +368,7 @@ func (p *Parser) ParseForeignKeyConstraint(short bool) (ast.Statement, error) {
 		}
 		for !p.Done() && !p.Is(token.Rparen) {
 			if !p.Is(token.Ident) {
-				return nil, p.Unexpected("foreign key")
+				return nil, p.Unexpected("foreign key", identExpected)
 			}
 			cst.Locals = append(cst.Locals, p.GetCurrLiteral())
 			p.Next()
@@ -381,11 +381,11 @@ func (p *Parser) ParseForeignKeyConstraint(short bool) (ast.Statement, error) {
 		}
 	}
 	if !p.IsKeyword("REFERENCES") {
-		return nil, p.Unexpected("foreign key")
+		return nil, p.Unexpected("foreign key", keywordExpected("REFERENCES"))
 	}
 	p.Next()
 	if !p.Is(token.Ident) {
-		return nil, p.Unexpected("foreign key")
+		return nil, p.Unexpected("foreign key", identExpected)
 	}
 	cst.Table = p.GetCurrLiteral()
 	p.Next()
@@ -394,7 +394,7 @@ func (p *Parser) ParseForeignKeyConstraint(short bool) (ast.Statement, error) {
 	}
 	for !p.Done() && !p.Is(token.Rparen) {
 		if !p.Is(token.Ident) {
-			return nil, p.Unexpected("foreign key")
+			return nil, p.Unexpected("foreign key", identExpected)
 		}
 		cst.Remotes = append(cst.Remotes, p.GetCurrLiteral())
 		p.Next()
@@ -416,7 +416,7 @@ func (p *Parser) ParseUniqueConstraint(short bool) (ast.Statement, error) {
 	}
 	for !p.Done() && !p.Is(token.Rparen) {
 		if !p.Is(token.Ident) {
-			return nil, p.Unexpected("unique")
+			return nil, p.Unexpected("unique", identExpected)
 		}
 		cst.Columns = append(cst.Columns, p.GetCurrLiteral())
 		p.Next()
@@ -431,7 +431,7 @@ func (p *Parser) ParseNotNullConstraint() (ast.Statement, error) {
 	p.Next()
 	var cst ast.NotNullConstraint
 	if !p.IsKeyword("NULL") {
-		return nil, p.Unexpected("not null")
+		return nil, p.Unexpected("not null", keywordExpected("NULL"))
 	}
 	p.Next()
 	return cst, nil
@@ -461,7 +461,7 @@ func (p *Parser) ParseGeneratedAlwaysConstraint() (ast.Statement, error) {
 	if p.IsKeyword("GENERATED ALWAYS") {
 		p.Next()
 		if !p.IsKeyword("AS") {
-			return nil, p.Unexpected("generated always")
+			return nil, p.Unexpected("generated always", keywordExpected("AS"))
 		}
 	}
 	p.Next()
@@ -474,7 +474,7 @@ func (p *Parser) ParseGeneratedAlwaysConstraint() (ast.Statement, error) {
 		return nil, err
 	}
 	if !p.IsKeyword("STORED") {
-		return nil, p.Unexpected("generated always")
+		return nil, p.Unexpected("generated always", keywordExpected("STORED"))
 	}
 	p.Next()
 	return cst, nil

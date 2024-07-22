@@ -15,7 +15,7 @@ func (p *Parser) ParseMerge() (ast.Statement, error) {
 		return nil, err
 	}
 	if !p.IsKeyword("USING") {
-		return nil, p.Unexpected("merge")
+		return nil, p.Unexpected("merge", keywordExpected("USING"))
 	}
 	p.Next()
 	switch {
@@ -23,13 +23,13 @@ func (p *Parser) ParseMerge() (ast.Statement, error) {
 	case p.Is(token.Ident):
 		stmt.Source, err = p.ParseIdent()
 	default:
-		err = p.Unexpected("merge")
+		err = p.Unexpected("merge", defaultReason)
 	}
 	if err != nil {
 		return nil, err
 	}
 	if !p.IsKeyword("ON") {
-		return nil, p.Unexpected("merge")
+		return nil, p.Unexpected("merge", keywordExpected("ON"))
 	}
 	p.Next()
 	if stmt.Join, err = p.StartExpression(); err != nil {
@@ -47,7 +47,7 @@ func (p *Parser) ParseMerge() (ast.Statement, error) {
 		case p.IsKeyword("WHEN NOT MATCHED"):
 			parseAction = p.parseMergeNotMatched
 		default:
-			return nil, p.Unexpected("merge")
+			return nil, p.Unexpected("merge", defaultReason)
 		}
 		p.Next()
 		if p.IsKeyword("AND") {
@@ -57,7 +57,7 @@ func (p *Parser) ParseMerge() (ast.Statement, error) {
 			}
 		}
 		if !p.IsKeyword("THEN") {
-			return nil, p.Unexpected("merge")
+			return nil, p.Unexpected("merge", keywordExpected("THEN"))
 		}
 		p.Next()
 		act, err := parseAction(cdt)
@@ -84,7 +84,7 @@ func (p *Parser) parseMergeMatched(cdt ast.Statement) (ast.Statement, error) {
 	case p.IsKeyword("UPDATE"):
 		p.Next()
 		if !p.IsKeyword("SET") {
-			return nil, p.Unexpected("matched")
+			return nil, p.Unexpected("matched", keywordExpected("SET"))
 		}
 		p.Next()
 		var upd ast.UpdateStatement
@@ -100,14 +100,14 @@ func (p *Parser) parseMergeMatched(cdt ast.Statement) (ast.Statement, error) {
 			Statement: upd,
 		}
 	default:
-		err = p.Unexpected("matched")
+		err = p.Unexpected("matched", defaultReason)
 	}
 	return stmt, err
 }
 
 func (p *Parser) parseMergeNotMatched(cdt ast.Statement) (ast.Statement, error) {
 	if !p.IsKeyword("INSERT") {
-		return nil, p.Unexpected("match")
+		return nil, p.Unexpected("match", keywordExpected("INSERT"))
 	}
 	p.Next()
 	var (
@@ -121,7 +121,7 @@ func (p *Parser) parseMergeNotMatched(cdt ast.Statement) (ast.Statement, error) 
 		}
 	}
 	if !p.IsKeyword("VALUES") {
-		return nil, p.Unexpected("not matched")
+		return nil, p.Unexpected("not matched", keywordExpected("VALUES"))
 	}
 	ins.Values, err = p.ParseValues()
 	if err != nil {
@@ -141,7 +141,7 @@ func (p *Parser) ParseDelete() (ast.Statement, error) {
 		err  error
 	)
 	if !p.Is(token.Ident) {
-		return nil, p.Unexpected("delete")
+		return nil, p.Unexpected("delete", identExpected)
 	}
 	stmt.Table = p.GetCurrLiteral()
 	p.Next()
@@ -164,7 +164,7 @@ func (p *Parser) ParseTruncate() (ast.Statement, error) {
 	} else {
 		for !p.Is(token.EOL) && !p.Done() && !p.Is(token.Keyword) {
 			if !p.Is(token.Ident) {
-				return nil, p.Unexpected("truncate")
+				return nil, p.Unexpected("truncate", identExpected)
 			}
 			stmt.Tables = append(stmt.Tables, p.GetCurrLiteral())
 			p.Next()
@@ -173,7 +173,7 @@ func (p *Parser) ParseTruncate() (ast.Statement, error) {
 			case p.Is(token.Comma):
 				p.Next()
 			default:
-				return nil, p.Unexpected("truncate")
+				return nil, p.Unexpected("truncate", defaultReason)
 			}
 		}
 	}
@@ -204,7 +204,7 @@ func (p *Parser) ParseReturning() (ast.Statement, error) {
 		var stmt ast.Name
 		p.Next()
 		if !p.QueryEnds() {
-			return nil, p.Unexpected("returning")
+			return nil, p.Unexpected("returning", missingEol)
 		}
 		return stmt, nil
 	}
@@ -234,7 +234,7 @@ func (p *Parser) ParseUpdate() (ast.Statement, error) {
 	}
 
 	if !p.IsKeyword("SET") {
-		return nil, p.Unexpected("update")
+		return nil, p.Unexpected("update", keywordExpected("SET"))
 	}
 	p.Next()
 
@@ -303,10 +303,10 @@ func (p *Parser) parseAssignment() (ast.Statement, error) {
 		p.Next()
 		ass.Field = list
 	default:
-		return nil, p.Unexpected("update")
+		return nil, p.Unexpected("update", defaultReason)
 	}
 	if !p.Is(token.Eq) {
-		return nil, p.Unexpected("update")
+		return nil, p.Unexpected("update", "equal operator expected")
 	}
 	p.Next()
 	if p.Is(token.Lparen) {
@@ -323,13 +323,13 @@ func (p *Parser) parseAssignment() (ast.Statement, error) {
 			list.Values = append(list.Values, expr)
 		}
 		if !p.Is(token.Rparen) {
-			return nil, p.Unexpected("update")
+			return nil, p.Unexpected("update", missingCloseParen)
 		}
 		p.Next()
 	} else {
 		ass.Value, err = p.StartExpression()
 		if err != nil {
-			return nil, p.Unexpected("update")
+			return nil, err
 		}
 	}
 	return ass, nil
@@ -357,7 +357,7 @@ func (p *Parser) ParseInsert() (ast.Statement, error) {
 	case p.IsKeyword("VALUES"):
 		stmt.Values, err = p.ParseValues()
 	default:
-		return nil, p.Unexpected("insert")
+		return nil, p.Unexpected("insert", defaultReason)
 	}
 	if err != nil {
 		return nil, err
@@ -387,7 +387,7 @@ func (p *Parser) ParseUpsert() (ast.Statement, error) {
 		}
 	}
 	if !p.IsKeyword("DO") {
-		return nil, p.Unexpected("upsert")
+		return nil, p.Unexpected("upsert", keywordExpected("DO"))
 	}
 	p.Next()
 	if p.IsKeyword("NOTHING") {
@@ -395,11 +395,11 @@ func (p *Parser) ParseUpsert() (ast.Statement, error) {
 		return stmt, nil
 	}
 	if !p.IsKeyword("UPDATE") {
-		return nil, p.Unexpected("upsert")
+		return nil, p.Unexpected("upsert", keywordExpected("UPDATE"))
 	}
 	p.Next()
 	if !p.IsKeyword("SET") {
-		return nil, p.Unexpected("upsert")
+		return nil, p.Unexpected("upsert", keywordExpected("SET"))
 	}
 	p.Next()
 	if stmt.List, err = p.ParseUpsertList(); err != nil {

@@ -115,7 +115,7 @@ func (p *Parser) ParseCase() (ast.Statement, error) {
 			return nil, err
 		}
 		if !p.IsKeyword("THEN") {
-			return nil, p.Unexpected("case", "keyword THEN expected after condition")
+			return nil, p.Unexpected("case", keywordExpected("THEN"))
 		}
 		p.Next()
 		if p.Is(token.Keyword) {
@@ -140,7 +140,7 @@ func (p *Parser) ParseCase() (ast.Statement, error) {
 		}
 	}
 	if !p.IsKeyword("END") {
-		return nil, p.Unexpected("case", "keyword END expected at end of CASE")
+		return nil, p.Unexpected("case", keywordExpected("END"))
 	}
 	p.Next()
 	return p.ParseAlias(stmt)
@@ -161,7 +161,7 @@ func (p *Parser) ParseCast() (ast.Statement, error) {
 		return nil, err
 	}
 	if !p.IsKeyword("AS") {
-		return nil, p.Unexpected("cast", "keyword AS expected between identifier and type")
+		return nil, p.Unexpected("cast", keywordExpected("AS"))
 	}
 	p.Next()
 	if cast.Type, err = p.ParseType(); err != nil {

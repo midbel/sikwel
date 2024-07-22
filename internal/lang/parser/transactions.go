@@ -34,7 +34,7 @@ func (p *Parser) parseSetTransaction() (ast.Statement, error) {
 		case p.IsKeyword("SERIALIZABLE"):
 			stmt.Level = ast.LevelSerializable
 		default:
-			return nil, p.Unexpected("transaction")
+			return nil, p.Unexpected("transaction", defaultReason)
 		}
 		p.Next()
 	}
@@ -47,7 +47,7 @@ func (p *Parser) parseSetTransaction() (ast.Statement, error) {
 		p.Next()
 	case p.Is(token.EOL):
 	default:
-		return nil, p.Unexpected("transaction")
+		return nil, p.Unexpected("transaction", defaultReason)
 	}
 	return stmt, err
 }
@@ -68,10 +68,10 @@ func (p *Parser) parseStartTransaction() (ast.Statement, error) {
 		p.Next()
 	case p.Is(token.EOL):
 	default:
-		return nil, p.Unexpected("transaction")
+		return nil, p.Unexpected("transaction", defaultReason)
 	}
 	if !p.Is(token.EOL) {
-		return nil, p.Unexpected("transaction")
+		return nil, p.Unexpected("transaction", missingEol)
 	}
 	p.Next()
 
@@ -85,7 +85,7 @@ func (p *Parser) parseStartTransaction() (ast.Statement, error) {
 	case p.IsKeyword("ROLLBACK"):
 		stmt.End = ast.Rollback{}
 	default:
-		return nil, p.Unexpected("transaction")
+		return nil, p.Unexpected("transaction", defaultReason)
 	}
 	p.Next()
 	return stmt, err
@@ -111,7 +111,7 @@ func (p *Parser) parseReleaseSavepoint() (ast.Statement, error) {
 		err  error
 	)
 	if !p.Is(token.Ident) {
-		return nil, p.Unexpected("release savepoint")
+		return nil, p.Unexpected("release savepoint", identExpected)
 	}
 	stmt.Name = p.GetCurrLiteral()
 	p.Next()
@@ -125,7 +125,7 @@ func (p *Parser) parseRollbackSavepoint() (ast.Statement, error) {
 		err  error
 	)
 	if !p.Is(token.Ident) {
-		return nil, p.Unexpected("rollback savepoint")
+		return nil, p.Unexpected("rollback savepoint", identExpected)
 	}
 	stmt.Name = p.GetCurrLiteral()
 	p.Next()

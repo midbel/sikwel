@@ -29,7 +29,7 @@ func (p *Parser) ParseValues() (ast.Statement, error) {
 	}
 	for !p.Done() && !p.Is(token.EOL) {
 		if !p.Is(token.Lparen) {
-			return nil, p.Unexpected("values")
+			return nil, p.Unexpected("values", missingOpenParen)
 		}
 		p.Next()
 		var list ast.List
@@ -43,15 +43,15 @@ func (p *Parser) ParseValues() (ast.Statement, error) {
 			case p.Is(token.Comma):
 				p.Next()
 				if p.Is(token.Rparen) {
-					return nil, p.Unexpected("values")
+					return nil, p.Unexpected("values", missingCloseParen)
 				}
 			case p.Is(token.Rparen):
 			default:
-				return nil, p.Unexpected("values")
+				return nil, p.Unexpected("values", defaultReason)
 			}
 		}
 		if !p.Is(token.Rparen) {
-			return nil, p.Unexpected("values")
+			return nil, p.Unexpected("values", missingCloseParen)
 		}
 		p.Next()
 		stmt.List = append(stmt.List, list)
@@ -183,7 +183,7 @@ func (p *Parser) ParseColumns() ([]ast.Statement, error) {
 		list = append(list, stmt)
 	}
 	if !p.IsKeyword("FROM") {
-		return nil, p.Unexpected("select", "FROM keyword expected after select clause")
+		return nil, p.Unexpected("select", keywordExpected("FROM"))
 	}
 	if len(list) == 0 {
 		return nil, p.Unexpected("select", "empty select clause")
@@ -193,7 +193,7 @@ func (p *Parser) ParseColumns() ([]ast.Statement, error) {
 
 func (p *Parser) ParseFrom() ([]ast.Statement, error) {
 	if !p.IsKeyword("FROM") {
-		return nil, p.Unexpected("FROM")
+		return nil, p.Unexpected("FROM", keywordExpected("FROM"))
 	}
 	p.Next()
 
@@ -218,13 +218,13 @@ func (p *Parser) ParseFrom() ([]ast.Statement, error) {
 		case p.Is(token.Comma):
 			p.Next()
 			if p.QueryEnds() || p.Is(token.Keyword) {
-				return nil, p.Unexpected("FROM")
+				return nil, p.Unexpected("FROM", "unexpected keyword after comma")
 			}
 		case p.Is(token.Comment):
 		case p.Is(token.Keyword):
 		case p.Is(token.EOL):
 		default:
-			return nil, p.Unexpected("FROM")
+			return nil, p.Unexpected("FROM", defaultReason)
 		}
 		return stmt, err
 	}
@@ -255,7 +255,7 @@ func (p *Parser) ParseFrom() ([]ast.Statement, error) {
 		case p.IsKeyword("USING"):
 			stmt.Where, err = p.ParseJoinUsing()
 		default:
-			return nil, p.Unexpected("join")
+			return nil, p.Unexpected("join", defaultReason)
 		}
 		return stmt, nil
 	}
@@ -281,7 +281,7 @@ func (p *Parser) ParseJoinOn() (ast.Statement, error) {
 func (p *Parser) ParseJoinUsing() (ast.Statement, error) {
 	p.Next()
 	if !p.Is(token.Lparen) {
-		return nil, p.Unexpected("using")
+		return nil, p.Unexpected("using", missingOpenParen)
 	}
 	p.Next()
 
@@ -297,7 +297,7 @@ func (p *Parser) ParseJoinUsing() (ast.Statement, error) {
 		}
 	}
 	if !p.Is(token.Rparen) {
-		return nil, p.Unexpected("using")
+		return nil, p.Unexpected("using", missingCloseParen)
 	}
 	p.Next()
 	return list, nil
@@ -331,13 +331,13 @@ func (p *Parser) ParseGroupBy() ([]ast.Statement, error) {
 		case p.Is(token.Comma):
 			p.Next()
 			if p.Is(token.Keyword) || p.Is(token.EOL) {
-				return nil, p.Unexpected("group by")
+				return nil, p.Unexpected("group by", keywordAfterComma)
 			}
 		case p.Is(token.Keyword):
 		case p.Is(token.Comment):
 		case p.Is(token.EOL):
 		default:
-			return nil, p.Unexpected("group by")
+			return nil, p.Unexpected("group by", defaultReason)
 		}
 		return stmt, err
 	}
@@ -389,7 +389,7 @@ func (p *Parser) ParseWindows() ([]ast.Statement, error) {
 			return nil, err
 		}
 		if !p.IsKeyword("AS") {
-			return nil, p.Unexpected("window")
+			return nil, p.Unexpected("window", keywordExpected("AS"))
 		}
 		p.Next()
 		if win.Window, err = p.ParseWindow(); err != nil {
@@ -401,7 +401,7 @@ func (p *Parser) ParseWindows() ([]ast.Statement, error) {
 		}
 		p.Next()
 		if p.Is(token.Keyword) || p.QueryEnds() {
-			return nil, p.Unexpected("window")
+			return nil, p.Unexpected("window", "unexpected keyword/end of statement")
 		}
 	}
 	return list, err
@@ -413,7 +413,7 @@ func (p *Parser) ParseWindow() (ast.Statement, error) {
 		err  error
 	)
 	if !p.Is(token.Lparen) {
-		return nil, p.Unexpected("window")
+		return nil, p.Unexpected("window", missingOpenParen)
 	}
 	p.Next()
 	switch {
@@ -431,16 +431,16 @@ func (p *Parser) ParseWindow() (ast.Statement, error) {
 			case p.Is(token.Comma):
 				p.Next()
 				if p.IsKeyword("ORDER BY") || p.Is(token.Rparen) {
-					return nil, p.Unexpected("window")
+					return nil, p.Unexpected("window", "unexpected keyword/closing parenthesis")
 				}
 			case p.IsKeyword("ORDER BY"):
 			case p.Is(token.Rparen):
 			default:
-				return nil, p.Unexpected("window")
+				return nil, p.Unexpected("window", defaultReason)
 			}
 		}
 	default:
-		return nil, p.Unexpected("window")
+		return nil, p.Unexpected("window", defaultReason)
 	}
 	if err != nil {
 		return nil, err
@@ -449,7 +449,7 @@ func (p *Parser) ParseWindow() (ast.Statement, error) {
 		return nil, err
 	}
 	if !p.Is(token.Rparen) {
-		return nil, p.Unexpected("window")
+		return nil, p.Unexpected("window", missingCloseParen)
 	}
 	p.Next()
 	return stmt, err
@@ -483,13 +483,13 @@ func (p *Parser) parseFrameSpec() (ast.Statement, error) {
 		stmt.Left.Row = ast.RowPreceding
 		stmt.Left.Expr = expr
 		if !p.IsKeyword("PRECEDING") && !p.IsKeyword("FOLLOWING") {
-			return nil, p.Unexpected("frame spec")
+			return nil, p.Unexpected("frame spec", keywordExpected("PRECEDING", "FOLLOWING"))
 		}
 	}
 	p.Next()
 	if stmt.Right.Row == 0 {
 		if !p.IsKeyword("AND") {
-			return nil, p.Unexpected("frame spec")
+			return nil, p.Unexpected("frame spec", keywordExpected("AND"))
 		}
 		p.Next()
 		switch {
@@ -505,7 +505,7 @@ func (p *Parser) parseFrameSpec() (ast.Statement, error) {
 			stmt.Right.Row = ast.RowFollowing
 			stmt.Right.Expr = expr
 			if !p.IsKeyword("PRECEDING") && !p.IsKeyword("FOLLOWING") {
-				return nil, p.Unexpected("frame spec")
+				return nil, p.Unexpected("frame spec", keywordExpected("PRECEDING", "FOLLOWING"))
 			}
 		}
 		p.Next()
@@ -551,7 +551,7 @@ func (p *Parser) ParseOrderBy() ([]ast.Statement, error) {
 		if p.IsKeyword("NULLS") {
 			p.Next()
 			if !p.IsKeyword("FIRST") && !p.IsKeyword("LAST") {
-				return nil, p.Unexpected("order by")
+				return nil, p.Unexpected("order by", keywordExpected("FIRST", "LAST"))
 			}
 			order.Nulls = p.GetCurrLiteral()
 			p.Next()
@@ -560,14 +560,14 @@ func (p *Parser) ParseOrderBy() ([]ast.Statement, error) {
 		case p.Is(token.Comma):
 			p.Next()
 			if p.Is(token.Keyword) || p.Is(token.EOL) || p.Is(token.Rparen) {
-				return nil, p.Unexpected("group by")
+				return nil, p.Unexpected("group by", defaultReason)
 			}
 		case p.Is(token.Keyword):
 		case p.Is(token.EOL):
 		case p.Is(token.Comment):
 		case p.Is(token.Rparen):
 		default:
-			return nil, p.Unexpected("group by")
+			return nil, p.Unexpected("group by", defaultReason)
 		}
 		return order, nil
 	}
@@ -598,14 +598,14 @@ func (p *Parser) ParseLimit() (ast.Statement, error) {
 		)
 		stmt.Count, err = strconv.Atoi(p.GetCurrLiteral())
 		if err != nil {
-			return nil, p.Unexpected("LIMIT")
+			return nil, p.Unexpected("LIMIT", "expected number in LIMIT clause")
 		}
 		p.Next()
 		if p.Is(token.Comma) || p.IsKeyword("OFFSET") {
 			p.Next()
 			stmt.Offset, err = strconv.Atoi(p.GetCurrLiteral())
 			if err != nil {
-				return nil, p.Unexpected("OFFSET")
+				return nil, p.Unexpected("OFFSET", "expected number in OFFSET clause")
 			}
 			p.Next()
 		}
@@ -614,7 +614,7 @@ func (p *Parser) ParseLimit() (ast.Statement, error) {
 		case p.Is(token.Comment):
 		case p.Is(token.EOL):
 		default:
-			return nil, p.Unexpected("LIMIT")
+			return nil, p.Unexpected("LIMIT", defaultReason)
 		}
 		return stmt, nil
 	}
@@ -640,16 +640,16 @@ func (p *Parser) ParseFetch() (ast.Statement, error) {
 			p.Next()
 			stmt.Offset, err = strconv.Atoi(p.GetCurrLiteral())
 			if err != nil {
-				return nil, p.Unexpected("fetch")
+				return nil, p.Unexpected("fetch", "expected number in OFFSET clause")
 			}
 			p.Next()
 			if !p.IsKeyword("ROW") && !p.IsKeyword("ROWS") {
-				return nil, p.Unexpected("fetch")
+				return nil, p.Unexpected("fetch", keywordExpected("ROW", "ROWS"))
 			}
 			p.Next()
 		}
 		if !p.IsKeyword("FETCH") {
-			return nil, p.Unexpected("fetch")
+			return nil, p.Unexpected("fetch", keywordExpected("FETCH"))
 		}
 		p.Next()
 		if p.IsKeyword("NEXT") {
@@ -657,20 +657,20 @@ func (p *Parser) ParseFetch() (ast.Statement, error) {
 		} else if p.IsKeyword("FIRST") {
 			stmt.Next = false
 		} else {
-			return nil, p.Unexpected("fetch")
+			return nil, p.Unexpected("fetch", defaultReason)
 		}
 		p.Next()
 		stmt.Count, err = strconv.Atoi(p.GetCurrLiteral())
 		if err != nil {
-			return nil, p.Unexpected("fetch")
+			return nil, p.Unexpected("fetch", "expected number in OFFSET clausse")
 		}
 		p.Next()
 		if !p.IsKeyword("ROW") && !p.IsKeyword("ROWS") {
-			return nil, p.Unexpected("fetch")
+			return nil, p.Unexpected("fetch", keywordExpected("ROW", "ROWS"))
 		}
 		p.Next()
 		if !p.IsKeyword("ONLY") {
-			return nil, p.Unexpected("fetch")
+			return nil, p.Unexpected("fetch", keywordExpected("ONLY"))
 		}
 		p.Next()
 		return stmt, err

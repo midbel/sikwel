@@ -61,7 +61,7 @@ func (p *Parser) parseIf() (ast.Statement, error) {
 		return nil, err
 	}
 	if !p.IsKeyword("THEN") {
-		return nil, p.Unexpected("if", "THEN keyword expected after IF condition")
+		return nil, p.Unexpected("if", keywordExpected("THEN"))
 	}
 	p.Next()
 	stmt.Csq, err = p.ParseBody(p.KwCheck("ELSE", "ELSIF", "END IF"))
@@ -83,7 +83,7 @@ func (p *Parser) parseIf() (ast.Statement, error) {
 		return nil, err
 	}
 	if !p.IsKeyword("END IF") {
-		return nil, p.Unexpected("if", "END IF expected at end of IF statement")
+		return nil, p.Unexpected("if", keywordExpected("END IF"))
 	}
 	p.Next()
 	return stmt, nil
@@ -101,7 +101,7 @@ func (p *Parser) parseWhile() (ast.Statement, error) {
 		return nil, err
 	}
 	if !p.IsKeyword("DO") {
-		return nil, p.Unexpected("while", "DO keyword expected after WHILE condition")
+		return nil, p.Unexpected("while", keywordExpected("DO"))
 	}
 	p.Next()
 	stmt.Body, err = p.ParseBody(p.KwCheck("END WHILE"))
@@ -109,7 +109,7 @@ func (p *Parser) parseWhile() (ast.Statement, error) {
 		return nil, err
 	}
 	if !p.IsKeyword("END WHILE") {
-		return nil, p.Unexpected("while", "END WHILE expected at end of WHILE statement")
+		return nil, p.Unexpected("while", keywordExpected("END WHILE"))
 	}
 	p.Next()
 	return stmt, nil
