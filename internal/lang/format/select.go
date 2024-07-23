@@ -74,11 +74,18 @@ func (w *Writer) FormatIntersect(stmt ast.IntersectStatement) error {
 func (w *Writer) FormatValues(stmt ast.ValuesStatement) error {
 	kw, _ := stmt.Keyword()
 	w.WriteKeyword(kw)
-	w.WriteBlank()
+	if len(stmt.List) > 1 {
+		w.WriteNL()
+	} else {
+		w.WriteBlank()
+	}
 	for i := range stmt.List {
 		if i > 0 {
 			w.WriteString(",")
-			w.WriteBlank()
+			w.WriteNL()
+		}
+		if len(stmt.List) > 1 {
+			w.WritePrefix()
 		}
 		if err := w.FormatExpr(stmt.List[i], false); err != nil {
 			return err

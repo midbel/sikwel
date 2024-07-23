@@ -44,8 +44,9 @@ func (ks Set) Is(str []string) (string, bool, bool) {
 		return s, true, true
 	}
 	var (
-		got  = strings.ToLower(strings.Join(str, " "))
 		want string
+		got  = strings.ToLower(strings.Join(str, " "))
+		tmp  = strings.Split(got, " ")
 	)
 	for _, kw := range ks[i:] {
 		if kw[0] != s {
@@ -55,7 +56,7 @@ func (ks Set) Is(str []string) (string, bool, bool) {
 		switch {
 		case want == got:
 			var final bool
-			if i+1 == n || !slices.Equal(str, ks[i+1]) {
+			if i+1 == n || (len(ks[i+1]) >= len(tmp) && !slices.Equal(tmp, ks[i+1][:len(str)])) {
 				final = true
 			}
 			return got, final, true

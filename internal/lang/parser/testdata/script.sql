@@ -26,4 +26,4 @@ ELSE
 	SET MESSAGE = 'equal';
 END IF;
 
-@include 'transactions.sql';
+-- @include 'transactions.sql';

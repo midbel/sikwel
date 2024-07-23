@@ -78,6 +78,23 @@ func (r RewriteRule) KeepAsIs() bool {
 	return r == 0
 }
 
+type CompactMode uint8
+
+const (
+	CompactDefault CompactMode = 1 << iota
+	CompactInsertColumns
+	CompactInsertValues
+	CompactAll
+)
+
+func (c CompactMode) Default() bool {
+	return c == CompactDefault
+}
+
+func (c CompactMode) All() bool {
+	return c&CompactAll != 0
+}
+
 type UpperMode uint8
 
 const (

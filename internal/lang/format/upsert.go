@@ -194,6 +194,9 @@ func (w *Writer) FormatUpdate(stmt ast.UpdateStatement) error {
 }
 
 func (w *Writer) FormatInsert(stmt ast.InsertStatement) error {
+	w.Enter()
+	defer w.Leave()
+
 	kw, _ := stmt.Keyword()
 	w.WriteKeyword(kw)
 	w.WriteBlank()
@@ -204,19 +207,28 @@ func (w *Writer) FormatInsert(stmt ast.InsertStatement) error {
 	if len(stmt.Columns) > 0 {
 		w.WriteBlank()
 		w.WriteString("(")
+		w.WriteNL()
+		w.Enter()
 		for i, c := range stmt.Columns {
 			if i > 0 {
 				w.WriteString(",")
-				w.WriteBlank()
+				w.WriteNL()
 			}
+			w.WritePrefix()
 			w.WriteString(c)
 		}
+		w.Leave()
+		w.WriteNL()
 		w.WriteString(")")
+		w.WriteNL()
+	} else {
+		w.WriteBlank()
 	}
-	w.WriteBlank()
+	w.Enter()
 	if err := w.FormatInsertValues(stmt.Values); err != nil {
 		return err
 	}
+	w.Leave()
 	if stmt.Upsert != nil {
 		w.WriteNL()
 		if err := w.FormatUpsert(stmt.Upsert); err != nil {
@@ -258,9 +270,9 @@ func (w *Writer) FormatUpsert(stmt ast.Statement) error {
 		return w.CanNotUse("insert(upsert)", stmt)
 	}
 	w.WriteKeyword("ON CONFLICT")
-	w.WriteBlank()
 
 	if len(upsert.Columns) > 0 {
+		w.WriteBlank()
 		w.WriteString("(")
 		for i, s := range upsert.Columns {
 			if i > 0 {
