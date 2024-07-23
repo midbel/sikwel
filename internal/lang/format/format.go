@@ -37,8 +37,9 @@ type Writer struct {
 	PrependComma  bool
 	KeepComment   bool
 	ForceOptional bool
-	Upperize      UpperMode
-	Rules         RewriteRule
+	// Compact       CompactMode
+	Upperize UpperMode
+	Rules    RewriteRule
 
 	noColor   bool
 	currDepth int

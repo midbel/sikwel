@@ -207,18 +207,28 @@ func (w *Writer) FormatInsert(stmt ast.InsertStatement) error {
 	if len(stmt.Columns) > 0 {
 		w.WriteBlank()
 		w.WriteString("(")
-		w.WriteNL()
+		if w.Compact.ColumnsStacked() {
+			w.WriteNL()
+		} else {
+			w.WriteBlank()
+		}
 		w.Enter()
 		for i, c := range stmt.Columns {
 			if i > 0 {
 				w.WriteString(",")
-				w.WriteNL()
+				if w.Compact.ColumnsStacked() {
+					w.WriteNL()
+				} else {
+					w.WriteBlank()
+				}
 			}
 			w.WritePrefix()
 			w.WriteString(c)
 		}
 		w.Leave()
-		w.WriteNL()
+		if w.Compact.ColumnsStacked() {
+			w.WriteNL()
+		}
 		w.WriteString(")")
 		w.WriteNL()
 	} else {

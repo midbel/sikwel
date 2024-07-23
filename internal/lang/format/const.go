@@ -81,14 +81,22 @@ func (r RewriteRule) KeepAsIs() bool {
 type CompactMode uint8
 
 const (
-	CompactDefault CompactMode = 1 << iota
-	CompactInsertColumns
-	CompactInsertValues
-	CompactAll
+	CompactNL CompactMode = 1 << iota
+	CompactColumns
+	CompactValues
+	CompactAll = CompactColumns | CompactValues
 )
 
-func (c CompactMode) Default() bool {
-	return c == CompactDefault
+func (c Compact) None() bool {
+	return c == 0
+}
+
+func (c CompactMode) ColumnsStacked() bool {
+	return c&CompactColumns == 0
+}
+
+func (c CompactMode) ValuesStacked() bool {
+	return c&CompactValues == 0
 }
 
 func (c CompactMode) All() bool {
