@@ -84,10 +84,10 @@ const (
 	CompactNL CompactMode = 1 << iota
 	CompactColumns
 	CompactValues
-	CompactAll = CompactColumns | CompactValues
+	CompactAll = CompactNL | CompactColumns | CompactValues
 )
 
-func (c Compact) None() bool {
+func (c CompactMode) None() bool {
 	return c == 0
 }
 

@@ -26,7 +26,7 @@ func GetFormatter() lang.Formatter {
 type Writer struct {
 	inner *bufio.Writer
 
-	Compact       bool
+	// Compact       bool
 	UseQuote      bool
 	UseAs         bool
 	UseIndent     int
@@ -37,9 +37,9 @@ type Writer struct {
 	PrependComma  bool
 	KeepComment   bool
 	ForceOptional bool
-	// Compact       CompactMode
-	Upperize UpperMode
-	Rules    RewriteRule
+	Compact       CompactMode
+	Upperize      UpperMode
+	Rules         RewriteRule
 
 	noColor   bool
 	currDepth int
@@ -65,7 +65,7 @@ func NewWriter(w io.Writer) *Writer {
 
 func Compact(w io.Writer) *Writer {
 	ws := NewWriter(w)
-	ws.Compact = true
+	ws.Compact = CompactAll
 	return ws
 }
 
@@ -74,7 +74,6 @@ func (w *Writer) configure(ps lang.Parser) {
 	if !ok {
 		return
 	}
-	w.Compact = p.GetDefaultBool("compact", w.Compact)
 	w.UseIndent = int(p.GetDefaultInt("indent", int64(w.UseIndent)))
 	w.UseSpace = p.GetDefaultBool("space", w.UseSpace)
 	w.UseKeepSpace = p.GetDefaultBool("keepspace", w.UseKeepSpace)
@@ -82,6 +81,8 @@ func (w *Writer) configure(ps lang.Parser) {
 	w.UseQuote = p.GetDefaultBool("quote", w.UseQuote)
 	w.UseCrlf = p.GetDefaultBool("crlf", w.UseCrlf)
 	w.KeepComment = p.GetDefaultBool("comment", w.KeepComment)
+	// w.Compact = p.GetDefaultBool("compact", w.Compact)
+	w.Compact = 0
 	for _, r := range p.GetStrings("rewrite") {
 		switch r {
 		case "all":
@@ -521,7 +522,7 @@ func (w *Writer) formatIn(stmt ast.In, not, nl bool) error {
 		w.WriteBlank()
 	}
 	w.WriteKeyword("IN")
-	if !w.Compact {
+	if !w.Compact.All() {
 		w.WriteBlank()
 	}
 	if stmt, ok := stmt.Value.(ast.Group); ok {
@@ -561,13 +562,13 @@ func (w *Writer) formatUnary(stmt ast.Unary, nl bool) error {
 func (w *Writer) formatGroup(stmt ast.Group) error {
 	if _, ok := stmt.Statement.(ast.SelectStatement); ok {
 		w.WriteString("(")
-		if !w.Compact {
+		if !w.Compact.All() {
 			w.WriteNL()
 		}
 		if err := w.FormatStatement(stmt.Statement); err != nil {
 			return err
 		}
-		if !w.Compact {
+		if !w.Compact.All() {
 			w.WriteNL()
 			w.WritePrefix()
 		}
@@ -644,14 +645,14 @@ func (w *Writer) WriteCall(call string) {
 }
 
 func (w *Writer) WriteString(str string) {
-	if w.Compact && str == "\n" {
+	if w.Compact.All() && str == "\n" {
 		str = " "
 	}
 	w.inner.WriteString(str)
 }
 
 func (w *Writer) WriteComment(str string) {
-	if w.Compact {
+	if w.Compact.All() {
 		return
 	}
 	w.WriteString("--")
@@ -677,13 +678,13 @@ func (w *Writer) WriteQuoted(str string) {
 }
 
 func (w *Writer) WriteComma(i int) {
-	if (!w.PrependComma || w.Compact) && i > 0 {
+	if (!w.PrependComma || w.Compact.All()) && i > 0 {
 		w.WriteString(",")
 	}
 	if i > 0 {
 		w.WriteNL()
 	}
-	if w.PrependComma && !w.Compact {
+	if w.PrependComma && !w.Compact.All() {
 		if i == 0 {
 			w.WriteBlank()
 		} else {
@@ -693,7 +694,7 @@ func (w *Writer) WriteComma(i int) {
 }
 
 func (w *Writer) WriteNL() {
-	if w.Compact {
+	if w.Compact.All() {
 		w.WriteBlank()
 		return
 	}
@@ -723,7 +724,7 @@ func (w *Writer) WriteKeyword(kw string) {
 }
 
 func (w *Writer) WritePrefix() {
-	if w.Compact {
+	if w.Compact.All() {
 		return
 	}
 	if !w.UseSpace {
@@ -745,14 +746,14 @@ func (w *Writer) Reset() {
 }
 
 func (w *Writer) Enter() {
-	if w.Compact {
+	if w.Compact.All() {
 		return
 	}
 	w.currDepth++
 }
 
 func (w *Writer) Leave() {
-	if w.Compact || w.currDepth < 0 {
+	if w.Compact.All() || w.currDepth < 0 {
 		return
 	}
 	w.currDepth--
@@ -770,7 +771,7 @@ func (w *Writer) compact(fn func() error) error {
 	defer func() {
 		w.Compact = c
 	}()
-	w.Compact = true
+	w.Compact = CompactAll
 	return fn()
 }
 
