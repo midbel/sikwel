@@ -20,7 +20,6 @@ func runFormat(args []string) error {
 		set    = flag.NewFlagSet("format", flag.ExitOnError)
 		writer = format.NewWriter(os.Stdout)
 	)
-	set.BoolVar(&writer.Compact, "compact", writer.Compact, "produces compact SQL queries")
 	set.BoolVar(&writer.UseAs, "use-as", writer.UseAs, "always use as to define alias")
 	set.BoolVar(&writer.UseQuote, "use-quote", writer.UseQuote, "quote all identifier")
 	set.IntVar(&writer.UseIndent, "use-indent", writer.UseIndent, "number of space to use to indent SQL")
@@ -37,6 +36,7 @@ func runFormat(args []string) error {
 		}
 		return err
 	})
+	set.Func("compact", "compact rules to apply", compactRules(writer))
 	set.Func("rewrite", "rewrite rules to apply", rewriteRules(writer))
 	set.Func("upper", "upperize mode", upperizeRules(writer))
 	set.Func("config", "formatter configuration file", configureRules(writer))
@@ -63,10 +63,29 @@ func runFormat(args []string) error {
 	return nil
 }
 
+func compactRules(writer *format.Writer) func(string) error {
+	return func(value string) error {
+		switch value {
+		case "all", "":
+			writer.Compact |= format.CompactAll
+		case "nl", "newline":
+			writer.Compact |= format.CompactNL
+		case "columns":
+			writer.Compact |= format.CompactColumns
+		case "values":
+			writer.Compact |= format.CompactValues
+		default:
+		}
+		fmt.Println(value, writer.Compact)
+		return nil
+	}
+}
+
 func configureRules(writer *format.Writer) func(string) error {
 	var (
 		rewrite  = rewriteRules(writer)
 		upperize = upperizeRules(writer)
+		compact  = compactRules(writer)
 		setComma = func(value any) error {
 			switch value.(string) {
 			case "before", "prepend":
@@ -109,7 +128,7 @@ func configureRules(writer *format.Writer) func(string) error {
 			syntax = cfg.Sub("syntax")
 			indent = cfg.Sub("indent")
 		)
-		writer.Compact = cfg.GetBool("compact")
+		// writer.Compact = cfg.GetBool("compact")
 		writer.UseQuote = syntax.GetBool("quote")
 		writer.UseAs = syntax.GetBool("as")
 		writer.UseIndent = int(indent.GetInt("count"))
@@ -122,6 +141,9 @@ func configureRules(writer *format.Writer) func(string) error {
 		}
 		for _, r := range cfg.GetStrings("rewrite") {
 			rewrite(strings.ReplaceAll(r, "_", "-"))
+		}
+		for _, r := range cfg.GetStrings("compact") {
+			compact(strings.ReplaceAll(r, "_", "-"))
 		}
 		return nil
 	}

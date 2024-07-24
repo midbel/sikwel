@@ -71,7 +71,7 @@ func (w *Writer) FormatMatch(stmt ast.MatchStatement) error {
 		w.WriteBlank()
 
 		compact := w.Compact
-		w.Compact = true
+		w.Compact = CompactAll
 		defer func() {
 			w.Compact = compact
 		}()
@@ -98,7 +98,7 @@ func (w *Writer) FormatMatch(stmt ast.MatchStatement) error {
 			return w.CanNotUse("merge", stmt.Values)
 		}
 		compact := w.Compact
-		w.Compact = true
+		w.Compact = CompactAll
 		defer func() {
 			w.Compact = compact
 		}()

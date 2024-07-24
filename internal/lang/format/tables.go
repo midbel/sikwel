@@ -82,7 +82,7 @@ func (w *Writer) FormatCreateTableWithFormatter(ctf CreateTableFormatter, stmt a
 	w.WriteNL()
 
 	var longest int
-	if !w.Compact {
+	if !w.Compact.All() {
 		for _, c := range stmt.Columns {
 			d, ok := c.(ast.ColumnDef)
 			if !ok {

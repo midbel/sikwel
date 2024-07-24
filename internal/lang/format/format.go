@@ -82,7 +82,7 @@ func (w *Writer) configure(ps lang.Parser) {
 	w.UseCrlf = p.GetDefaultBool("crlf", w.UseCrlf)
 	w.KeepComment = p.GetDefaultBool("comment", w.KeepComment)
 	// w.Compact = p.GetDefaultBool("compact", w.Compact)
-	w.Compact = 0
+	// w.Compact = 0
 	for _, r := range p.GetStrings("rewrite") {
 		switch r {
 		case "all":

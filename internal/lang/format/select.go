@@ -476,7 +476,7 @@ func (w *Writer) FormatCte(stmt ast.CteStatement) error {
 		for i, s := range stmt.Columns {
 			if i > 0 {
 				w.WriteString(",")
-				if !w.Compact {
+				if !w.Compact.All() {
 					w.WriteBlank()
 				}
 			}
