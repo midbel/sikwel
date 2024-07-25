@@ -78,8 +78,6 @@ func (w *Writer) configure(ps lang.Parser) {
 	w.UseQuote = p.GetDefaultBool("quote", w.UseQuote)
 	w.UseCrlf = p.GetDefaultBool("crlf", w.UseCrlf)
 	w.KeepComment = p.GetDefaultBool("comment", w.KeepComment)
-	// w.Compact = p.GetDefaultBool("compact", w.Compact)
-	// w.Compact = 0
 	for _, r := range p.GetStrings("rewrite") {
 		switch r {
 		case "all":
@@ -642,7 +640,7 @@ func (w *Writer) WriteCall(call string) {
 }
 
 func (w *Writer) WriteString(str string) {
-	if w.Compact.All() && str == "\n" {
+	if (w.Compact.All() || w.Compact.NoNL()) && str == "\n" {
 		str = " "
 	}
 	w.inner.WriteString(str)
@@ -691,7 +689,7 @@ func (w *Writer) WriteComma(i int) {
 }
 
 func (w *Writer) WriteNL() {
-	if w.Compact.All() {
+	if w.Compact.All() || w.Compact.NoNL() {
 		w.WriteBlank()
 		return
 	}

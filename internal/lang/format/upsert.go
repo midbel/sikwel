@@ -205,6 +205,9 @@ func (w *Writer) FormatInsert(stmt ast.InsertStatement) error {
 		return err
 	}
 	if len(stmt.Columns) > 0 {
+		if w.Compact.KeepSpacesAround() {
+			w.WriteBlank()
+		}
 		w.WriteString("(")
 		if w.Compact.ColumnsStacked() {
 			w.WriteNL()
@@ -219,7 +222,9 @@ func (w *Writer) FormatInsert(stmt ast.InsertStatement) error {
 					w.WriteBlank()
 				}
 			}
-			w.WritePrefix()
+			if w.Compact.ColumnsStacked() {
+				w.WritePrefix()
+			}
 			w.WriteString(c)
 		}
 		w.Leave()

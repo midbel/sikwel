@@ -74,7 +74,7 @@ func (w *Writer) FormatIntersect(stmt ast.IntersectStatement) error {
 func (w *Writer) FormatValues(stmt ast.ValuesStatement) error {
 	kw, _ := stmt.Keyword()
 	w.WriteKeyword(kw)
-	if len(stmt.List) > 1 {
+	if len(stmt.List) > 1 && w.Compact.ValuesStacked() {
 		w.WriteNL()
 	} else {
 		w.WriteBlank()
@@ -82,9 +82,13 @@ func (w *Writer) FormatValues(stmt ast.ValuesStatement) error {
 	for i := range stmt.List {
 		if i > 0 {
 			w.WriteString(",")
-			w.WriteNL()
+			if w.Compact.ValuesStacked() {
+				w.WriteNL()
+			} else {
+				w.WriteBlank()
+			}
 		}
-		if len(stmt.List) > 1 {
+		if len(stmt.List) > 1 && w.Compact.ValuesStacked() {
 			w.WritePrefix()
 		}
 		if err := w.FormatExpr(stmt.List[i], false); err != nil {

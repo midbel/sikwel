@@ -92,6 +92,10 @@ func (c CompactMode) None() bool {
 	return c == 0
 }
 
+func (c CompactMode) NoNL() bool {
+	return c&CompactNL != 0
+}
+
 func (c CompactMode) KeepSpacesAround() bool {
 	return c&CompactSpacesAround == 0
 }
@@ -105,7 +109,7 @@ func (c CompactMode) ValuesStacked() bool {
 }
 
 func (c CompactMode) All() bool {
-	return c&CompactAll != 0
+	return c&CompactAll == CompactAll
 }
 
 type UpperMode uint8
