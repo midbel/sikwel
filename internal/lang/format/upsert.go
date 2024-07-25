@@ -1,6 +1,10 @@
 package format
 
-import "github.com/midbel/sweet/internal/lang/ast"
+import (
+	"strings"
+
+	"github.com/midbel/sweet/internal/lang/ast"
+)
 
 func (w *Writer) FormatMerge(stmt ast.MergeStatement) error {
 	kw, _ := stmt.Keyword()
@@ -225,6 +229,9 @@ func (w *Writer) FormatInsert(stmt ast.InsertStatement) error {
 			if w.Compact.ColumnsStacked() {
 				w.WritePrefix()
 			}
+			if w.Upperize.Identifier() {
+				c = strings.ToUpper(c)
+			}
 			w.WriteString(c)
 		}
 		w.Leave()
@@ -300,12 +307,27 @@ func (w *Writer) FormatUpsert(stmt ast.Statement) error {
 		w.WriteKeyword("DO NOTHING")
 		return nil
 	}
-	w.WriteKeyword("UPDATE SET")
+	w.Enter()
+	defer w.Leave()
+
+	w.WriteKeyword("DO UPDATE")
 	w.WriteNL()
+	w.WritePrefix()
+	w.WriteKeyword("SET")
+	w.WriteBlank()
+
+	w.Enter()
 	if err := w.FormatAssignment(upsert.List); err != nil {
 		return err
 	}
-	return w.FormatWhere(upsert.Where)
+	w.Leave()
+
+	if upsert.Where != nil {
+		w.WriteNL()
+		w.WritePrefix()
+		return w.FormatWhere(upsert.Where)
+	}
+	return nil
 }
 
 func (w *Writer) FormatAssignment(list []ast.Statement) error {
@@ -313,7 +335,12 @@ func (w *Writer) FormatAssignment(list []ast.Statement) error {
 	for i, s := range list {
 		if i > 0 {
 			w.WriteString(",")
-			w.WriteBlank()
+			if w.Compact.ValuesStacked() {
+				w.WriteNL()
+				w.WritePrefix()
+			} else {
+				w.WriteBlank()
+			}
 		}
 		ass, ok := s.(ast.Assignment)
 		if !ok {
@@ -330,7 +357,13 @@ func (w *Writer) FormatAssignment(list []ast.Statement) error {
 		if err != nil {
 			return err
 		}
+		if w.Compact.KeepSpacesAround() {
+			w.WriteBlank()
+		}
 		w.WriteString("=")
+		if w.Compact.KeepSpacesAround() {
+			w.WriteBlank()
+		}
 		switch value := ass.Value.(type) {
 		case ast.List:
 			err = w.formatList(value)

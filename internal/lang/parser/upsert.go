@@ -341,7 +341,7 @@ func (p *Parser) ParseInsert() (ast.Statement, error) {
 		stmt ast.InsertStatement
 		err  error
 	)
-	stmt.Table, err = p.ParseIdentifier()
+	stmt.Table, err = p.ParseIdent()
 	if err != nil {
 		return nil, err
 	}
