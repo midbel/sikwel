@@ -33,7 +33,6 @@ type Writer struct {
 	UseSpace      bool
 	UseColor      bool
 	UseCrlf       bool
-	UseKeepSpace  bool
 	PrependComma  bool
 	KeepComment   bool
 	ForceOptional bool
@@ -49,13 +48,12 @@ type Writer struct {
 
 func NewWriter(w io.Writer) *Writer {
 	ws := Writer{
-		inner:        bufio.NewWriter(w),
-		UseIndent:    4,
-		UseSpace:     true,
-		UseKeepSpace: true,
-		Formatter:    ansiFormatter{},
-		Upperize:     UpperNone,
-		Rules:        0,
+		inner:     bufio.NewWriter(w),
+		UseIndent: 4,
+		UseSpace:  true,
+		Formatter: ansiFormatter{},
+		Upperize:  UpperNone,
+		Rules:     0,
 	}
 	if w != os.Stdout {
 		ws.noColor = true
@@ -76,7 +74,6 @@ func (w *Writer) configure(ps lang.Parser) {
 	}
 	w.UseIndent = int(p.GetDefaultInt("indent", int64(w.UseIndent)))
 	w.UseSpace = p.GetDefaultBool("space", w.UseSpace)
-	w.UseKeepSpace = p.GetDefaultBool("keepspace", w.UseKeepSpace)
 	w.UseAs = p.GetDefaultBool("as", w.UseAs)
 	w.UseQuote = p.GetDefaultBool("quote", w.UseQuote)
 	w.UseCrlf = p.GetDefaultBool("crlf", w.UseCrlf)
@@ -407,7 +404,7 @@ func (w *Writer) formatList(stmt ast.List) error {
 	for i, v := range stmt.Values {
 		if i > 0 {
 			w.WriteString(",")
-			if w.UseKeepSpace {
+			if w.Compact.KeepSpacesAround() {
 				w.WriteBlank()
 			}
 		}
@@ -618,11 +615,11 @@ func (w *Writer) formatBinary(stmt ast.Binary, nl bool) error {
 	if err := w.FormatExpr(stmt.Left, nl); err != nil {
 		return err
 	}
-	if w.UseKeepSpace {
+	if w.Compact.KeepSpacesAround() {
 		w.WriteBlank()
 	}
 	w.WriteKeyword(stmt.Op)
-	if w.UseKeepSpace {
+	if w.Compact.KeepSpacesAround() {
 		w.WriteBlank()
 	}
 	if err := w.FormatExpr(stmt.Right, nl); err != nil {

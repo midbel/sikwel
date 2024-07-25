@@ -84,11 +84,16 @@ const (
 	CompactNL CompactMode = 1 << iota
 	CompactColumns
 	CompactValues
+	CompactSpacesAround
 	CompactAll = CompactNL | CompactColumns | CompactValues
 )
 
 func (c CompactMode) None() bool {
 	return c == 0
+}
+
+func (c CompactMode) KeepSpacesAround() bool {
+	return c&CompactSpacesAround == 0
 }
 
 func (c CompactMode) ColumnsStacked() bool {

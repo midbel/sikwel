@@ -74,6 +74,8 @@ func compactRules(writer *format.Writer) func(string) error {
 			writer.Compact |= format.CompactColumns
 		case "values":
 			writer.Compact |= format.CompactValues
+		case "no-spaces-around":
+			writer.Compact |= format.CompactSpacesAround
 		default:
 		}
 		fmt.Println(value, writer.Compact)
