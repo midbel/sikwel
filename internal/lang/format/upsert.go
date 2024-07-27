@@ -183,7 +183,7 @@ func (w *Writer) FormatUpdate(stmt ast.UpdateStatement) error {
 		}
 	}
 	if stmt.Where != nil {
-		w.WriteBlank()
+		w.WriteNL()
 		if err := w.FormatWhere(stmt.Where); err != nil {
 			return err
 		}

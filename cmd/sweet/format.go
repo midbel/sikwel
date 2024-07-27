@@ -57,7 +57,7 @@ func runFormat(args []string) error {
 	}
 	for _, f := range set.Args() {
 		if err := process(f); err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			reportError(err)
 		}
 	}
 	return nil

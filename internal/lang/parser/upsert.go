@@ -238,7 +238,7 @@ func (p *Parser) ParseUpdate() (ast.Statement, error) {
 	}
 	p.Next()
 
-	if stmt.List, err = p.ParseUpdateList(); err != nil {
+	if stmt.List, err = p.ParseUpdateSet(); err != nil {
 		return nil, err
 	}
 
@@ -252,10 +252,10 @@ func (p *Parser) ParseUpdate() (ast.Statement, error) {
 		return nil, err
 	}
 	stmt.Return, err = p.ParseReturning()
-	return nil, err
+	return stmt, err
 }
 
-func (p *Parser) ParseUpdateList() ([]ast.Statement, error) {
+func (p *Parser) ParseUpdateSet() ([]ast.Statement, error) {
 	var list []ast.Statement
 	for !p.Done() && !p.Is(token.EOL) && !p.IsKeyword("WHERE") && !p.IsKeyword("FROM") && !p.IsKeyword("RETURNING") {
 		stmt, err := p.parseAssignment()
@@ -326,6 +326,7 @@ func (p *Parser) parseAssignment() (ast.Statement, error) {
 			return nil, p.Unexpected("update", missingCloseParen)
 		}
 		p.Next()
+		ass.Value = list
 	} else {
 		ass.Value, err = p.StartExpression()
 		if err != nil {
