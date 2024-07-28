@@ -410,7 +410,9 @@ func (w *Writer) formatList(stmt ast.List, stacked bool) error {
 				w.WriteNL()
 			}
 		}
-		w.WritePrefix()
+		if stacked {
+			w.WritePrefix()
+		}
 		if err := w.FormatExpr(v, false); err != nil {
 			return err
 		}

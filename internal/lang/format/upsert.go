@@ -321,7 +321,7 @@ func (w *Writer) FormatUpsert(stmt ast.Statement) error {
 	w.WriteNL()
 	w.WritePrefix()
 	w.WriteKeyword("SET")
-	w.WriteBlank()
+	w.WriteNL()
 
 	w.Enter()
 	if err := w.FormatAssignment(upsert.List); err != nil {
