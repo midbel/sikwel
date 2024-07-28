@@ -207,7 +207,7 @@ func (w *Writer) formatJoin(join ast.Join) error {
 		w.WriteBlank()
 		w.WriteKeyword("USING")
 		w.WriteBlank()
-		return w.formatList(s)
+		return w.formatList(s, false)
 	default:
 		return w.CanNotUse("from", s)
 	}

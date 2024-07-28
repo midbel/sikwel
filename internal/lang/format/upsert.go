@@ -158,6 +158,9 @@ func (w *Writer) FormatUpdate(stmt ast.UpdateStatement) error {
 	w.WriteKeyword(kw)
 	w.WriteBlank()
 
+	w.Enter()
+	defer w.Leave()
+
 	switch stmt := stmt.Table.(type) {
 	case ast.Name:
 		w.FormatName(stmt)
@@ -168,13 +171,17 @@ func (w *Writer) FormatUpdate(stmt ast.UpdateStatement) error {
 	default:
 		return w.CanNotUse("update", stmt)
 	}
-	w.WriteBlank()
+	// w.WriteBlank()
+	w.WriteNL()
 	w.WriteKeyword("SET")
-	w.WriteBlank()
+	w.WriteNL()
+	// w.WriteBlank()
 
+	w.Enter()
 	if err := w.FormatAssignment(stmt.List); err != nil {
 		return err
 	}
+	w.Leave()
 
 	if len(stmt.Tables) > 0 {
 		w.WriteBlank()
@@ -337,7 +344,6 @@ func (w *Writer) FormatAssignment(list []ast.Statement) error {
 			w.WriteString(",")
 			if w.Compact.ValuesStacked() {
 				w.WriteNL()
-				w.WritePrefix()
 			} else {
 				w.WriteBlank()
 			}
@@ -348,9 +354,10 @@ func (w *Writer) FormatAssignment(list []ast.Statement) error {
 		}
 		switch field := ass.Field.(type) {
 		case ast.Name:
+			w.WritePrefix()
 			w.FormatName(field)
 		case ast.List:
-			err = w.formatList(field)
+			err = w.formatList(field, w.Compact.ColumnsStacked())
 		default:
 			return w.CanNotUse("assignment", s)
 		}
@@ -366,7 +373,7 @@ func (w *Writer) FormatAssignment(list []ast.Statement) error {
 		}
 		switch value := ass.Value.(type) {
 		case ast.List:
-			err = w.formatList(value)
+			err = w.formatList(value, w.Compact.ValuesStacked())
 		default:
 			err = w.FormatExpr(value, false)
 		}

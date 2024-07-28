@@ -310,7 +310,7 @@ func (w *Writer) FormatExpr(stmt ast.Statement, nl bool) error {
 	case ast.Call:
 		err = w.formatCall(stmt)
 	case ast.List:
-		err = w.formatList(stmt)
+		err = w.formatList(stmt, false)
 	case ast.Binary:
 		err = w.formatBinary(stmt, nl)
 	case ast.All:
@@ -396,20 +396,29 @@ func (w *Writer) formatStmtSlice(values []ast.Statement) error {
 	return nil
 }
 
-func (w *Writer) formatList(stmt ast.List) error {
+func (w *Writer) formatList(stmt ast.List, stacked bool) error {
 	w.WriteString("(")
-	defer w.WriteString(")")
+	if stacked {
+		w.WriteNL()
+	}
 	for i, v := range stmt.Values {
 		if i > 0 {
 			w.WriteString(",")
-			if w.Compact.KeepSpacesAround() {
+			if !stacked && w.Compact.KeepSpacesAround() {
 				w.WriteBlank()
+			} else if stacked {
+				w.WriteNL()
 			}
 		}
+		w.WritePrefix()
 		if err := w.FormatExpr(v, false); err != nil {
 			return err
 		}
 	}
+	if stacked {
+		w.WriteNL()
+	}
+	w.WriteString(")")
 	return nil
 }
 
