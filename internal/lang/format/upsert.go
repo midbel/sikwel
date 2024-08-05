@@ -139,13 +139,13 @@ func (w *Writer) FormatDelete(stmt ast.DeleteStatement) error {
 	w.WriteBlank()
 	w.WriteString(stmt.Table)
 	if stmt.Where != nil {
-		w.WriteBlank()
+		w.WriteNL()
 		if err := w.FormatWhere(stmt.Where); err != nil {
 			return err
 		}
 	}
 	if stmt.Return != nil {
-		w.WriteBlank()
+		w.WriteNL()
 		if err := w.FormatReturning(stmt.Return); err != nil {
 			return err
 		}
