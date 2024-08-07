@@ -125,10 +125,12 @@ func checkMissingWhere(stmt ast.Statement) ([]rules.LintMessage, error) {
 	case ast.DeleteStatement:
 		return deleteCheckMissingWhere(stmt)
 	case ast.WithStatement:
+		return handleWithStatement(stmt, checkMissingWhere)
+	case ast.SelectStatement:
+		return handleSelectStatement(stmt, checkMissingWhere)
 	default:
 		return nil, ErrNa
 	}
-	return nil, nil
 }
 
 func updateCheckMissingWhere(stmt ast.UpdateStatement) ([]rules.LintMessage, error) {
