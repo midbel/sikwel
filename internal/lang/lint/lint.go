@@ -118,6 +118,35 @@ func (i *Linter) configure(cfg *config.Config) error {
 	return nil
 }
 
+func checkMissingWhere(stmt ast.Statement) ([]rules.LintMessage, error) {
+	switch stmt := stmt.(type) {
+	case ast.UpdateStatement:
+		return updateCheckMissingWhere(stmt)
+	case ast.DeleteStatement:
+		return deleteCheckMissingWhere(stmt)
+	case ast.WithStatement:
+	default:
+		return nil, ErrNa
+	}
+	return nil, nil
+}
+
+func updateCheckMissingWhere(stmt ast.UpdateStatement) ([]rules.LintMessage, error) {
+	var list []rules.LintMessage
+	if stmt.Where == nil {
+		list = append(list, missingWhere())
+	}
+	return list, nil
+}
+
+func deleteCheckMissingWhere(stmt ast.DeleteStatement) ([]rules.LintMessage, error) {
+	var list []rules.LintMessage
+	if stmt.Where == nil {
+		list = append(list, missingWhere())
+	}
+	return list, nil
+}
+
 func checkJoin(stmt ast.Statement) ([]rules.LintMessage, error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
@@ -217,6 +246,14 @@ func selectSubqueries(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
 	}
 	others, err := handleSelectStatement(stmt, checkSubqueriesNotAllow)
 	return slices.Concat(list, others), err
+}
+
+func missingWhere() rules.LintMessage {
+	return rules.LintMessage{
+		Severity: rules.Error,
+		Message:  "statement used without where",
+		Rule:     ruleStmtMissingWhere,
+	}
 }
 
 func subqueryDisallow() rules.LintMessage {

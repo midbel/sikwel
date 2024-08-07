@@ -31,6 +31,7 @@ const (
 	ruleRewriteExprNot         = "rewrite.expr.not"
 	ruleInconsistentUseAs      = "inconsistent.use.as"
 	ruleInconsistentUseOrder   = "inconsistent.use.order"
+	ruleStmtMissingWhere       = "stmt.where.missing"
 )
 
 type RuleFunc = rules.RuleFunc[ast.Statement]
