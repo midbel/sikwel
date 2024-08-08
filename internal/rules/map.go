@@ -4,7 +4,7 @@ import (
 	"slices"
 )
 
-type RuleFunc[T any] func(T) ([]LintMessage, error)
+type RuleFunc[T any] func(T) ([]LintMessage[T], error)
 
 type RegisteredRule[T any] struct {
 	Name     string

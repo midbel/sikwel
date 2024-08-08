@@ -14,6 +14,8 @@ import (
 
 var ErrNa = errors.New("not applicable")
 
+// type LintMessage = rules.LintMessage[ast.Statement]
+
 type Linter struct {
 	MinLevel   rules.Level
 	Max        int
@@ -42,7 +44,7 @@ func (i *Linter) Rules() []rules.LintInfo {
 	return infos
 }
 
-func (i *Linter) Lint(r io.Reader) ([]rules.LintMessage, error) {
+func (i *Linter) Lint(r io.Reader) ([]rules.LintMessage[ast.Statement], error) {
 	p, err := parser.NewParser(r)
 	if err != nil {
 		return nil, err
@@ -50,7 +52,7 @@ func (i *Linter) Lint(r io.Reader) ([]rules.LintMessage, error) {
 	if ps, ok := p.(*parser.Parser); ok {
 		i.configure(ps.Config)
 	}
-	var list []rules.LintMessage
+	var list []rules.LintMessage[ast.Statement]
 	for {
 		stmt, err := p.Parse()
 		if err != nil {
@@ -72,8 +74,8 @@ func (i *Linter) Lint(r io.Reader) ([]rules.LintMessage, error) {
 	return list, nil
 }
 
-func (i *Linter) LintStatement(stmt ast.Statement) ([]rules.LintMessage, error) {
-	var list []rules.LintMessage
+func (i *Linter) LintStatement(stmt ast.Statement) ([]rules.LintMessage[ast.Statement], error) {
+	var list []rules.LintMessage[ast.Statement]
 	for _, r := range i.rules.Get() {
 		res, err := r(stmt)
 		if err != nil {
@@ -118,7 +120,7 @@ func (i *Linter) configure(cfg *config.Config) error {
 	return nil
 }
 
-func checkMissingWhere(stmt ast.Statement) ([]rules.LintMessage, error) {
+func checkMissingWhere(stmt ast.Statement) ([]rules.LintMessage[ast.Statement], error) {
 	switch stmt := stmt.(type) {
 	case ast.UpdateStatement:
 		return updateCheckMissingWhere(stmt)
@@ -133,23 +135,29 @@ func checkMissingWhere(stmt ast.Statement) ([]rules.LintMessage, error) {
 	}
 }
 
-func updateCheckMissingWhere(stmt ast.UpdateStatement) ([]rules.LintMessage, error) {
-	var list []rules.LintMessage
+func updateCheckMissingWhere(stmt ast.UpdateStatement) ([]rules.LintMessage[ast.Statement], error) {
+	var list []rules.LintMessage[ast.Statement]
 	if stmt.Where == nil {
-		list = append(list, missingWhere())
+		msg := missingWhere()
+		msg.Body = stmt
+		msg.Position = stmt.Position
+		list = append(list, msg)
 	}
 	return list, nil
 }
 
-func deleteCheckMissingWhere(stmt ast.DeleteStatement) ([]rules.LintMessage, error) {
-	var list []rules.LintMessage
+func deleteCheckMissingWhere(stmt ast.DeleteStatement) ([]rules.LintMessage[ast.Statement], error) {
+	var list []rules.LintMessage[ast.Statement]
 	if stmt.Where == nil {
-		list = append(list, missingWhere())
+		msg := missingWhere()
+		msg.Body = stmt
+		msg.Position = stmt.Position
+		list = append(list, msg)
 	}
 	return list, nil
 }
 
-func checkJoin(stmt ast.Statement) ([]rules.LintMessage, error) {
+func checkJoin(stmt ast.Statement) ([]rules.LintMessage[ast.Statement], error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
 		return handleSelectStatement(stmt, checkJoin)
@@ -172,7 +180,7 @@ func checkJoin(stmt ast.Statement) ([]rules.LintMessage, error) {
 	}
 }
 
-func joinWithConstant(stmt ast.Join) ([]rules.LintMessage, error) {
+func joinWithConstant(stmt ast.Join) ([]rules.LintMessage[ast.Statement], error) {
 	var check func(ast.Statement) bool
 
 	check = func(stmt ast.Statement) bool {
@@ -192,12 +200,13 @@ func joinWithConstant(stmt ast.Join) ([]rules.LintMessage, error) {
 		}
 	}
 	if check(stmt.Where) {
-		return makeArray(constantJoin()), nil
+		var list []rules.LintMessage[ast.Statement]
+		return append(list, constantJoin()), nil
 	}
 	return nil, nil
 }
 
-func checkSubqueriesNotAllow(stmt ast.Statement) ([]rules.LintMessage, error) {
+func checkSubqueriesNotAllow(stmt ast.Statement) ([]rules.LintMessage[ast.Statement], error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
 		return selectSubqueries(stmt)
@@ -220,7 +229,7 @@ func checkSubqueriesNotAllow(stmt ast.Statement) ([]rules.LintMessage, error) {
 	}
 }
 
-func selectSubqueries(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
+func selectSubqueries(stmt ast.SelectStatement) ([]rules.LintMessage[ast.Statement], error) {
 	isSubquery := func(q ast.Statement) bool {
 		if a, ok := q.(ast.Alias); ok {
 			q = a.Statement
@@ -231,7 +240,7 @@ func selectSubqueries(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
 		_, ok := q.(ast.SelectStatement)
 		return ok
 	}
-	var list []rules.LintMessage
+	var list []rules.LintMessage[ast.Statement]
 	for _, c := range stmt.Columns {
 		if isSubquery(c) {
 			list = append(list, subqueryDisallow())
@@ -250,32 +259,32 @@ func selectSubqueries(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
 	return slices.Concat(list, others), err
 }
 
-func missingWhere() rules.LintMessage {
-	return rules.LintMessage{
+func missingWhere() rules.LintMessage[ast.Statement] {
+	return rules.LintMessage[ast.Statement]{
 		Severity: rules.Error,
 		Message:  "statement used without where",
 		Rule:     ruleStmtMissingWhere,
 	}
 }
 
-func subqueryDisallow() rules.LintMessage {
-	return rules.LintMessage{
+func subqueryDisallow() rules.LintMessage[ast.Statement] {
+	return rules.LintMessage[ast.Statement]{
 		Severity: rules.Error,
 		Message:  "subquery is not allowed",
 		Rule:     ruleSubqueryNotAllow,
 	}
 }
 
-func constantJoin() rules.LintMessage {
-	return rules.LintMessage{
+func constantJoin() rules.LintMessage[ast.Statement] {
+	return rules.LintMessage[ast.Statement]{
 		Severity: rules.Error,
 		Message:  "join expression composed of constant values",
 		Rule:     ruleConstExprJoin,
 	}
 }
 
-func handleExpr(stmt ast.Statement, check RuleFunc) ([]rules.LintMessage, error) {
-	var list []rules.LintMessage
+func handleExpr(stmt ast.Statement, check RuleFunc) ([]rules.LintMessage[ast.Statement], error) {
+	var list []rules.LintMessage[ast.Statement]
 	switch stmt := stmt.(type) {
 	case ast.Case:
 		msg, err := check(stmt.Cdt)
@@ -353,7 +362,7 @@ func handleExpr(stmt ast.Statement, check RuleFunc) ([]rules.LintMessage, error)
 	return list, nil
 }
 
-func handleCompoundStatement(q1, q2 ast.Statement, check RuleFunc) ([]rules.LintMessage, error) {
+func handleCompoundStatement(q1, q2 ast.Statement, check RuleFunc) ([]rules.LintMessage[ast.Statement], error) {
 	list1, err := check(q1)
 	if err != nil && !errors.Is(err, ErrNa) {
 		return nil, err
@@ -365,8 +374,8 @@ func handleCompoundStatement(q1, q2 ast.Statement, check RuleFunc) ([]rules.Lint
 	return append(list1, list2...), nil
 }
 
-func handleWithStatement(with ast.WithStatement, check RuleFunc) ([]rules.LintMessage, error) {
-	var list []rules.LintMessage
+func handleWithStatement(with ast.WithStatement, check RuleFunc) ([]rules.LintMessage[ast.Statement], error) {
+	var list []rules.LintMessage[ast.Statement]
 	for _, q := range with.Queries {
 		ms, err := check(q)
 		if err != nil {
@@ -384,8 +393,8 @@ func handleWithStatement(with ast.WithStatement, check RuleFunc) ([]rules.LintMe
 	return list, err
 }
 
-func handleSelectStatement(stmt ast.SelectStatement, check RuleFunc) ([]rules.LintMessage, error) {
-	var list []rules.LintMessage
+func handleSelectStatement(stmt ast.SelectStatement, check RuleFunc) ([]rules.LintMessage[ast.Statement], error) {
+	var list []rules.LintMessage[ast.Statement]
 	for _, c := range stmt.Columns {
 		msg, err := check(c)
 		if err != nil && !errors.Is(err, ErrNa) {
@@ -408,8 +417,4 @@ func handleSelectStatement(stmt ast.SelectStatement, check RuleFunc) ([]rules.Li
 		list = slices.Concat(list, others)
 	}
 	return list, nil
-}
-
-func makeArray[T rules.LintMessage](el T) []T {
-	return []T{el}
 }

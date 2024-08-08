@@ -8,7 +8,7 @@ import (
 	"github.com/midbel/sweet/internal/rules"
 )
 
-func checkRewriteIn(stmt ast.Statement) ([]rules.LintMessage, error) {
+func checkRewriteIn(stmt ast.Statement) ([]rules.LintMessage[ast.Statement], error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
 		return selectRewriteIn(stmt)
@@ -35,7 +35,7 @@ func checkRewriteIn(stmt ast.Statement) ([]rules.LintMessage, error) {
 	}
 }
 
-func selectRewriteIn(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
+func selectRewriteIn(stmt ast.SelectStatement) ([]rules.LintMessage[ast.Statement], error) {
 	list, err := lintIn(stmt.Where)
 	if err != nil && !errors.Is(err, ErrNa) {
 		return nil, err
@@ -44,7 +44,7 @@ func selectRewriteIn(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
 	return slices.Concat(list, others), err
 }
 
-func joinRewriteIn(stmt ast.Join) ([]rules.LintMessage, error) {
+func joinRewriteIn(stmt ast.Join) ([]rules.LintMessage[ast.Statement], error) {
 	list, err := checkRewriteIn(stmt.Where)
 	if err != nil && !errors.Is(err, ErrNa) {
 		return nil, err
@@ -53,7 +53,7 @@ func joinRewriteIn(stmt ast.Join) ([]rules.LintMessage, error) {
 	return slices.Concat(list, others), err
 }
 
-func lintIn(stmt ast.Statement) ([]rules.LintMessage, error) {
+func lintIn(stmt ast.Statement) ([]rules.LintMessage[ast.Statement], error) {
 	switch stmt := stmt.(type) {
 	case ast.In:
 		vs, ok := stmt.Value.(ast.List)
@@ -61,7 +61,8 @@ func lintIn(stmt ast.Statement) ([]rules.LintMessage, error) {
 			return nil, nil
 		}
 		if len(vs.Values) == 1 {
-			return makeArray(rewriteIn()), nil
+			var list []rules.LintMessage[ast.Statement]
+			return append(list, rewriteIn()), nil
 		}
 		return nil, nil
 	case ast.Binary:
@@ -82,7 +83,7 @@ func lintIn(stmt ast.Statement) ([]rules.LintMessage, error) {
 	}
 }
 
-func checkRewriteBinary(stmt ast.Statement) ([]rules.LintMessage, error) {
+func checkRewriteBinary(stmt ast.Statement) ([]rules.LintMessage[ast.Statement], error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
 		return selectRewriteBinary(stmt)
@@ -105,7 +106,7 @@ func checkRewriteBinary(stmt ast.Statement) ([]rules.LintMessage, error) {
 	}
 }
 
-func selectRewriteBinary(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
+func selectRewriteBinary(stmt ast.SelectStatement) ([]rules.LintMessage[ast.Statement], error) {
 	list, err := lintBinary(stmt.Where)
 	if err != nil && !errors.Is(err, ErrNa) {
 		return nil, err
@@ -114,7 +115,7 @@ func selectRewriteBinary(stmt ast.SelectStatement) ([]rules.LintMessage, error) 
 	return slices.Concat(list, others), err
 }
 
-func joinRewriteBinary(stmt ast.Join) ([]rules.LintMessage, error) {
+func joinRewriteBinary(stmt ast.Join) ([]rules.LintMessage[ast.Statement], error) {
 	list, err := checkRewriteBinary(stmt.Where)
 	if err != nil && !errors.Is(err, ErrNa) {
 		return nil, err
@@ -123,7 +124,7 @@ func joinRewriteBinary(stmt ast.Join) ([]rules.LintMessage, error) {
 	return slices.Concat(list, others), err
 }
 
-func lintBinary(stmt ast.Statement) ([]rules.LintMessage, error) {
+func lintBinary(stmt ast.Statement) ([]rules.LintMessage[ast.Statement], error) {
 	bin, ok := stmt.(ast.Binary)
 	if !ok {
 		return nil, ErrNa
@@ -140,26 +141,27 @@ func lintBinary(stmt ast.Statement) ([]rules.LintMessage, error) {
 		return slices.Concat(l1, l2), nil
 	}
 	if bin.Op == "=" || bin.Op == "<>" {
+		var list []rules.LintMessage[ast.Statement]
 		if v, ok := bin.Right.(ast.Value); ok && v.Constant() {
-			return makeArray(rewriteBinary()), nil
+			return append(list, rewriteBinary()), nil
 		}
 		if v, ok := bin.Left.(ast.Value); ok && v.Constant() {
-			return makeArray(rewriteBinary()), nil
+			return append(list, rewriteBinary()), nil
 		}
 	}
 	return nil, ErrNa
 }
 
-func rewriteIn() rules.LintMessage {
-	return rules.LintMessage{
+func rewriteIn() rules.LintMessage[ast.Statement] {
+	return rules.LintMessage[ast.Statement]{
 		Severity: rules.Warning,
 		Message:  "in predicate should be rewritten",
 		Rule:     ruleRewriteExprIn,
 	}
 }
 
-func rewriteBinary() rules.LintMessage {
-	return rules.LintMessage{
+func rewriteBinary() rules.LintMessage[ast.Statement] {
+	return rules.LintMessage[ast.Statement]{
 		Severity: rules.Warning,
 		Message:  "expression should be rewritten",
 		Rule:     ruleRewriteExpr,

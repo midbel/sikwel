@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/midbel/sweet/internal/lang/ast"
 	"github.com/midbel/sweet/internal/lang/lint"
 	"github.com/midbel/sweet/internal/rules"
 )
@@ -33,7 +34,7 @@ func runLint(args []string) error {
 		return nil
 	}
 
-	process := func(file string) ([]rules.LintMessage, error) {
+	process := func(file string) ([]rules.LintMessage[ast.Statement], error) {
 		r, err := os.Open(file)
 		if err != nil {
 			return nil, err

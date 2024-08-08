@@ -129,7 +129,7 @@ func getDefaultRules() rules.Map[ast.Statement] {
 }
 
 func customizeRule(fn RuleFunc, enabled bool, level rules.Level) RuleFunc {
-	return func(stmt ast.Statement) ([]rules.LintMessage, error) {
+	return func(stmt ast.Statement) ([]rules.LintMessage[ast.Statement], error) {
 		if !enabled {
 			return nil, nil
 		}

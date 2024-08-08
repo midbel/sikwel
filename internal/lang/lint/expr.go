@@ -8,7 +8,7 @@ import (
 	"github.com/midbel/sweet/internal/rules"
 )
 
-func checkConstantBinary(stmt ast.Statement) ([]rules.LintMessage, error) {
+func checkConstantBinary(stmt ast.Statement) ([]rules.LintMessage[ast.Statement], error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
 		return selectConstantBinary(stmt)
@@ -31,8 +31,8 @@ func checkConstantBinary(stmt ast.Statement) ([]rules.LintMessage, error) {
 	}
 }
 
-func selectConstantBinary(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
-	var list []rules.LintMessage
+func selectConstantBinary(stmt ast.SelectStatement) ([]rules.LintMessage[ast.Statement], error) {
+	var list []rules.LintMessage[ast.Statement]
 	if isConstant(stmt.Where) {
 		list = append(list, constantOnlyExpr())
 	}
@@ -40,8 +40,8 @@ func selectConstantBinary(stmt ast.SelectStatement) ([]rules.LintMessage, error)
 	return slices.Concat(list, others), err
 }
 
-func joinConstantBinary(stmt ast.Join) ([]rules.LintMessage, error) {
-	var list []rules.LintMessage
+func joinConstantBinary(stmt ast.Join) ([]rules.LintMessage[ast.Statement], error) {
+	var list []rules.LintMessage[ast.Statement]
 	if isConstant(stmt.Where) {
 		list = append(list, constantOnlyExpr())
 	}
@@ -76,7 +76,7 @@ func isConstant(stmt ast.Statement) bool {
 	}
 }
 
-func checkResultSubquery(stmt ast.Statement) ([]rules.LintMessage, error) {
+func checkResultSubquery(stmt ast.Statement) ([]rules.LintMessage[ast.Statement], error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
 		return selectResultSubquery(stmt)
@@ -99,8 +99,8 @@ func checkResultSubquery(stmt ast.Statement) ([]rules.LintMessage, error) {
 	}
 }
 
-func selectResultSubquery(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
-	var list []rules.LintMessage
+func selectResultSubquery(stmt ast.SelectStatement) ([]rules.LintMessage[ast.Statement], error) {
+	var list []rules.LintMessage[ast.Statement]
 	for _, c := range stmt.Columns {
 		q, ok := c.(ast.SelectStatement)
 		if !ok {
@@ -114,7 +114,7 @@ func selectResultSubquery(stmt ast.SelectStatement) ([]rules.LintMessage, error)
 	return slices.Concat(list, others), err
 }
 
-func checkGroupBy(stmt ast.Statement) ([]rules.LintMessage, error) {
+func checkGroupBy(stmt ast.Statement) ([]rules.LintMessage[ast.Statement], error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
 		return selectGroupBy(stmt)
@@ -137,12 +137,12 @@ func checkGroupBy(stmt ast.Statement) ([]rules.LintMessage, error) {
 	}
 }
 
-func selectGroupBy(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
+func selectGroupBy(stmt ast.SelectStatement) ([]rules.LintMessage[ast.Statement], error) {
 	if len(stmt.Groups) == 0 {
 		return nil, nil
 	}
 	var (
-		list   []rules.LintMessage
+		list   []rules.LintMessage[ast.Statement]
 		groups = ast.GetNamesFromStmt(stmt.Groups)
 	)
 	for _, c := range stmt.Columns {
@@ -167,7 +167,7 @@ func selectGroupBy(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
 	return slices.Concat(list, others), err
 }
 
-func checkAsUsage(stmt ast.Statement) ([]rules.LintMessage, error) {
+func checkAsUsage(stmt ast.Statement) ([]rules.LintMessage[ast.Statement], error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
 		return selectInconsistentAs(stmt)
@@ -190,9 +190,9 @@ func checkAsUsage(stmt ast.Statement) ([]rules.LintMessage, error) {
 	}
 }
 
-func selectInconsistentAs(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
+func selectInconsistentAs(stmt ast.SelectStatement) ([]rules.LintMessage[ast.Statement], error) {
 	var (
-		list []rules.LintMessage
+		list []rules.LintMessage[ast.Statement]
 		used bool
 	)
 	for _, c := range stmt.Columns {
@@ -228,11 +228,11 @@ func selectInconsistentAs(stmt ast.SelectStatement) ([]rules.LintMessage, error)
 	return slices.Concat(list, others), err
 }
 
-func checkDirectionUsage(stmt ast.Statement) ([]rules.LintMessage, error) {
+func checkDirectionUsage(stmt ast.Statement) ([]rules.LintMessage[ast.Statement], error) {
 	return nil, nil
 }
 
-func checkForUnqualifiedNames(stmt ast.Statement) ([]rules.LintMessage, error) {
+func checkForUnqualifiedNames(stmt ast.Statement) ([]rules.LintMessage[ast.Statement], error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
 		return selectUnqualifiedNames(stmt)
@@ -255,10 +255,10 @@ func checkForUnqualifiedNames(stmt ast.Statement) ([]rules.LintMessage, error) {
 	}
 }
 
-func selectUnqualifiedNames(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
+func selectUnqualifiedNames(stmt ast.SelectStatement) ([]rules.LintMessage[ast.Statement], error) {
 	var (
 		names = ast.GetAliasFromStmt(stmt.Columns)
-		list  []rules.LintMessage
+		list  []rules.LintMessage[ast.Statement]
 	)
 	for _, c := range stmt.Columns {
 		if a, ok := c.(ast.Alias); ok {
@@ -276,64 +276,64 @@ func selectUnqualifiedNames(stmt ast.SelectStatement) ([]rules.LintMessage, erro
 	return slices.Concat(list, others), err
 }
 
-func unqualifiedName(name string) rules.LintMessage {
-	return rules.LintMessage{
+func unqualifiedName(name string) rules.LintMessage[ast.Statement] {
+	return rules.LintMessage[ast.Statement]{
 		Severity: rules.Error,
 		Message:  fmt.Sprintf("%s should be fully qualified", name),
 		Rule:     ruleExprUnqualified,
 	}
 }
 
-func inconsistentAs(clause string) rules.LintMessage {
-	return rules.LintMessage{
+func inconsistentAs(clause string) rules.LintMessage[ast.Statement] {
+	return rules.LintMessage[ast.Statement]{
 		Severity: rules.Warning,
 		Message:  fmt.Sprintf("%s: inconsistent use of AS", clause),
 		Rule:     ruleInconsistentUseAs,
 	}
 }
 
-func inconsistentOrder() rules.LintMessage {
-	return rules.LintMessage{
+func inconsistentOrder() rules.LintMessage[ast.Statement] {
+	return rules.LintMessage[ast.Statement]{
 		Severity: rules.Warning,
 		Message:  "inconsistent use of ASC/DESC",
 		Rule:     ruleInconsistentUseOrder,
 	}
 }
 
-func aggregateExpected(ident string) rules.LintMessage {
-	return rules.LintMessage{
+func aggregateExpected(ident string) rules.LintMessage[ast.Statement] {
+	return rules.LintMessage[ast.Statement]{
 		Severity: rules.Error,
 		Message:  fmt.Sprintf("%s should be an aggregate function", ident),
 		Rule:     ruleExprAggregate,
 	}
 }
 
-func exprNotInGroupBy(ident string) rules.LintMessage {
-	return rules.LintMessage{
+func exprNotInGroupBy(ident string) rules.LintMessage[ast.Statement] {
+	return rules.LintMessage[ast.Statement]{
 		Severity: rules.Error,
 		Message:  fmt.Sprintf("%s should be used in group by clause", ident),
 		Rule:     ruleExprInvalid,
 	}
 }
 
-func unexpectedExpr(ident string) rules.LintMessage {
-	return rules.LintMessage{
+func unexpectedExpr(ident string) rules.LintMessage[ast.Statement] {
+	return rules.LintMessage[ast.Statement]{
 		Severity: rules.Error,
 		Message:  "%s: unexpected expression",
 		Rule:     ruleExprInvalid,
 	}
 }
 
-func subqueryTooManyResult() rules.LintMessage {
-	return rules.LintMessage{
+func subqueryTooManyResult() rules.LintMessage[ast.Statement] {
+	return rules.LintMessage[ast.Statement]{
 		Severity: rules.Error,
 		Message:  "too many result returned by subquery",
 		Rule:     ruleSubqueryColsMismatched,
 	}
 }
 
-func constantOnlyExpr() rules.LintMessage {
-	return rules.LintMessage{
+func constantOnlyExpr() rules.LintMessage[ast.Statement] {
+	return rules.LintMessage[ast.Statement]{
 		Severity: rules.Error,
 		Message:  "expression composed of constant values",
 		Rule:     ruleConstExprBin,

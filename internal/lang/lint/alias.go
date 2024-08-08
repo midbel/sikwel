@@ -8,7 +8,7 @@ import (
 	"github.com/midbel/sweet/internal/rules"
 )
 
-func checkEnforcedAlias(stmt ast.Statement) ([]rules.LintMessage, error) {
+func checkEnforcedAlias(stmt ast.Statement) ([]rules.LintMessage[ast.Statement], error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
 		return selectEnforcedAlias(stmt)
@@ -31,8 +31,8 @@ func checkEnforcedAlias(stmt ast.Statement) ([]rules.LintMessage, error) {
 	}
 }
 
-func selectEnforcedAlias(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
-	var list []rules.LintMessage
+func selectEnforcedAlias(stmt ast.SelectStatement) ([]rules.LintMessage[ast.Statement], error) {
+	var list []rules.LintMessage[ast.Statement]
 	if cs := ast.GetAliasFromStmt(stmt.Columns); len(cs) == 0 {
 		list = append(list, enforcedAlias())
 	}
@@ -43,7 +43,7 @@ func selectEnforcedAlias(stmt ast.SelectStatement) ([]rules.LintMessage, error) 
 	return slices.Concat(list, others), err
 }
 
-func checkUniqueAlias(stmt ast.Statement) ([]rules.LintMessage, error) {
+func checkUniqueAlias(stmt ast.Statement) ([]rules.LintMessage[ast.Statement], error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
 		return selectUniqueAlias(stmt)
@@ -66,14 +66,14 @@ func checkUniqueAlias(stmt ast.Statement) ([]rules.LintMessage, error) {
 	}
 }
 
-func selectUniqueAlias(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
+func selectUniqueAlias(stmt ast.SelectStatement) ([]rules.LintMessage[ast.Statement], error) {
 	var (
 		columns  = ast.GetAliasFromStmt(stmt.Columns)
 		tables   = ast.GetAliasFromStmt(stmt.Tables)
 		contains = func(list []string, str string) bool {
 			return slices.Contains(list, str)
 		}
-		list []rules.LintMessage
+		list []rules.LintMessage[ast.Statement]
 	)
 	for i := range columns {
 		if ok := contains(columns[i+1:], columns[i]); ok {
@@ -89,7 +89,7 @@ func selectUniqueAlias(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
 	return slices.Concat(list, others), err
 }
 
-func checkUndefinedAlias(stmt ast.Statement) ([]rules.LintMessage, error) {
+func checkUndefinedAlias(stmt ast.Statement) ([]rules.LintMessage[ast.Statement], error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
 		return selectUndefinedAlias(stmt)
@@ -112,12 +112,12 @@ func checkUndefinedAlias(stmt ast.Statement) ([]rules.LintMessage, error) {
 	}
 }
 
-func selectUndefinedAlias(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
+func selectUndefinedAlias(stmt ast.SelectStatement) ([]rules.LintMessage[ast.Statement], error) {
 	var (
 		alias  = ast.GetAliasFromStmt(stmt.Tables)
 		names  = ast.GetNamesFromStmt(stmt.Tables)
 		values = slices.Concat(alias, names)
-		list   []rules.LintMessage
+		list   []rules.LintMessage[ast.Statement]
 	)
 	for _, c := range stmt.Columns {
 		if a, ok := c.(ast.Alias); ok {
@@ -135,7 +135,7 @@ func selectUndefinedAlias(stmt ast.SelectStatement) ([]rules.LintMessage, error)
 	return slices.Concat(list, others), err
 }
 
-func checkMissingAlias(stmt ast.Statement) ([]rules.LintMessage, error) {
+func checkMissingAlias(stmt ast.Statement) ([]rules.LintMessage[ast.Statement], error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
 		return selectMissingAlias(stmt)
@@ -158,8 +158,8 @@ func checkMissingAlias(stmt ast.Statement) ([]rules.LintMessage, error) {
 	}
 }
 
-func selectMissingAlias(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
-	var list []rules.LintMessage
+func selectMissingAlias(stmt ast.SelectStatement) ([]rules.LintMessage[ast.Statement], error) {
+	var list []rules.LintMessage[ast.Statement]
 	for _, s := range stmt.Columns {
 		if g, ok := s.(ast.Group); ok {
 			s = g.Statement
@@ -184,7 +184,7 @@ func selectMissingAlias(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
 	return slices.Concat(list, others), err
 }
 
-func checkMisusedAlias(stmt ast.Statement) ([]rules.LintMessage, error) {
+func checkMisusedAlias(stmt ast.Statement) ([]rules.LintMessage[ast.Statement], error) {
 	switch stmt := stmt.(type) {
 	case ast.SelectStatement:
 		return selectMisusedAlias(stmt)
@@ -207,10 +207,10 @@ func checkMisusedAlias(stmt ast.Statement) ([]rules.LintMessage, error) {
 	}
 }
 
-func selectMisusedAlias(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
+func selectMisusedAlias(stmt ast.SelectStatement) ([]rules.LintMessage[ast.Statement], error) {
 	var (
 		names = ast.GetNamesFromStmt([]ast.Statement{stmt.Where, stmt.Having})
-		list  []rules.LintMessage
+		list  []rules.LintMessage[ast.Statement]
 	)
 	for _, a := range ast.GetAliasFromStmt(stmt.Columns) {
 		ok := slices.Contains(names, a)
@@ -222,40 +222,40 @@ func selectMisusedAlias(stmt ast.SelectStatement) ([]rules.LintMessage, error) {
 	return slices.Concat(list, others), err
 }
 
-func enforcedAlias() rules.LintMessage {
-	return rules.LintMessage{
+func enforcedAlias() rules.LintMessage[ast.Statement] {
+	return rules.LintMessage[ast.Statement]{
 		Severity: rules.Error,
 		Message:  "alias expected",
 		Rule:     ruleAliasExpected,
 	}
 }
 
-func unexpectedAlias(alias string) rules.LintMessage {
-	return rules.LintMessage{
+func unexpectedAlias(alias string) rules.LintMessage[ast.Statement] {
+	return rules.LintMessage[ast.Statement]{
 		Severity: rules.Error,
 		Message:  fmt.Sprintf("%s: alias not allowed in where clause", alias),
 		Rule:     ruleAliasUnexpected,
 	}
 }
 
-func undefinedAlias(alias string) rules.LintMessage {
-	return rules.LintMessage{
+func undefinedAlias(alias string) rules.LintMessage[ast.Statement] {
+	return rules.LintMessage[ast.Statement]{
 		Severity: rules.Error,
 		Message:  fmt.Sprintf("%s: alias not defined", alias),
 		Rule:     ruleAliasUndefined,
 	}
 }
 
-func missingAlias() rules.LintMessage {
-	return rules.LintMessage{
+func missingAlias() rules.LintMessage[ast.Statement] {
+	return rules.LintMessage[ast.Statement]{
 		Severity: rules.Error,
 		Message:  "alias needed but missing",
 		Rule:     ruleAliasMissing,
 	}
 }
 
-func duplicatedAlias(alias string) rules.LintMessage {
-	return rules.LintMessage{
+func duplicatedAlias(alias string) rules.LintMessage[ast.Statement] {
+	return rules.LintMessage[ast.Statement]{
 		Severity: rules.Error,
 		Message:  fmt.Sprintf("%s: alias already defined", alias),
 		Rule:     ruleAliasDuplicate,
