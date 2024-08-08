@@ -9,6 +9,7 @@ import (
 
 func (p *Parser) ParsePlaceholder() (ast.Statement, error) {
 	var stmt ast.Placeholder
+	stmt.Position = p.GetCurrPosition()
 	switch {
 	case p.Is(token.Placeholder):
 		p.Next()
@@ -33,7 +34,8 @@ func (p *Parser) ParsePlaceholder() (ast.Statement, error) {
 
 func (p *Parser) ParseLiteral() (ast.Statement, error) {
 	stmt := ast.Value{
-		Literal: p.GetCurrLiteral(),
+		Literal:  p.GetCurrLiteral(),
+		Position: p.GetCurrPosition(),
 	}
 	p.Next()
 	return stmt, nil
@@ -52,7 +54,9 @@ func (p *Parser) ParseConstant() (ast.Statement, error) {
 }
 
 func (p *Parser) ParseIdentifier() (ast.Statement, error) {
-	var name ast.Name
+	name := ast.Name{
+		Position: p.GetCurrPosition(),
+	}
 	for p.PeekIs(token.Dot) {
 		name.Parts = append(name.Parts, p.GetCurrLiteral())
 		p.Next()
@@ -79,10 +83,11 @@ func (p *Parser) ParseAlias(stmt ast.Statement) (ast.Statement, error) {
 	if mandatory {
 		p.Next()
 	}
-	switch p.Curr().Type {
+	switch p.curr.Type {
 	case token.Ident, token.Literal, token.Number:
 		stmt = ast.Alias{
 			Statement: stmt,
+			Position:  p.GetCurrPosition(),
 			Alias:     p.GetCurrLiteral(),
 			As:        mandatory,
 		}
@@ -96,11 +101,13 @@ func (p *Parser) ParseAlias(stmt ast.Statement) (ast.Statement, error) {
 }
 
 func (p *Parser) ParseCase() (ast.Statement, error) {
-	p.Next()
 	var (
 		stmt ast.Case
 		err  error
 	)
+	stmt.Position = p.GetCurrPosition()
+
+	p.Next()
 	if !p.IsKeyword("WHEN") {
 		stmt.Cdt, err = p.StartExpression()
 		if err != nil {
@@ -109,6 +116,7 @@ func (p *Parser) ParseCase() (ast.Statement, error) {
 	}
 	for p.IsKeyword("WHEN") {
 		var when ast.When
+		when.Position = p.GetCurrPosition()
 		p.Next()
 		when.Cdt, err = p.StartExpression()
 		if err != nil {
@@ -147,15 +155,16 @@ func (p *Parser) ParseCase() (ast.Statement, error) {
 }
 
 func (p *Parser) ParseCast() (ast.Statement, error) {
+	var (
+		cast ast.Cast
+		err  error
+	)
+	cast.Position = p.GetCurrPosition()
 	p.Next()
 	if !p.Is(token.Lparen) {
 		return nil, p.Unexpected("cast", missingOpenParen)
 	}
 	p.Next()
-	var (
-		cast ast.Cast
-		err  error
-	)
 	cast.Ident, err = p.ParseIdentifier()
 	if err != nil {
 		return nil, err
@@ -176,6 +185,7 @@ func (p *Parser) ParseCast() (ast.Statement, error) {
 
 func (p *Parser) ParseType() (ast.Type, error) {
 	var t ast.Type
+	t.Position = p.GetCurrPosition()
 	if !p.Is(token.Ident) {
 		return t, p.Unexpected("type", identExpected)
 	}
@@ -207,6 +217,9 @@ func (p *Parser) ParseType() (ast.Type, error) {
 }
 
 func (p *Parser) ParseRow() (ast.Statement, error) {
+	var row ast.Row
+	row.Position = p.GetCurrPosition()
+
 	p.Next()
 	if !p.Is(token.Lparen) {
 		return nil, p.Unexpected("row", missingOpenParen)
@@ -216,7 +229,6 @@ func (p *Parser) ParseRow() (ast.Statement, error) {
 	p.setDefaultFuncSet()
 	defer p.unsetFuncSet()
 
-	var row ast.Row
 	for !p.Done() && !p.Is(token.Rparen) {
 		expr, err := p.StartExpression()
 		if err != nil {

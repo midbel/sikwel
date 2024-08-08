@@ -510,6 +510,10 @@ func (f *frame) GetCurrLiteral() string {
 	return f.curr.Literal
 }
 
+func (f *frame) GetCurrPosition() token.Position {
+	return f.curr.Position
+}
+
 func (f *frame) GetPeekLiteral() string {
 	return f.peek.Literal
 }

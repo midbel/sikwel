@@ -131,6 +131,7 @@ var sqlBuiltins = []string{
 }
 
 type Call struct {
+	Position token.Position
 	Distinct bool
 	Ident    Statement
 	Args     []Statement

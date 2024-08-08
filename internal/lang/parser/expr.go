@@ -52,8 +52,9 @@ func (p *Parser) parseExpression(pow int) (ast.Statement, error) {
 
 func (p *Parser) parseRelational(ident ast.Statement) (ast.Statement, error) {
 	stmt := ast.Binary{
-		Left: ident,
-		Op:   p.GetCurrLiteral(),
+		Left:     ident,
+		Op:       p.GetCurrLiteral(),
+		Position: p.GetCurrPosition(),
 	}
 	var (
 		pow = p.currBinding()
@@ -66,8 +67,9 @@ func (p *Parser) parseRelational(ident ast.Statement) (ast.Statement, error) {
 
 func (p *Parser) parseLike(ident ast.Statement) (ast.Statement, error) {
 	stmt := ast.Binary{
-		Left: ident,
-		Op:   p.GetCurrLiteral(),
+		Left:     ident,
+		Op:       p.GetCurrLiteral(),
+		Position: p.GetCurrPosition(),
 	}
 	var (
 		pow = p.currBinding()
@@ -79,13 +81,14 @@ func (p *Parser) parseLike(ident ast.Statement) (ast.Statement, error) {
 }
 
 func (p *Parser) parseIs(ident ast.Statement) (ast.Statement, error) {
+	stmt := ast.Is{
+		Ident:    ident,
+		Position: p.GetCurrPosition(),
+	}
 	p.Next()
 	not := p.GetCurrLiteral() == "NOT" && p.Is(token.Keyword)
 	if not {
 		p.Next()
-	}
-	stmt := ast.Is{
-		Ident: ident,
 	}
 	val, err := p.ParseConstant()
 	if err != nil {
@@ -94,6 +97,7 @@ func (p *Parser) parseIs(ident ast.Statement) (ast.Statement, error) {
 	stmt.Value = val
 	if not {
 		return ast.Not{
+			Position:  stmt.Position,
 			Statement: stmt,
 		}, nil
 	}
@@ -101,42 +105,49 @@ func (p *Parser) parseIs(ident ast.Statement) (ast.Statement, error) {
 }
 
 func (p *Parser) parseIsNull(ident ast.Statement) (ast.Statement, error) {
-	p.Next()
 	val := ast.Value{
-		Literal: token.Null,
+		Position: p.GetCurrPosition(),
+		Literal:  token.Null,
 	}
 	stmt := ast.Is{
-		Ident: ident,
-		Value: val,
+		Ident:    ident,
+		Value:    val,
+		Position: p.GetCurrPosition(),
 	}
+	p.Next()
 	return stmt, nil
 }
 
 func (p *Parser) parseNotNull(ident ast.Statement) (ast.Statement, error) {
-	p.Next()
 	val := ast.Value{
-		Literal: token.Null,
+		Literal:  token.Null,
+		Position: p.GetCurrPosition(),
 	}
 	stmt := ast.Is{
-		Ident: ident,
-		Value: val,
+		Ident:    ident,
+		Value:    val,
+		Position: val.Position,
 	}
 	not := ast.Not{
 		Statement: stmt,
+		Position:  stmt.Position,
 	}
+	p.Next()
 	return not, nil
 }
 
 func (p *Parser) parseExists() (ast.Statement, error) {
-	p.Next()
-	if !p.Is(token.Lparen) {
-		return nil, p.Unexpected("exists", missingOpenParen)
-	}
-	p.Next()
 	var (
 		stmt ast.Exists
 		err  error
 	)
+	stmt.Position = p.GetCurrPosition()
+	p.Next()
+
+	if !p.Is(token.Lparen) {
+		return nil, p.Unexpected("exists", missingOpenParen)
+	}
+	p.Next()
 	stmt.Statement, err = p.ParseStatement()
 	if err != nil {
 		return nil, err
@@ -149,10 +160,11 @@ func (p *Parser) parseExists() (ast.Statement, error) {
 }
 
 func (p *Parser) parseBetween(ident ast.Statement) (ast.Statement, error) {
-	p.Next()
 	stmt := ast.Between{
-		Ident: ident,
+		Ident:    ident,
+		Position: p.GetCurrPosition(),
 	}
+	p.Next()
 	left, err := p.parseExpression(powRel)
 	if err != nil {
 		return nil, err
@@ -171,10 +183,11 @@ func (p *Parser) parseBetween(ident ast.Statement) (ast.Statement, error) {
 }
 
 func (p *Parser) parseIn(ident ast.Statement) (ast.Statement, error) {
-	p.Next()
 	in := ast.In{
-		Ident: ident,
+		Ident:    ident,
+		Position: p.GetCurrPosition(),
 	}
+	p.Next()
 	var err error
 	if p.Is(token.Lparen) && p.PeekIs(token.Keyword) && p.GetPeekLiteral() == "SELECT" {
 		in.Value, err = p.parseExpression(powLowest)
@@ -222,7 +235,8 @@ func (p *Parser) getInfixExpr() (infixFunc, error) {
 
 func (p *Parser) parseInfixExpr(left ast.Statement) (ast.Statement, error) {
 	stmt := ast.Binary{
-		Left: left,
+		Left:     left,
+		Position: p.GetCurrPosition(),
 	}
 	var (
 		pow = p.currBinding()
@@ -246,6 +260,7 @@ func (p *Parser) parseAllOrAny() (ast.Statement, error) {
 		expr ast.Statement
 		err  error
 		all  = p.IsKeyword("ALL")
+		pos  = p.GetCurrPosition()
 	)
 	p.Next()
 	if !p.Is(token.Lparen) {
@@ -261,10 +276,12 @@ func (p *Parser) parseAllOrAny() (ast.Statement, error) {
 	p.Next()
 	if all {
 		expr = ast.All{
+			Position:  pos,
 			Statement: expr,
 		}
 	} else {
 		expr = ast.Any{
+			Position:  pos,
 			Statement: expr,
 		}
 	}
@@ -273,6 +290,7 @@ func (p *Parser) parseAllOrAny() (ast.Statement, error) {
 
 func (p *Parser) parseCollateExpr(left ast.Statement) (ast.Statement, error) {
 	stmt := ast.Collate{
+		Position:  p.GetCurrPosition(),
 		Statement: left,
 	}
 	p.Next()
@@ -329,6 +347,7 @@ func (p *Parser) parseCallExpr(left ast.Statement) (ast.Statement, error) {
 	}
 	p.Next()
 	stmt := ast.Call{
+		Position: p.GetCurrPosition(),
 		Ident:    left,
 		Distinct: p.IsKeyword("DISTINCT"),
 	}
@@ -392,6 +411,7 @@ func (p *Parser) parseUnary() (ast.Statement, error) {
 	var (
 		stmt ast.Statement
 		err  error
+		pos  = p.GetCurrPosition()
 	)
 	switch {
 	case p.Is(token.Minus):
@@ -401,8 +421,9 @@ func (p *Parser) parseUnary() (ast.Statement, error) {
 			return nil, err
 		}
 		stmt = ast.Unary{
-			Right: stmt,
-			Op:    "-",
+			Position: pos,
+			Right:    stmt,
+			Op:       "-",
 		}
 	case p.IsKeyword("NOT"):
 		p.Next()
@@ -411,6 +432,7 @@ func (p *Parser) parseUnary() (ast.Statement, error) {
 			return nil, err
 		}
 		stmt = ast.Not{
+			Position:  pos,
 			Statement: stmt,
 		}
 	default:

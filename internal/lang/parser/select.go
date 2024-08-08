@@ -13,7 +13,7 @@ func (p *Parser) ParseValues() (ast.Statement, error) {
 		stmt ast.ValuesStatement
 		err  error
 	)
-	stmt.Position = p.curr.Position
+	stmt.Position = p.GetCurrPosition()
 	p.Next()
 
 	if !p.Is(token.Lparen) {
@@ -110,7 +110,7 @@ func (p *Parser) ParseSelect() (ast.Statement, error) {
 		stmt ast.SelectStatement
 		err  error
 	)
-	stmt.Position = p.curr.Position
+	stmt.Position = p.GetCurrPosition()
 	p.Next()
 
 	if p.IsKeyword("DISTINCT") {
