@@ -9,11 +9,13 @@ import (
 )
 
 func (p *Parser) ParseValues() (ast.Statement, error) {
-	p.Next()
 	var (
 		stmt ast.ValuesStatement
 		err  error
 	)
+	stmt.Position = p.curr.Position
+	p.Next()
+
 	if !p.Is(token.Lparen) {
 		for !p.Done() && !p.Is(token.EOL) {
 			v, err := p.StartExpression()
@@ -104,11 +106,13 @@ func (p *Parser) parseCompound(stmt ast.Statement) (ast.Statement, error) {
 }
 
 func (p *Parser) ParseSelect() (ast.Statement, error) {
-	p.Next()
 	var (
 		stmt ast.SelectStatement
 		err  error
 	)
+	stmt.Position = p.curr.Position
+	p.Next()
+
 	if p.IsKeyword("DISTINCT") {
 		stmt.Distinct = true
 		p.Next()

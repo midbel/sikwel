@@ -2,6 +2,8 @@ package ast
 
 import (
 	"fmt"
+
+	"github.com/midbel/sweet/internal/token"
 )
 
 type Node struct {
@@ -28,11 +30,15 @@ func (n Node) GetNames() []string {
 type Statement interface{}
 
 type Limit struct {
+	token.Position
+
 	Count  int
 	Offset int
 }
 
 type Offset struct {
+	token.Position
+
 	Limit
 	Next bool
 }
@@ -45,12 +51,16 @@ const (
 )
 
 type Order struct {
+	token.Position
+
 	Statement
 	Dir   OrderDir
 	Nulls string
 }
 
 type Join struct {
+	token.Position
+
 	Type  string
 	Table Statement
 	Where Statement
@@ -105,6 +115,8 @@ const (
 )
 
 type CteStatement struct {
+	token.Position
+
 	Ident        string
 	Materialized MaterializedMode
 	Columns      []string
@@ -112,6 +124,8 @@ type CteStatement struct {
 }
 
 type WithStatement struct {
+	token.Position
+
 	Recursive bool
 	Queries   []Statement
 	Statement
@@ -137,6 +151,8 @@ func (s WithStatement) Get() Statement {
 }
 
 type ValuesStatement struct {
+	token.Position
+
 	List   []Statement
 	Orders []Statement
 	Limit  Statement
@@ -147,6 +163,8 @@ func (s ValuesStatement) Keyword() (string, error) {
 }
 
 type SelectStatement struct {
+	token.Position
+
 	Distinct bool
 	Columns  []Statement
 	Tables   []Statement
@@ -205,6 +223,8 @@ func getCompoundKeyword(kw string, all, distinct bool) (string, error) {
 }
 
 type UnionStatement struct {
+	token.Position
+
 	Left     Statement
 	Right    Statement
 	All      bool
@@ -216,6 +236,8 @@ func (s UnionStatement) Keyword() (string, error) {
 }
 
 type IntersectStatement struct {
+	token.Position
+
 	Left     Statement
 	Right    Statement
 	All      bool
@@ -227,6 +249,8 @@ func (s IntersectStatement) Keyword() (string, error) {
 }
 
 type ExceptStatement struct {
+	token.Position
+
 	Left     Statement
 	Right    Statement
 	All      bool
@@ -238,11 +262,15 @@ func (s ExceptStatement) Keyword() (string, error) {
 }
 
 type MatchStatement struct {
+	token.Position
+
 	Condition Statement
 	Statement
 }
 
 type MergeStatement struct {
+	token.Position
+
 	Target  Statement
 	Source  Statement
 	Join    Statement
@@ -265,6 +293,8 @@ type Assignment struct {
 }
 
 type InsertStatement struct {
+	token.Position
+
 	Table   Statement
 	Columns []string
 	Values  Statement
@@ -277,6 +307,8 @@ func (s InsertStatement) Keyword() (string, error) {
 }
 
 type UpdateStatement struct {
+	token.Position
+
 	Table  Statement
 	List   []Statement
 	Tables []Statement
@@ -299,6 +331,8 @@ func (s TruncateStatement) Keyword() (string, error) {
 }
 
 type DeleteStatement struct {
+	token.Position
+
 	Table  string
 	Where  Statement
 	Return Statement

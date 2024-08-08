@@ -6,11 +6,13 @@ import (
 )
 
 func (p *Parser) parseSet() (ast.Statement, error) {
-	p.Next()
 	var (
 		stmt ast.Set
 		err  error
 	)
+	stmt.Position = p.curr.Position
+	p.Next()
+
 	stmt.Ident = p.GetCurrLiteral()
 	p.Next()
 	if !p.Is(token.Eq) {
@@ -23,12 +25,13 @@ func (p *Parser) parseSet() (ast.Statement, error) {
 }
 
 func (p *Parser) ParseDeclare() (ast.Statement, error) {
-	p.Next()
 
 	var (
 		stmt ast.Declare
 		err  error
 	)
+	stmt.Position = p.curr.Position
+	p.Next()
 	if !p.Is(token.Ident) {
 		return nil, p.Unexpected("declare", identExpected)
 	}
@@ -51,12 +54,13 @@ func (p *Parser) ParseDeclare() (ast.Statement, error) {
 }
 
 func (p *Parser) parseIf() (ast.Statement, error) {
-	p.Next()
-
 	var (
 		stmt ast.If
 		err  error
 	)
+	stmt.Position = p.curr.Position
+	p.Next()
+
 	if stmt.Cdt, err = p.StartExpression(); err != nil {
 		return nil, err
 	}
@@ -94,6 +98,7 @@ func (p *Parser) parseWhile() (ast.Statement, error) {
 		stmt ast.While
 		err  error
 	)
+	stmt.Position = p.curr.Position
 	p.Next()
 
 	stmt.Cdt, err = p.StartExpression()
@@ -135,11 +140,13 @@ func (p *Parser) ParseBody(done func() bool) (ast.Statement, error) {
 }
 
 func (p *Parser) parseReturn() (ast.Statement, error) {
-	p.Next()
 	var (
 		stmt ast.Return
 		err  error
 	)
+	stmt.Position = p.curr.Position
+	p.Next()
+
 	stmt.Statement, err = p.StartExpression()
 	return stmt, err
 }

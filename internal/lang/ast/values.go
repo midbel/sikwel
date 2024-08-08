@@ -3,6 +3,8 @@ package ast
 import (
 	"slices"
 	"strings"
+
+	"github.com/midbel/sweet/internal/token"
 )
 
 func GetNamesFromWhere(where Statement, prefix string) []Statement {
@@ -78,17 +80,22 @@ type Group struct {
 }
 
 type Cast struct {
+	token.Position
+
 	Ident Statement
 	Type  Type
 }
 
 type Type struct {
+	token.Position
+
 	Name      string
 	Length    int
 	Precision int
 }
 
 type Not struct {
+	token.Position
 	Statement
 }
 
@@ -97,11 +104,13 @@ func (n Not) GetNames() []string {
 }
 
 type Collate struct {
+	token.Position
 	Statement
 	Collation string
 }
 
 type Exists struct {
+	token.Position
 	Statement
 }
 
@@ -150,6 +159,7 @@ func (c Call) BuiltinSql() bool {
 }
 
 type Row struct {
+	token.Position
 	Values []Statement
 }
 
@@ -158,6 +168,7 @@ func (r Row) Keyword() (string, error) {
 }
 
 type Unary struct {
+	token.Position
 	Right Statement
 	Op    string
 }
@@ -167,6 +178,7 @@ func (u Unary) GetNames() []string {
 }
 
 type Binary struct {
+	token.Position
 	Left  Statement
 	Right Statement
 	Op    string
@@ -184,19 +196,23 @@ func (b Binary) IsRelation() bool {
 }
 
 type All struct {
+	token.Position
 	Statement
 }
 
 type Any struct {
+	token.Position
 	Statement
 }
 
 type Is struct {
+	token.Position
 	Ident Statement
 	Value Statement
 }
 
 type In struct {
+	token.Position
 	Ident Statement
 	Value Statement
 }
@@ -209,6 +225,7 @@ func (i In) GetNames() []string {
 }
 
 type Between struct {
+	token.Position
 	Not   bool
 	Ident Statement
 	Lower Statement
@@ -224,10 +241,12 @@ func (i List) Len() int {
 }
 
 type Placeholder struct {
+	token.Position
 	Statement
 }
 
 type Value struct {
+	token.Position
 	Literal string
 }
 
@@ -248,12 +267,14 @@ func (v Value) False() bool {
 }
 
 type Alias struct {
+	token.Position
 	Statement
 	Alias string
 	As    bool
 }
 
 type Name struct {
+	token.Position
 	Parts []string
 }
 
